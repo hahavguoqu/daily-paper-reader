@@ -1857,14 +1857,28 @@ window.$docsify = {
           );
         };
 
+        const getDirectLabelNode = (li) => {
+          if (!li) return null;
+          const textNode = getDirectTextNode(li);
+          if (textNode) return textNode;
+          return (
+            Array.from(li.children || []).find((node) => {
+              if (!node || node.tagName === 'UL') return false;
+              if (node.classList && node.classList.contains('sidebar-conference-content')) return false;
+              if (node.classList && node.classList.contains('sidebar-conference-toggle')) return true;
+              return !!String(node.textContent || '').trim();
+            }) || null
+          );
+        };
+
         const getToggleLabel = (li) => {
           if (!li) return '';
           const label = li.querySelector(
             ':scope > .sidebar-conference-toggle .sidebar-conference-toggle-label',
           );
           if (label) return String(label.textContent || '').trim();
-          const textNode = getDirectTextNode(li);
-          return String((textNode && textNode.textContent) || '').trim();
+          const labelNode = getDirectLabelNode(li);
+          return String((labelNode && labelNode.textContent) || '').trim();
         };
 
         const normalizeKeyPart = (value) => {
@@ -1952,9 +1966,9 @@ window.$docsify = {
             wrapper.appendChild(labelSpan);
             wrapper.appendChild(arrowSpan);
 
-            const textNode = getDirectTextNode(li);
-            if (textNode && textNode.parentNode === li) {
-              li.replaceChild(wrapper, textNode);
+            const labelNode = getDirectLabelNode(li);
+            if (labelNode && labelNode.parentNode === li) {
+              li.replaceChild(wrapper, labelNode);
             } else {
               li.insertBefore(wrapper, li.firstChild);
             }
