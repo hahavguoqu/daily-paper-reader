@@ -1805,14 +1805,28 @@ window.$docsify = {
           // 绑定点击：使用 capture 阶段，确保即使旧版本已有 handler 也能覆盖
           if (!wrapper.dataset.dprDayToggleBound) {
             wrapper.dataset.dprDayToggleBound = '1';
+
+            // --- 拖拽检测：记录 pointerdown 起始位置，click 时判断是否为拖拽 ---
+            let _dayTogglePtrStart = null;
+            wrapper.addEventListener('pointerdown', (pe) => {
+              _dayTogglePtrStart = { x: pe.clientX, y: pe.clientY };
+            }, true);
+
             wrapper.addEventListener(
               'click',
               (e) => {
-                // 点击菜单控件时，不触发日期折叠（否则 capture 阶段会先被 wrapper 拦截，导致菜单无响应）
+                // 拖拽距离超过阈值时，视为拖拽操作，不触发折叠
+                if (_dayTogglePtrStart) {
+                  const dx = e.clientX - _dayTogglePtrStart.x;
+                  const dy = e.clientY - _dayTogglePtrStart.y;
+                  _dayTogglePtrStart = null;
+                  if (Math.abs(dx) > 5 || Math.abs(dy) > 5) return;
+                }
+                // 点击菜单控件或未读 badge 时，不触发日期折叠
                 try {
                   const target = e && e.target && e.target.closest
                     ? e.target.closest(
-                        '.sidebar-day-menu-trigger,.sidebar-day-menu,.sidebar-day-menu-item',
+                        '.sidebar-day-menu-trigger,.sidebar-day-menu,.sidebar-day-menu-item,.dpr-unread-badge',
                       )
                     : null;
                   if (target) return;
@@ -1830,7 +1844,7 @@ window.$docsify = {
                 state.__latestDay = latestDay;
                 ensureStateSaved();
                 // 先做一次即时同步（保证交互反馈），再在动画结束后做一次终态校准，
-                // 否则列表在 max-height 过渡中继续位移，会让高亮条“越开越往上偏”。
+                // 否则列表在 max-height 过渡中继续位移，会让高亮条”越开越往上偏”。
                 requestAnimationFrame(() => {
                   syncSidebarActiveIndicator({ animate: false });
                 });
@@ -2073,7 +2087,21 @@ window.$docsify = {
 
           if (!wrapper.dataset.dprConferenceToggleBound) {
             wrapper.dataset.dprConferenceToggleBound = '1';
+
+            // --- 拖拽检测：记录 pointerdown 起始位置，click 时判断是否为拖拽 ---
+            let _confTogglePtrStart = null;
+            wrapper.addEventListener('pointerdown', (pe) => {
+              _confTogglePtrStart = { x: pe.clientX, y: pe.clientY };
+            }, true);
+
             const toggle = (event) => {
+              // 拖拽距离超过阈值时，视为拖拽操作，不触发折叠
+              if (event && event.type === 'click' && _confTogglePtrStart) {
+                const dx = event.clientX - _confTogglePtrStart.x;
+                const dy = event.clientY - _confTogglePtrStart.y;
+                _confTogglePtrStart = null;
+                if (Math.abs(dx) > 5 || Math.abs(dy) > 5) return;
+              }
               if (event) {
                 event.preventDefault();
                 event.stopPropagation();
@@ -2578,16 +2606,91 @@ window.$docsify = {
 
           if (!titleEl) return;
 
-          // 找到或创建 badge
-          let badge = titleEl.querySelector('.dpr-unread-badge');
+          // 找到或创建 badge — 放在 actions 按钮组的左边
+          let badge = li.querySelector(':scope > .sidebar-day-toggle > .dpr-unread-badge')
+            || titleEl.querySelector('.dpr-unread-badge');
           if (!badge) {
             badge = document.createElement('span');
             badge.className = 'dpr-unread-badge';
-            titleEl.appendChild(badge);
+            // 如果存在 sidebar-day-toggle-actions，插到它前面
+            const actions = titleEl.querySelector('.sidebar-day-toggle-actions');
+            if (actions) {
+              titleEl.insertBefore(badge, actions);
+            } else {
+              titleEl.appendChild(badge);
+            }
           }
           badge.textContent = unread > 0 ? String(unread) : '';
           badge.setAttribute('data-count', String(unread));
-          if (unread > 0) badgeCount++;
+          if (unread > 0) {
+            badgeCount++;
+            if (!badge._dprDragBound) {
+              badge._dprDragBound = true;
+              badge.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const rect = badge.getBoundingClientRect();
+                const startX = e.clientX, startY = e.clientY;
+                const origLeft = rect.left + rect.width / 2;
+                const origTop = rect.top + rect.height / 2;
+
+                const ghost = document.createElement('span');
+                ghost.className = 'dpr-unread-badge-ghost';
+                ghost.textContent = badge.textContent;
+                ghost.style.left = (e.clientX - rect.width / 2) + 'px';
+                ghost.style.top = (e.clientY - rect.height / 2) + 'px';
+                document.body.appendChild(ghost);
+
+                badge.style.visibility = 'hidden';
+                badge.setPointerCapture(e.pointerId);
+
+                const onMove = (ev) => {
+                  ghost.style.left = (ev.clientX - rect.width / 2) + 'px';
+                  ghost.style.top = (ev.clientY - rect.height / 2) + 'px';
+                };
+
+                const onUp = (ev) => {
+                  badge.removeEventListener('pointermove', onMove);
+                  badge.removeEventListener('pointerup', onUp);
+                  badge.removeEventListener('pointercancel', onUp);
+                  try { badge.releasePointerCapture(ev.pointerId); } catch (_) {}
+
+                  const dx = ev.clientX - startX, dy = ev.clientY - startY;
+                  const dist = Math.sqrt(dx * dx + dy * dy);
+
+                  if (dist > 60) {
+                    ghost.classList.add('popping');
+                    ghost.addEventListener('animationend', () => {
+                      ghost.remove();
+                      const groupLi = badge.closest('li');
+                      if (groupLi) {
+                        const links = groupLi.querySelectorAll('a.dpr-sidebar-item-link[href*="#/"]');
+                        links.forEach((a) => {
+                          const href = (a.getAttribute('href') || '').replace(/^#/, '');
+                          if (href) markPaperRead(href, 'read');
+                        });
+                      }
+                      badge.style.visibility = '';
+                      updateSidebarUnreadBadges();
+                    }, { once: true });
+                  } else {
+                    ghost.classList.add('returning');
+                    ghost.style.left = (origLeft - rect.width / 2) + 'px';
+                    ghost.style.top = (origTop - rect.height / 2) + 'px';
+                    ghost.style.transform = 'scale(1)';
+                    ghost.addEventListener('transitionend', () => {
+                      ghost.remove();
+                      badge.style.visibility = '';
+                    }, { once: true });
+                  }
+                };
+
+                badge.addEventListener('pointermove', onMove);
+                badge.addEventListener('pointerup', onUp);
+                badge.addEventListener('pointercancel', onUp);
+              });
+            }
+          }
         });
 
         if (badgeCount === 0) {
