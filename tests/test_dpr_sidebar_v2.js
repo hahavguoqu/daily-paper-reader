@@ -395,6 +395,7 @@ function testSidebarUtilityHelpers() {
   });
   assert.equal(typeof tools.rerenderOptionsForStatusClick, 'function');
   assert.deepEqual(tools.rerenderOptionsForStatusClick(), {
+    updateInPlace: true,
     syncActive: false,
     centerActive: false,
     autoMark: false,
@@ -799,6 +800,18 @@ function testUnreadResultsKeepCurrentReadPaperVisible() {
   assert.ok(html.includes('data-read="1"'));
 }
 
+function testStatusClickKeepsPaperRowInPlace() {
+  const js = fs.readFileSync('app/dpr-sidebar.js', 'utf8');
+  const start = js.indexOf("var statusButton = e.target.closest('.dpr-sidebar-paper-status-btn');");
+  const end = js.indexOf("var sectionToggle = e.target.closest('.dpr-sidebar-axis-section-header');", start);
+  assert.ok(start > 0 && end > start, 'status button click handler should be present');
+  const block = js.slice(start, end);
+  assert.ok(block.includes('updateReadStateMarks();'));
+  assert.ok(block.includes('applyFilterAndSearch();'));
+  assert.ok(!block.includes('rerenderSidebarBody(rerenderOptionsForStatusClick())'));
+  assert.ok(!block.includes('.blur('));
+}
+
 function testReadStatusNormalization() {
   const sidebar = loadSidebarForTest('#/202606/24/paper-a');
   const tools = sidebar.__test;
@@ -832,6 +845,7 @@ testSearchResultsComeFromFullModel();
 testSearchNoResultsShowsEmptyState();
 testUnreadResultsComeFromFullModel();
 testUnreadResultsKeepCurrentReadPaperVisible();
+testStatusClickKeepsPaperRowInPlace();
 testReadStatusNormalization();
 
 console.log('dpr sidebar v2 tests passed');

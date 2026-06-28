@@ -259,6 +259,7 @@
   }
   function rerenderOptionsForStatusClick() {
     return {
+      updateInPlace: true,
       syncActive: false,
       centerActive: false,
       autoMark: false,
@@ -1748,9 +1749,15 @@
           var readMap = ReadState.getAll();
           var currentStatus = normalizeReadStatus(readMap[statusPaperId]);
           markPaperStatus(statusPaperId, currentStatus === nextStatus ? 'read' : nextStatus, { notify: false });
-          rerenderSidebarBody(rerenderOptionsForStatusClick());
+          var updateOptions = rerenderOptionsForStatusClick();
+          if (updateOptions.updateInPlace) {
+            updateReadStateMarks();
+            applyFilterAndSearch();
+            schedulePaperTitleOverflowMarks(statusButton.closest('.dpr-sidebar-paper'));
+          } else {
+            rerenderSidebarBody(updateOptions);
+          }
         }
-        if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
         return;
       }
       var sectionToggle = e.target.closest('.dpr-sidebar-axis-section-header');
