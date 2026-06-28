@@ -84,6 +84,19 @@ class FetchSystemsSecurityConferencesTest(unittest.TestCase):
             "https://dl.acm.org/doi/pdf/10.1145/3731569.3764794",
         )
 
+    def test_apply_semantic_scholar_abstracts_only_fills_missing_sosp_abstracts(self):
+        papers = [
+            {"doi": "10.1145/1", "abstract": ""},
+            {"doi": "10.1145/2", "abstract": "Keep official abstract."},
+        ]
+        items = [
+            {"externalIds": {"DOI": "10.1145/1"}, "abstract": "Semantic Scholar abstract."},
+            {"externalIds": {"DOI": "10.1145/2"}, "abstract": "Should not overwrite."},
+        ]
+        out = self.mod.apply_semantic_scholar_abstracts(papers, items)
+        self.assertEqual(out[0]["abstract"], "Semantic Scholar abstract.")
+        self.assertEqual(out[1]["abstract"], "Keep official abstract.")
+
     def test_ieee_sp_keeps_only_public_pdf_articles(self):
         articles = [
             {"id": "open", "title": "Open Paper", "abstract": "Escaped &#x2019; abstract.", "normalizedAbstract": "Readable abstract.", "authors": [{"fullName": "Ada"}], "isOpenAccess": True, "hasPdf": True, "fno": "313000a001", "doi": "10.1109/SP.1", "year": "2024"},

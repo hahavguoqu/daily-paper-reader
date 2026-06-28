@@ -31,6 +31,7 @@ IEEE_SP_PROCEEDINGS = {
     2025: "21B7ONGXzZ6",
 }
 IEEE_SP_GRAPHQL_URL = "https://www.computer.org/csdl/api/v1/graphql"
+SEMANTIC_SCHOLAR_BATCH_URL = "https://api.semanticscholar.org/graph/v1/paper/batch"
 
 
 def log(message: str) -> None:
@@ -430,6 +431,70 @@ def enrich_sosp_with_crossref(papers: List[Dict[str, Any]], *, year: int, worker
     return [enrich(paper) for paper in papers]
 
 
+def apply_semantic_scholar_abstracts(papers: List[Dict[str, Any]], items: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    abstract_by_doi: Dict[str, str] = {}
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        external_ids = item.get("externalIds") if isinstance(item.get("externalIds"), dict) else {}
+        doi = _norm(external_ids.get("DOI")).lower()
+        abstract = _norm(item.get("abstract"))
+        if doi and abstract:
+            abstract_by_doi[doi] = abstract
+    for paper in papers:
+        if _norm(paper.get("abstract")):
+            continue
+        doi = _norm(paper.get("doi")).lower()
+        if doi and doi in abstract_by_doi:
+            paper["abstract"] = abstract_by_doi[doi]
+    return papers
+
+
+def _semantic_scholar_headers() -> Dict[str, str]:
+    headers = {"User-Agent": USER_AGENT}
+    api_key = _norm(os.getenv("SEMANTIC_SCHOLAR_API_KEY"))
+    if api_key:
+        headers["x-api-key"] = api_key
+    return headers
+
+
+def enrich_sosp_with_semantic_scholar(papers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    doi_ids = [f"DOI:{_norm(paper.get('doi'))}" for paper in papers if _norm(paper.get("doi")) and not _norm(paper.get("abstract"))]
+    if not doi_ids:
+        return papers
+    items: List[Dict[str, Any]] = []
+    for start in range(0, len(doi_ids), 80):
+        chunk = doi_ids[start : start + 80]
+        payload = {"ids": chunk}
+        params = {"fields": "title,abstract,externalIds"}
+        last_exc: Exception | None = None
+        for attempt in range(3):
+            try:
+                res = requests.post(
+                    SEMANTIC_SCHOLAR_BATCH_URL,
+                    params=params,
+                    json=payload,
+                    headers=_semantic_scholar_headers(),
+                    timeout=DEFAULT_TIMEOUT,
+                )
+                if res.status_code == 429 and attempt < 2:
+                    time.sleep(10 * (attempt + 1))
+                    continue
+                res.raise_for_status()
+                data = res.json() or []
+                if isinstance(data, list):
+                    items.extend(item for item in data if isinstance(item, dict))
+                last_exc = None
+                break
+            except Exception as exc:
+                last_exc = exc
+                if attempt < 2:
+                    time.sleep(3 * (attempt + 1))
+        if last_exc:
+            log(f"[WARN] SOSP Semantic Scholar batch lookup partially failed: {last_exc}")
+    return apply_semantic_scholar_abstracts(papers, items)
+
+
 def fetch_sosp(years: Iterable[int], *, workers: int = 4, require_pdf: bool = True) -> List[Dict[str, Any]]:
     rows: List[Dict[str, Any]] = []
     for year in years:
@@ -437,6 +502,7 @@ def fetch_sosp(years: Iterable[int], *, workers: int = 4, require_pdf: bool = Tr
         try:
             papers = parse_sosp_accepted_page(_request_text(url), year=int(year))
             papers = enrich_sosp_with_crossref(papers, year=int(year), workers=workers)
+            papers = enrich_sosp_with_semantic_scholar(papers)
         except Exception as exc:
             log(f"[WARN] SOSP {year} fetch failed: {exc}")
             continue
