@@ -1680,7 +1680,7 @@
     if (!state.bodyEl) return;
     var map = readMap || {};
     var calendarModel = modelForUnreadNormalFilter(state.model, map);
-    var view = buildDailyDateView(calendarModel, state.activeDailyDate, map, state.activeDailyMonth);
+    var view = buildDailyCalendarTagView(calendarModel, state.activeDailyDate, state.activeDailyTag, map, state.activeDailyMonth);
     var daysByKey = {};
     (view.calendar && view.calendar.days || []).forEach(function (day) {
       if (day && day.dateKey) daysByKey[day.dateKey] = day;
@@ -1693,7 +1693,7 @@
       var total = typeof day.totalCount === 'number' ? day.totalCount : 0;
       dayEl.setAttribute('data-unread', unread > 0 ? '1' : '0');
       dayEl.classList.toggle('has-unread', unread > 0);
-      dayEl.classList.toggle('is-active', key === view.activeKey);
+      dayEl.classList.toggle('is-active', key === view.activeDateKey);
       var unreadEl = $('.dpr-sidebar-calendar-day-unread', dayEl);
       var totalEl = $('.dpr-sidebar-calendar-day-total', dayEl);
       if (unreadEl) unreadEl.textContent = String(unread);

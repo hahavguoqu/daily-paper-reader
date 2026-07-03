@@ -405,6 +405,19 @@ function testDailyCalendarPlacementToggleKeepsControlRowFixedAboveLayers() {
   assert.ok(bottomHtml.includes('title="日历上置"'));
 }
 
+function testDailyCalendarInPlaceRefreshUsesActiveDailyTag() {
+  const js = fs.readFileSync('app/dpr-sidebar.js', 'utf8');
+  const start = js.indexOf('function updateDailyCalendarUnreadMarks(readMap)');
+  const end = js.indexOf('function syncResolvedAxisState()', start);
+  assert.ok(start > 0 && end > start, 'updateDailyCalendarUnreadMarks should be present');
+  const block = js.slice(start, end);
+
+  assert.ok(block.includes('buildDailyCalendarTagView'));
+  assert.ok(block.includes('state.activeDailyTag'));
+  assert.ok(block.includes('view.activeDateKey'));
+  assert.ok(!block.includes('buildDailyDateView'));
+}
+
 function testPaperEvidenceAndActionButtonsRender() {
   const sidebar = loadSidebarForTest('#/202606/24/paper-a');
   const tools = sidebar.__test;
@@ -1341,6 +1354,7 @@ testAxisTabsRenderUnreadCounts();
 testDailyCalendarViewUsesMonthGridAndActiveDateOnly();
 testDailyCalendarTagViewFiltersActiveDateByKeyword();
 testDailyCalendarPlacementToggleKeepsControlRowFixedAboveLayers();
+testDailyCalendarInPlaceRefreshUsesActiveDailyTag();
 testPaperEvidenceAndActionButtonsRender();
 testPaperMetaOrderKeepsEvidenceBetweenTitleAndStars();
 testQuickLinksCenterTextAndDetachIcon();
