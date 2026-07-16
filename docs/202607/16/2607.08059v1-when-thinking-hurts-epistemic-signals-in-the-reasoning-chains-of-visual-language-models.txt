@@ -1,0 +1,246 @@
+Title: When Thinking Hurts: Epistemic Signals in the Reasoning Chains of Visual Language Models
+
+URL Source: https://arxiv.org/pdf/2607.08059v1
+
+Published Time: Fri, 10 Jul 2026 00:22:56 GMT
+
+Number of Pages: 7
+
+Markdown Content:
+# When Thinking Hurts: Epistemic Signals in the Reasoning Chains of Visual Language Models 
+
+Mayank Singal 1
+
+## Abstract 
+
+Uncertainty quantification for visual language models (VLMs) conventionally targets the answer token distribution. We provide the first three-family empirical characterisation of answer en-tropy behaviour in thinking-mode VLMs. Run-ning four models on identical POPE adversar-ial samples, we find three qualitatively distinct patterns: Qwen3-VL-8B-Thinking shows com-plete collapse (ans H AUROC = 0.492); GLM-4.1V-9B-Thinking shows no collapse (0.716); and InternVL3-8B shows selective thinking (chains on only 50% of samples, ans H = 0.675 full / 0.602 thinking-only). Across all three thinking-mode models, thinking chain entropy outperforms answer entropy on the subset where chains are generated (0.647, 0.759, 0.608 vs. 0.492, 0.716, 0.602 respectively), suggesting chain signals are the more reliable predictor whenever chains are present. This holds strongly for Qwen and GLM, but with only marginal and statistically unre-liable advantage for InternVL3 ( nFP = 17). A300-sample VQAv2 pilot confirms chain entropy (0.680) outperforms answer entropy (0.595) on VQAv2 questions, with the gap largest for free-form answers (0.733 vs. 0.467). On harder rea-soning tasks (HallusionBench) both Qwen models show moderate signal ( ≈ 0.64), consistent with in-complete pre-commitment on difficult questions. We additionally document structured abstention affecting 12–22% of queries with asymmetry to-ward absent-object queries, and a practical absten-tion gate raising accuracy from 71.0% to 93.8% at 62.7% coverage with no additional inference cost. 
+
+> 1
+
+Independent Researcher. Correspondence to: Mayank Singal 
+
+<mayanksingal7@gmail.com >.
+
+2nd Workshop on Epistemic Intelligence in Machine Learning (EIML@ICML 2026), Seoul, South Korea. Copyright 2026 by the author(s). 
+
+## 1. Introduction 
+
+A growing class of VLMs generates an explicit 
+
+<think> . . . </think> reasoning chain before commit-ting to an answer. These thinking-mode models represent a qualitative shift in how VLMs operate: rather than mapping inputs directly to output distributions, they first conduct extended deliberation whose result then conditions the an-swer. This architectural change has a direct consequence for uncertainty quantification that has not previously been char-acterised: the thinking chain acts as a strong conditioning prior that collapses the answer token distribution, destroying the epistemic signal that conventional uncertainty methods depend on. We demonstrate this collapse directly through a controlled ablation. Running Qwen3-VL-8B-Thinking and Qwen3-VL-8B-Instruct (the same model family, same vision en-coder, differing only in whether a thinking chain is gener-ated) on identical POPE adversarial samples, answer entropy achieves AUROC = 0.899 for hallucination detection in the non-thinking model but falls to AUROC = 0.492 (chance) in the thinking model. This is not a task-structural artefact: the questions, images, and evaluation protocol are identical. The thinking mode itself is responsible. This failure creates a practical problem: thinking-mode VLMs are increasingly deployed in settings where reliable uncertainty estimates matter, yet every existing output-level uncertainty method produces no useful signal for this model class under greedy decoding. We show that the thinking chain itself restores the signal, providing two robust halluci-nation predictors extractable from a single forward pass at no additional inference cost. We make four contributions: 1. We provide the first three-family empirical characteri-sation of answer entropy behaviour in thinking-mode VLMs, revealing three qualitatively distinct patterns: complete collapse (Qwen3-VL-8B-Thinking, 0.492), no collapse (GLM-4.1V-9B-Thinking, 0.716), and se-lective thinking (InternVL3-8B, 50% chain rate, 0.675 full / 0.602 thinking-only). These patterns demonstrate that collapse is training-recipe-dependent, not a univer-1arXiv:2607.08059v1 [cs.LG] 9 Jul 2026 sal property of thinking-mode decoding. 2. We show that thinking chain signals are consistently su-perior to answer entropy across the two families with sufficient statistical power (Qwen and GLM): Hthink 
+
+achieves 0.647 (Qwen) and 0.759 (GLM) vs. answer entropy of 0.492 and 0.716 respectively. Chain signals are the recommended approach for any thinking-mode VLM, whether or not collapse has occurred, though generalisation beyond these two families requires fur-ther verification. 3. We document structured abstention that replicates across benchmarks with consistent asymmetry, but through mechanistically distinct failure modes: over-deliberation on POPE vs. immediate chain collapse on HallusionBench. 4. We demonstrate a practical abstention gate requiring no additional inference: refusing unclear samples and long-chain committed predictions raises accuracy from 71.0% to 93.8% at 62.7% coverage on POPE. We conjecture these findings reflect structural properties of thinking-mode decoding; verification across additional model families is ongoing. 
+
+## 2. Background and Related Work 
+
+Uncertainty in VLMs. VL-Uncertainty (Zhang et al., 2024) applies semantic entropy (Farquhar et al., 2024) to VLM outputs under prompt perturbation, requiring mul-tiple forward passes. UMPIRE (Lau et al., 2026) com-putes an incoherence-adjusted semantic volume over sam-pled MLLM responses, treating each response atomically; applied to thinking-mode VLMs it would conflate the pre-commitment reasoning phase with the committed answer, and cannot detect answer entropy collapse. HALP (Kogi-lathota et al., 2026) probes frozen representations before generation, requiring a trained probe and an extra forward pass. Our approach requires neither. 
+
+Thinking-mode VLMs. Extended reasoning can worsen visual grounding (Liu et al., 2025) and CoT has been shown to induce overconfidence at the answer-token level (Welch et al., 2026), which we confirm and extend here with a controlled ablation. Wang et al. (2025) show that VLMs can produce correct answers via flawed reasoning paths; we demonstrate the converse. Singh et al. (2025) study chain length for accuracy; we show it simultaneously carries epistemic information. 
+
+Self-consistency and self-knowledge. Self-consistency (Wang et al., 2022) samples diverse reasoning chains and marginalises to the most common answer, using reasoning diversity for accuracy rather than as an uncertainty signal, and requires multiple passes. Our approach uses a single greedy chain. Kadavath et al. (2022) show that LLMs exhibit measurable self-knowledge about their own correctness; our chain signals can be viewed as a multimodal extension of this line, where the deliberation process itself encodes uncertainty rather than a post-hoc verbalized confidence. 
+
+## 3. Setup 
+
+Models. Qwen3-VL-8B-Thinking (Qwen Team, 2025): generates a <think> . . . </think> block before an-swering under greedy decoding ( do sample=False ). 
+
+Qwen3-VL-8B-Instruct : the same model family without thinking-mode generation, used as a non-thinking control. Both run in bfloat16 on a single A100-SXM4-40 GB GPU. 
+
+Benchmarks. POPE adversarial (Li et al., 2023): 1,000 binary yes/no questions about object presence in COCO val2014 images, balanced labels. HallusionBench (Guan et al., 2024): 951 visual questions (178 text-only excluded as they engage no visual grounding pathway) covering vi-sual illusions, edited images, charts, and visual reasoning; imbalanced labels (550 no / 401 yes). 
+
+Signals. Per-token Shannon entropy within the <think> 
+
+block: Ht = − P 
+
+> v
+
+pt(v) log pt(v). We record Hthink 
+
+= mean of Ht over thinking tokens; Hans = mean entropy over answer tokens; L = number of thinking tokens. All are free byproducts of a single greedy forward pass. 
+
+## 4. Results 
+
+4.1. Thinking Mode Causes Answer Entropy Collapse 
+
+Table 1 presents the core ablation: Qwen3-VL-8B-Thinking vs. Qwen3-VL-8B-Instruct on the same 1,000 POPE adver-sarial samples.         
+
+> Table 1. Four-model comparison on POPE adversarial (1,000 sam-ples each). Hans and Hthink are conditioned AUROCs (FP vs. TP within yes-predictions). †Full sample. ‡Thinking-only subset (nyes = 284).
+
+Model Acc Unk Thk FP Hans Hthink 
+
+Qwen-Instruct 87.4 0% 0% 51 .899 —Qwen-Thinking 71.0 22% 100% 34 .492 .647 GLM-Thinking 86.4 1% 99% 35 .716 .759 
+
+InternVL3 87.2 1% 50% 40 .675 † .608 ‡
+
+Table 1 presents the four-model cross-family comparison on 1,000 POPE adversarial samples, revealing three qualita-2tively distinct patterns. 
+
+Complete collapse (Qwen3-VL-8B-Thinking): answer en-tropy AUROC collapses to 0.492 (chance), while thinking chain entropy achieves 0.647. The model generates thinking chains on every sample but fully pre-commits before the answer token, destroying answer entropy variance. 
+
+No collapse (GLM-4.1V-9B-Thinking): answer entropy AU-ROC remains 0.716 despite explicit thinking chains, and chain entropy (0.759) still outperforms it. GLM’s recipe does not achieve full pre-commitment. 
+
+Selective thinking (InternVL3-8B): chains are generated on only 50% of samples. On the full sample, answer en-tropy achieves 0.675; on the thinking-only subset ( n = 284 yes-predictions, nFP = 17), chain entropy (0.608) marginally outperforms answer entropy (0.602). This margin is small and the FP count is low; we do not claim a statistically re-liable advantage for InternVL3’s chain content. The more robust signal for this model is chain presence : the FP rate is more than twice as high when InternVL3 skips thinking (13.1%) compared to when it generates a chain (6.0%). For InternVL3, chain absence carries much of the epistemic signal, while chain content adds comparatively little. Across all three thinking-mode models, the chain-level sig-nal is competitive with or superior to answer entropy on samples where chains are generated: strongly so for Qwen (0.647 vs. 0.492) and GLM (0.759 vs. 0.716), marginally so for InternVL3 (0.608 vs. 0.602 on the thinking-only subset). Chain presence or absence is a reliable signal for InternVL3 regardless of chain content. Qwen-Thinking GLM-Thinking InternVL3    
+
+> 0.4
+> 0.5
+> 0.6
+> 0.7
+> 0.8
+> AUROC (FP vs.\ TP, conditioned)
+> 0.492
+> 0.716
+> 0.602
+> 0.647
+> 0.759
+> 0.608
+> Complete
+> collapse
+> No
+> collapse
+> Selective
+> thinking
+> *
+> Chain vs.\ Answer Entropy Across Three Families POPE Adversarial
+> Chance (0.5)
+> Answer entropy ( ans )
+> Think entropy ( think )
+> * InternVL3 thinking-only subset (n FP =17); margin not statistically reliable.
+
+Figure 1. Chain vs. answer entropy AUROC across three thinking-mode model families on POPE adversarial. Three qualitatively distinct patterns: complete collapse (Qwen), no collapse (GLM), and selective thinking (InternVL3). Chain entropy (dark bars) is competitive with or superior to answer entropy (light bars) in all cases. 
+
+4.2. Answer Entropy Is Structurally Confounded 
+
+Table 2 reports unconditional AUROCs for all signals on binary-committing samples from both benchmarks. 
+
+Table 2. Unconditional AUROCs on binary-committing samples. For the thinking model, answer entropy direction is benchmark-dependent; thinking chain signals are consistently positive. 
+
+POPE ( n = 779) HalluBench ( n = 831) Signal FP Error FP Error 
+
+Hans 0.392 0.554 0.726 0.602 
+
+Hthink 0.526 0.636 0.768 0.768 Chain len. L 0.573 0.686 0.650 0.630 On POPE, Hans = 0.392 for FP prediction (below chance), meaning higher answer confidence predicts more halluci-nation. This inversion arises from the answer-direction confound: the model assigns higher confidence to positive predictions than negative ones regardless of correctness. On HallusionBench, Hans is positively predictive (0.726) because the harder questions create genuine answer distri-bution variance not dominated by this confound. Thinking chain signals are consistently positive on both. 
+
+4.3. Conditioning on Answer Direction Recovers Strong Signal 
+
+Restricting to yes-predictions eliminates the answer-direction confound. Table 3 reports per-benchmark and pooled results. 
+
+Table 3. Conditioned AUROCs (FP vs. TP within yes-predictions; 
+
+nPOPE FP = 34, nHB FP = 129, pooled nFP = 163). Bootstrap 95% CIs (10,000 resamples); |r| from Mann-Whitney U .
+
+Signal POPE HB Pooled 95% CI |r|Hans .492 .662 .432 [.386, .478] —
+
+Hthink .647 .764 .786 [.745, .825] .53 Chain len. .710 .708 .776 [.735, .815] .42 The pooled answer entropy CI = [0.386, 0.478] lies en-tirely below chance across 163 FPs and 1,951 samples. Pooled thinking entropy achieves AUROC = 0.786 (lower CI = 0.745); chain length achieves 0.776 (lower = 0.735). Both are significant at p < 0.001 .Pooling across benchmarks is appropriate for the aggregate comparison: thinking chain signals are consistently supe-rior to answer entropy on each benchmark individually, and the pooled estimate characterises this advantage across a broader task distribution, even as the dominant signal within that family varies by task structure. Chain length domi-nates on POPE (0.710 vs. 0.647), where hallucinations are committed quickly. Thinking entropy dominates on Hal-lusionBench (0.764 vs. 0.708; pooled |r| = 0.53, Table 3), where FP chains are 83% longer (322.6 vs. 176.2 tokens) and 47% more uncertain than TP chains. When a model 3works hard and still commits incorrectly, entropy captures that struggle better than length alone. Conditioning on answer direction is a diagnostic for under-standing the confound mechanism, not a deployment pre-scription. In deployment, the ground-truth label is unavail-able; practitioners use unconditional signals. Table 2 shows chain length achieves AUROC = 0.686 for error prediction 
+
+unconditionally ; the signal is useful without conditioning, and conditioning reveals why it works. 
+
+4.4. Epistemic Hierarchy 
+
+Both chain length and thinking entropy increase monotoni-cally from committed-correct (TP: L = 59.9, Hthink = 0.218 on POPE) through committed-wrong (FP: 74.4, 0.262) to abstaining-with-chain (124.3, 0.338), with the same order-ing on HallusionBench at different absolute scales. This monotonic hierarchy confirms that chain signals track epis-temic state rather than surface-level output properties. 
+
+4.5. Structured Abstention 
+
+Abstention rates are 22.1% on POPE and 12.6% on Hallu-sionBench, with consistent asymmetry toward absent-object queries (31.4% vs. 12.8% label-no vs. label-yes on POPE; 14.2% vs. 10.5% on HallusionBench). Mechanisms dif-fer: on POPE, 199/221 abstentions involve extended chains (mean 124.3 tokens) that fail to resolve; on HallusionBench, 118 of the 120 abstentions produce no chain at all even at 1,024 tokens, and 119 remain unresolved after rerunning the 231 originally-unclear samples at extended token budget. 
+
+4.6. Abstention Gate 40 50 60 70 80 90 100 
+
+> Coverage (%)
+> 70
+> 75
+> 80
+> 85
+> 90
+> 95
+> 100
+> Accuracy (%)
+> Coverage Accuracy Tradeoff on POPE Adversarial
+> Instruct (answer entropy) vs. Thinking (chain gate)
+> Instruct + answer entropy
+> Thinking + chain length gate
+> Gap (instruct advantage)
+
+Figure 2. Coverage–accuracy tradeoff on POPE adversarial. Note :the instruct model (blue) is not a deployment alternative when a thinking-mode VLM is already in use; its curve is a reference ceil-ing only. For thinking-mode deployment, answer entropy provides no signal (AUROC = 0.492, chance); the chain gate (red) is the only available option, recovering accuracy from 71.0% to 93.8% at 62.7% coverage. The gap narrows from 16 pp at 100% coverage to ≈3 pp at 40%. 
+
+Table 4 shows the accuracy-coverage tradeoff for both benchmarks, and compares the thinking model’s chain gate against the instruct model’s answer entropy gate on POPE. 
+
+Table 4. Accuracy-coverage tradeoff. “Top X%” thresholds are computed over committed samples only; coverage is reported over all 1,000 samples. On POPE, the thinking model’s chain gate (93.8% at 62.7%) is compared against the instruct model using answer entropy (96.7% at 63.0%). 
+
+Gate Coverage Accuracy 
+
+POPE adversarial — thinking model 
+
+None (baseline) 100.0% 71.0% Refuse unclear 77.9% 91.1% +top 20% chain refused 62.7% 93.8% +top 30% chain refused 54.9% 94.2% 
+
+POPE adversarial — instruct model (answer entropy) 
+
+None (baseline) 100.0% 87.4% +top 20% entropy refused 80.0% 94.1% +top 37% entropy refused 63.0% 96.7% 
+
+HallusionBench — thinking model 
+
+None (baseline) 100.0% 67.2% Refuse unclear 87.4% 76.9% +top 20% chain refused 69.9% 80.2% At 100% coverage, the instruct model (87.4%) substantially outperforms the thinking model (71.0%) on POPE, with the gap explained almost entirely by the thinking model’s 22.1% abstention rate (committed accuracy: 91.1%). The chain gate progressively recovers accuracy, reaching 93.8% at 62.7% coverage, but the instruct model using answer entropy achieves 96.7% at matched coverage. The chain gate thus closes but does not eliminate the practical gap introduced by thinking-mode abstention. This comparison clarifies the role of chain signals in deploy-ment. When a thinking-mode VLM is used, answer entropy provides no useful gating signal on easy binary tasks (AU-ROC = 0.492 on POPE); the chain gate is the only available 
+
+signal and substantially improves on the uncalibrated base-line. Whether the accuracy-coverage tradeoff justifies using a thinking-mode VLM over an instruct model is an architec-tural decision beyond this paper’s scope; our contribution is identifying the signals that make thinking-mode deployment epistemically tractable. The full coverage-accuracy curves show the instruct model’s answer entropy gate dominates at all tested coverage lev-els, with the gap narrowing from 16 percentage points at 100% coverage to approximately 3 points at 40% coverage; the chain gate substantially closes but does not eliminate the gap. The curve is smooth with no sharp elbow, indicat-ing threshold selection is not sensitive to a specific oper-ating point; any threshold in the 50–70% coverage range yields comparable accuracy improvements. Thinking en-4tropy is more transferable across benchmarks than chain length: the POPE top-20% entropy threshold applied to HallusionBench without recalibration achieves 91.0% accu-racy at 45.5% coverage, versus 88.7% at 23.2% for chain length. Practitioners requiring cross-task transfer should prefer entropy thresholds. 
+
+4.7. Generalisation to Open-Ended VQA 
+
+To test whether chain signals generalise beyond binary tasks, we run Qwen3-VL-8B-Thinking on 300 VQAv2 samples stratified across answer types.    
+
+> Table 5. VQAv2 pilot (Qwen3-VL-8B-Thinking, n= 300). Error prediction AUROCs (wrong vs. correct). Think entropy outper-forms answer entropy across all answer types; the gap is largest for free-form answers where the binary confound is weakest.
+
+Answer type n Acc Hans Hthink 
+
+Yes/No 99 73% 0.668 0.739 
+
+Number 77 65% 0.682 0.676 Other (free-form) 97 65% 0.467 0.733 
+
+All 273 68% 0.595 0.680 
+
+Chain entropy outperforms answer entropy on all answer types pooled (0.680 vs. 0.595). The free-form “other” sub-set is most revealing: answer entropy falls below chance (0.467): the partial answer-direction confound persists even without strict binary structure, while chain entropy remains strongly predictive (0.733). This suggests the chain signal advantage is not an artefact of binary task structure. 
+
+## 5. Discussion 
+
+Connection to the broader UQ literature. The collapse we document is an instance of a general phenomenon: con-ditioning on additional information reduces posterior vari-ance (MacKay, 1992). In ensemble and MC-dropout frame-works, epistemic uncertainty is estimated from variance across samples of p(a | x); the thinking chain eliminates this variance not through calibration but by pre-committing the answer. Chain entropy recovers a proxy for pre-commitment epistemic uncertainty, analogous to the epistemic/aleatoric decomposition of H ¨ullermeier and Waegeman (2021): chain entropy reflects uncertainty about the correct reasoning path; answer entropy post-collapse reflects only aleatoric residu-als (or zero). 
+
+Uncertainty-theoretic interpretation. The answer en-tropy collapse can be understood as a consequence of con-ditioning. If z denotes the thinking chain and a the an-swer, H(a | x, z ) decreases as z more fully resolves the question. When the chain fully pre-commits to an an-swer direction, H(a | x, z ) ≈ 0, eliminating the epis-temic variance in p(a | x). Our cross-family results show that the degree of collapse is training-recipe-dependent: Qwen3-VL-8B-Thinking’s recipe produces near-complete pre-commitment on easy binary tasks (AUROC 0.492); GLM-4.1V-9B-Thinking’s recipe does not (AUROC 0.716), despite both models generating explicit reasoning chains. The chain-level signals— Hthink and L—are measured before 
+
+commitment completes and are robust across both regimes: they outperform answer entropy for both thinking-mode models regardless of whether collapse occurs. 
+
+Training recipes and open questions. GLM almost never abstains (1.3% vs. 22.1% for Qwen), suggesting its recipe encourages committing under uncertainty rather than delib-erating to pre-commitment, preserving answer entropy vari-ance at the cost of more hallucinations on difficult questions. Section 4.7 shows chain signals also outperform answer entropy on VQAv2 open-ended questions, confirming the advantage is not confined to binary tasks. 
+
+Signal transferability. Chain length thresholds do not transfer across benchmarks because chain length scales with question difficulty. Thinking entropy is more transferable because it operates on a more benchmark-agnostic scale. Threshold selection in deployment requires held-out calibra-tion data from the target task distribution. 
+
+Comparison with UMPIRE. UMPIRE (Lau et al., 2026) embeds the full output—thinking chain and answer—as a single vector, unable to detect the answer entropy collapse we document. It would report similar uncertainty estimates for thinking-mode and non-thinking models, missing the structural difference our ablation reveals. 
+
+Limitations and open questions. Model scope : We eval-uate three thinking-mode VLMs from distinct families: Qwen3-VL-8B (Alibaba), GLM-4.1V-9B (THUDM/Zhipu AI), and InternVL3-8B (OpenGVLab/Shanghai AI Lab), plus a non-thinking Qwen control. All are at 8–9B scale; larger thinking-mode VLMs (32B, 72B) remain untested. 
+
+Decoding : All results use greedy decoding. Whether the collapse patterns persist under stochastic sampling (tem-perature > 0) is an open question: sampling prevents full pre-commitment at the answer token and may rehabilitate answer entropy for Qwen-style models. This is the single most actionable remaining experiment. InternVL3 depth :InternVL3-8B is evaluated only on the headline POPE com-parison (Table 1); the full analysis pipeline (conditioned AUROCs, epistemic hierarchy, abstention gate) covers only Qwen and GLM. The InternVL3 results are sufficient to characterise its pattern but do not support per-model chain signal comparisons beyond the headline numbers. Signal correlation : Thinking entropy and chain length are moder-ately correlated (Pearson r = 0.70 on POPE, 0.44 on Hal-5lusionBench) but explain only 50% and 19% of shared variance—practitioners without logit access can use chain length alone. Failure modes : 11/34 FPs on POPE and 14/129 on HallusionBench produce chain entropy below the TP median (“confident hallucinations”: fast, low-entropy chains that commit to a wrong answer), representing the hard cases chain signals cannot catch. Baselines : No em-pirical comparison against sampling-based methods (e.g. self-consistency); our contribution is the zero-cost single-pass signal. Epistemic vs. aleatoric : Chain entropy may partly reflect inherent image ambiguity rather than model ignorance; disentangling these requires controlled image manipulations. Scope : Both primary benchmarks are binary yes/no tasks. Section 4.7 reports a 300-sample VQAv2 pilot showing chain signals generalise to open-ended questions; larger-scale open-ended evaluation remains future work. 
+
+## 6. Conclusion 
+
+We provide the first controlled evidence that thinking-mode decoding causes answer entropy collapse: answer entropy AUROC drops from 0.899 to 0.492 when switching from Qwen3-VL-8B-Instruct to Qwen3-VL-8B-Thinking on iden-tical data. For thinking-mode VLMs, the thinking chain it-self restores discriminative power: pooled thinking entropy (AUROC = 0.786) and chain length (AUROC = 0.776) are robust hallucination predictors with tight confidence inter-vals, while pooled answer entropy lies entirely below chance. Structured abstention affecting 12–22% of queries replicates across benchmarks with consistent directional asymmetry but mechanistically distinct failure modes. These findings argue that uncertainty estimation for thinking-mode VLMs must track the reasoning process rather than the committed answer, and that the answer-direction confound should be routinely checked in any thinking-chain uncertainty analy-sis. 
+
+## References 
+
+S. Farquhar, J. Kossen, L. Kuhn, and Y. Gal. Detecting hallucinations in large language models using semantic entropy. Nature , 630(8017):625–630, 2024. doi: 10.1038/ s41586-024-07421-0. T. Guan, F. Liu, X. Wu, R. Xian, Z. Li, X. Liu, X. Wang, L. Chen, F. Huang, Y. Yacoob, D. Manocha, and T. Zhou. HallusionBench: An advanced diagnostic suite for entan-gled language hallucination and visual illusion in large vision-language models. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) , pages 14375–14385, 2024. E. H ¨ullermeier and W. Waegeman. Aleatoric and epistemic uncertainty in machine learning: An introduction to con-cepts and methods. Machine Learning , 110(3):457–506, 2021. S. Kadavath, T. Conerly, A. Askell, T. Henighan, D. Gan-guli, A. Drain, E. Perez, N. Schiefer, Z. Hatfield-Dodds, N. DasSarma, et al. Language models (mostly) know what they know. arXiv preprint arXiv:2207.05221 , 2022. S. A. Kogilathota, S. V. EG, L. Sun, and J. Zhou. HALP: Detecting hallucinations in vision-language models with-out generating a single token. In Proceedings of the 19th Conference of the European Chapter of the Association for Computational Linguistics (Volume 1: Long Papers) ,pages 6067–6085, 2026. G. K. R. Lau, H. Dao, N. K. H. Lin, and B. K. H. Low. Uncertainty quantification for multimodal large language models with incoherence-adjusted semantic vol-ume. arXiv preprint arXiv:2602.24195 , 2026. Y. Li, Y. Du, K. Zhou, J. Wang, W. X. Zhao, and J.-R. Wen. Evaluating object hallucination in large vision-language models. In Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing ,pages 292–305, 2023. C. Liu, Z. Xu, Q. Wei, J. Wu, J. Zou, X. E. Wang, Y. Zhou, and S. Liu. More thinking, less seeing? assessing ampli-fied hallucination in multimodal reasoning models. arXiv preprint arXiv:2505.21523 , 2025. D. J. C. MacKay. A practical Bayesian framework for backpropagation networks. Neural Computation , 4(3): 448–472, 1992. doi: 10.1162/neco.1992.4.3.448. Qwen Team. Qwen3-VL: The open founda-tion model for unified multimodal intelli-gence. https://huggingface.co/Qwen/ Qwen3-VL-8B-Thinking , 2025. J. Singh, J. C.-Y. Chen, A. Prasad, E. Stengel-Eskin, A. Nambi, and M. Bansal. Think right: Learning to mitigate under-over thinking via adaptive, attentive com-pression. arXiv preprint arXiv:2510.01581 , 2025. C. Wang, Y. He, Y. Zhou, Y. Wang, J. Liu, P. Xia, Z. Tu, M. Bansal, and H. Yao. Knowing the answer isn’t enough: Fixing reasoning path failures in LVLMs. arXiv preprint arXiv:2512.06258 , 2025. X. Wang, J. Wei, D. Schuurmans, Q. Le, E. Chi, S. Narang, A. Chowdhery, and D. Zhou. Self-consistency improves chain of thought reasoning in language models. arXiv preprint arXiv:2203.11171 , 2022. R. Welch, E. Konuk, and K. Smith. The cost of reason-ing: Chain-of-thought induces overconfidence in vision-language models. arXiv preprint arXiv:2603.16728 ,2026. 6R. Zhang, H. Zhang, and Z. Zheng. VL-Uncertainty: De-tecting hallucination in large vision-language model via uncertainty estimation. arXiv preprint arXiv:2411.11919 ,2024. 
+
+## A. Reproducibility 
+
+Qwen3-VL-8B-Thinking and Qwen3-VL-8B-Instruct in 
+
+bfloat16 on a single A100-SXM4-40 GB GPU. POPE adversarial and COCO val2014 are publicly available. Hallu-sionBench via lmms-lab/HallusionBench on Hug-gingFace. Per-token entropy from the full softmax distri-bution over the model vocabulary. Bootstrap CIs: 10,000 resamples, numpy.random.default rng(42) . Hal-lusionBench samples unclear at 512 tokens were rerun at 1,024 tokens; 112/231 resolved. All results use a corrected six-group classification (TP, TN, FP, FN, unclear chain, un-clear nochain). Code released upon acceptance. 
+
+## B. Cross-Family Control Details 
+
+Qwen3-VL-8B-Instruct. Produces no thinking tokens on any of the 1,000 POPE adversarial or 951 Hallusion-Bench samples. Answer entropy achieves AUROC = 0.899 on POPE and 0.627 on HallusionBench, confirming the signal is intact for non-thinking models. 
+
+GLM-4.1V-9B-Thinking (THUDM). Uses 
+
+Glm4vForConditionalGeneration architecture (distinct from Qwen3VL), </think> token ID 151346, and wraps answers in <answer><|begin of box|> yes<|end of box|></answer> format. On 1,000 POPE adversarial samples: accuracy 86.4%, FP count 35, unclear rate 1.3%, Hans AUROC 0.716, Hthink AUROC 0.759. Answer entropy does not collapse for GLM; chain entropy still outperforms it. 
+
+InternVL3-8B (OpenGVLab/Shanghai AI Lab). Uses 
+
+InternVLForConditionalGeneration architec-ture, </think> as a 3-token sequence, activated via R1-style system prompt. On 1,000 POPE adversarial samples: accuracy 87.2%, FP count 40, unclear rate 1.2%, thinking triggered on 49.8% of samples. Hans AUROC = 0.675 (full sample); on the thinking-only subset ( nyes = 284, nFP = 17): 
+
+Hans = 0.602, Hthink = 0.608. FP rate is higher when think-ing is absent (13.1%) than present (6.0%), suggesting chain absence is itself an uncertainty signal for this model. 
+
+## C. Usage of Generative AI Tools 
+
+The authors made use of AI-based writing tools during the manuscript preparation process to assist with language refinement and editorial polish. 7

@@ -1,0 +1,1088 @@
+Title: MORES: Mobile Reasoning-as-a-Service via Distributed LLM Inference-Time Scaling
+
+URL Source: https://arxiv.org/pdf/2607.08116v1
+
+Published Time: Fri, 10 Jul 2026 00:37:42 GMT
+
+Number of Pages: 14
+
+Markdown Content:
+1
+
+# MORES: Mobile Reasoning-as-a-Service via Distributed LLM Inference-Time Scaling 
+
+Guanchen Liu, Hongyang Du ∗, Kaibin Huang 
+
+✦
+
+Abstract —Inference-time scaling has emerged as an effective ap-proach for enhancing the capabilities of Large Language Models (LLMs), addressing the growing demand for stronger reasoning without increasing model size. This novel form of LLM scaling comprises two representative approaches: explicit reasoning , which generates inter-mediate chain-of-thought tokens during an explicit thinking phase, and 
+
+implicit reasoning , which iteratively updates hidden states in the latent space without producing explicit outputs. Despite their effectiveness, both paradigms incur substantial computational and memory overhead, raising challenges for deployment on resource-constrained edge de-vices. To address these issues, we propose a Mobile Reasoning-as-a-Service (MORES) framework that treats reasoning as a computational service accessible to edge devices over wireless networks. Focusing on implicit reasoning, we leverage its recursive structure to partition hidden-state updates between edge devices and servers, enabling cooperative inference that allows devices to access additional cloud computation on demand. To optimize long-term performance, we formulate a joint computation and communication scheduling problem and solve it us-ing a semantic Mixture-of-Experts (MoE)-based Deep Reinforcement Learning (DRL) algorithm to address heterogeneity in wireless condi-tions and task demands. The agent adaptively allocates resources by adjusting the number of recurrent steps and the transmission pruning rate, while a semantic router enables high-speed gating for real-time expert selection. Experimental results show that the proposed method achieves an approximately 18% improvement in system throughput over the baseline Soft Actor-Critic (SAC) algorithm. Our code is available at https://github.com/NICE-HKU/MORES. 
+
+Index Terms —Large language models, reasoning, deep reinforcement learning, distributed computing, and wireless networks. 
+
+1 INTRODUCTION 
+
+Large Language Models (LLMs) have scaled rapidly, with parameter counts increasing from 175 billion in OpenAI’s GPT-3 [1] to trillions in models such as GPT-5 [2], DeepSeek-V4 [3], and Google’s Gemini 3 [4]. This parameter-driven growth followed predictable scaling laws [5], [6], where larger models outperformed smaller ones across diverse tasks. However, further expansion faces diminishing re-turns. Model training becomes prohibitively expensive, computational costs grow quadratically, and performance gains are increasingly constrained by data quality and availability. To overcome these limitations, researchers have introduced a new paradigm known as inference-time scal-ing [7]. Rather than expanding model parameters, this 
+
+G. Liu, H. Du, K. Huang are with the Department of Electrical and Computer Engineering, University of Hong Kong, Hong Kong SAR, China. (email: liugc@connect.hku.hk, duhy@hku.hk, huangkb@hku.hk) What is the weather?                           
+
+> It is a sunny day.
+> No data exchange
+> Device -only reasoning: limited by device capability, leading to degraded performance .
+> Latent features
+> Updated features
+> Encode
+> Decode
+> MORES: leverages device computation and on -demand reasoning for superior performance .
+> What is the weather?
+> It is a sunny day.
+> Query
+> Answer
+> Cloud -only reasoning: limited by centralized processing, leading to server overload .
+> What is the weather?
+> It is a sunny day.
+
+Fig. 1: Comparison of reasoning modes between device-only, cloud-only, and the proposed device–cloud collabora-tive MORES architectures. approach increases computation during inference to en-hance reasoning capabilities. DeepSeek-R1 [8] represents a breakthrough in this direction by applying Deep Re-inforcement Learning (DRL) to train LLMs that generate extensive Chain-of-Thought (CoT) tokens, significantly im-proving performance on complex tasks like mathematical problem-solving and logical reasoning. Subsequent efficient reasoning models like QwQ-32B [9] further validate that extended reasoning processes at inference time can produce results comparable to much larger models. This paradigm shift enables smaller LLMs to match or exceed the perfor-mance of much larger LLMs by trading parameter count for inference-time computation, offering a more efficient path to advanced models’ reasoning capabilities. Two distinct approaches to inference-time scaling have emerged recently. The first approach employs explicit reason-ing , exemplified by DeepSeek-R1 [8] and OpenAI o1 [10], where LLMs generate extensive CoT tokens during inter-mediate reasoning steps before giving the final answer. The second approach leverages implicit reasoning in latent space [11], which recursively applies recurrent Transformer blocks to hidden states without generating additional to-kens, thereby enabling compact reasoning with lower mem-ory and computation overhead. While both approaches sig-arXiv:2607.08116v1 [cs.NI] 9 Jul 2026 2
+
+nificantly improve model reasoning capabilities, they pose serious challenges for deployment on resource-constrained devices. In particular, explicit reasoning models involve processing and storing long token sequences, leading to high memory usage and computational overhead. In con-trast, implicit reasoning is more efficient in token usage but still requires intensive computation due to deep recursive operations over high-dimensional hidden states [12]. Con-sequently, these additional computational demands fun-damentally complicate system deployment in practice. As illustrated in Fig. 1, performing all reasoning on centralized cloud servers can easily result in server overload under large-scale workloads, while executing the full reasoning process on resource-constrained devices is often infeasi-ble due to limited computation and energy budgets. This imbalance between computational demand and available system resources severely limits the scalability of existing deployment approaches. To address these deployment challenges, prior re-search has investigated model-centric solutions, including fine-tuning LLMs on task-specific reasoning datasets and distilling reasoning capabilities from larger models into smaller ones [13]. However, these approaches mainly aim to reduce model size and computational demand under a centralized inference assumption. In particular, exist-ing approaches do not explicitly consider distributed and resource-heterogeneous edge networks, where computation can be jointly provided by devices and edge servers. Be-yond the deployment challenges regarding server capacity and device capabilities, another limitation arises from the nature of explicit CoT reasoning. Under this paradigm, the reasoning process is explicitly represented as intermediate CoT tokens. This design introduces additional intermedi-ate reasoning tokens beyond the final answer, resulting in extra communication overhead and latency uncertainty over wireless links. Moreover, recent studies suggest that such an explicit CoT may not faithfully reflect the internal reasoning process and can be unstable across generations. To overcome these limitations in wireless and resource-constrained environments, we propose a device-edge co-operative reasoning paradigm based on a latent reasoning model to jointly leverage the computing capabilities of edge devices and edge servers. In this paradigm, edge devices perform initial reasoning locally, while edge servers provide on-demand reasoning computation to extend inference-time reasoning beyond local device capabilities. This cooperative design also enables implicit latent reasoning, thereby reduc-ing communication overhead compared with explicit CoT-based reasoning. Such a cooperative paradigm imposes two essential system requirements from the computation and communication perspectives:  
+
+> •
+
+R1. Computation Requirement. The system should effi-ciently utilize available computational resources to support inference-time reasoning across heteroge-neous computing nodes.  
+
+> •
+
+R2. Communication Requirement. The system should provide efficient and reliable information exchange under diverse wireless network conditions to enable coordinated system operation. To meet these requirements, an effective framework should be designed with the following principles:  
+
+> •
+
+P1. Computation Principle. The framework should adopt a distributed reasoning paradigm across het-erogeneous mobile networks, allowing devices to re-quest adjustable reasoning depth from cloud servers on demand based on task complexity and available system resources.  
+
+> •
+
+P2. Communication Principle. The framework should enable efficient system coordination by leveraging information compression and selective transmission, thereby reducing communication latency and energy consumption under wireless constraints. Guided by the above requirements and design princi-ples, we propose Mobile Reasoning-as-a-Service (MORES). As illustrated in Fig. 1, MORES treats reasoning as adistributed computational service across wireless network nodes. Specifically, MORES focuses on latent reasoning, since its intermediate latent representation and recursive structure are well suited for partitioning across devices. In MORES, resource-constrained edge devices perform lightweight local inference and offload intermediate latent representations and states to edge servers, which further update these latent states through deeper reasoning and return the refined latent states to the devices for output generation. This design preserves reasoning quality while utilizing device-side computation. In LLM reasoning, the appropriate reasoning depth inherently depends on the query. For example, simple question-answering tasks typically require only a few rea-soning steps, whereas more complex tasks like mathemat-ics or code generation benefit from deeper reasoning. In MORES, such variability calls for on-demand coordination between edge devices and servers to determine how many reasoning steps should be requested from the server side. During this process, intermediate latent representations and states are exchanged between edge devices and servers, resulting in additional communication overhead. To address this, MORES introduces an adaptive pruning mechanism that compresses latent features before transmission, thereby reducing communication latency and energy consumption while preserving the semantic information required for sub-sequent reasoning. To achieve both P1 and P2 , we formulate a joint decision-making problem and solve it using a semantic Mixture-of-Experts (MoE)-based DRL algorithm. The main contribu-tions of this paper are as follows:  
+
+> •
+
+We introduce MORES, a distributed inference-time scaling framework in wireless networks, enabling devices to access on-demand reasoning support with enhanced quality.  
+
+> •
+
+We leverage the inherent recursive structure of la-tent LLM reasoning to facilitate natural computation partitioning between edge devices and edge servers. Additionally, the recurrent steps and the pruning rate are jointly optimized to achieve efficient reasoning.  
+
+> •
+
+We develop a semantic MoE-based DRL algorithm that effectively addresses system heterogeneity. The Soft Actor-Critic (SAC) agent makes adaptive deci-sions based on varying tasks and wireless conditions to maximize long-term performance. 3
+
+The remainder of this paper is organized as follows: Section 2 discusses related work in LLM inference-time scaling, wireless network-aided LLMs, and MoE-aided DRL. Section 3 introduces the proposed MORES system model, which integrates the distributed reasoning, computation, and communication models, followed by the formulation of the throughput maximization problem. Section 4 presents the proposed semantic MoE-based DRL algorithm, includ-ing the DRL solution, the semantic router, and the MoE architecture design. Section 5 presents comprehensive nu-merical results and performance analysis. Finally, Section 6 concludes the paper with a summary of our key findings. A list of mathematical symbols frequently used in this paper is shown in Table 1. 
+
+2 RELATED WORK 
+
+In this section, we introduce several related works, in-cluding LLM inference-time scaling, wireless network-aided LLMs, and MoE-aided DRL. 
+
+2.1 Inference-Time Scaling in LLMs 
+
+Inference-time scaling [7] introduces additional computa-tion during inference to overcome the single-pass reasoning bottleneck without increasing model parameters. Existing methods can be categorized into explicit and implicit rea-soning. Explicit approaches, such as CoT prompting and its variants [14], [15], generate intermediate reasoning steps that are often optimized with reinforcement learning to improve interpretability and accuracy. For example, zero-shot CoT [15] employs a simple prompt phrase Let’s think step by step to elicit multi-step reasoning in LLMs. However, these methods introduce redundant tokens and often strug-gle with tasks that lack clearly decomposable substeps [16]. To overcome these limitations, implicit reasoning shifts the reasoning process into the model’s latent space to avoid ad-ditional token-level outputs. One major line of work in this direction is knowledge distillation, where reasoning ability is transferred from large to small models through inter-mediate representations [13], [17]. For example, multi-task distillation [13] trains the student to jointly learn answers and intermediate rationales from the teacher, while implicit CoT distills the hidden CoT representations into the stu-dent [17]. These approaches enable implicit reasoning that outputs only the final prediction during inference, thereby reducing token-level overhead but at the cost of general-ization across tasks. Another emerging direction explores latent-space reasoning, where models operate on hidden representations instead of generating explicit CoT tokens. Some methods such as continuous thought [18] feed hidden states back into the model for multi-step reasoning, while recurrent latent reasoning models [11] scale computation by iteratively refining these hidden states. These approaches achieve strong reasoning performance without requiring ex-tra tokens or specialized training data. While these methods address the limitations of explicit schemes and improve task generalization, they still lack flexible control over reasoning computation. These limitations motivate more adaptive and resource-aware frameworks that can dynamically balance reasoning performance and computational efficiency. TABLE 1: Mathematical Notations 
+
+Notation Description 
+
+x Prompt input token sequence 
+
+y Prompt output token sequence 
+
+e Latent representation 
+
+z Latent state 
+
+P Decoding probability scores 
+
+P Prelude encoder 
+
+C Coda decoder 
+
+R Recurrent reasoning unit 
+
+n The number of input tokens 
+
+m The number of output tokens 
+
+α The number of tokens processed 
+
+r Recurrent steps 
+
+l The index of generation round 
+
+k The index of request 
+
+t Time slot 
+
+d Task type 
+
+h Channel gain 
+
+q Quantization bit width 
+
+v Hidden size of latent space 
+
+ρ Pruning rate 
+
+σz Latent state noise scale 
+
+σh Channel noise scale 
+
+η Path loss factor 
+
+δ The correctness of reasoning result 
+
+U Average system throughput 
+
+K The number of requests 
+
+Gmax Maximum recurrence budget 
+
+Tmax Maximum TBT latency 
+
+E(dev)  
+
+> k
+
+Total energy cost on device 
+
+E(dev) max Maximum device energy budget 
+
+T (comp)  
+
+> k,l
+
+Computation latency 
+
+R(ul)  
+
+> k
+
+, R (dl)  
+
+> k
+
+Communication rate 
+
+B(ul)  
+
+> k
+
+, B (dl)  
+
+> k
+
+Communication bandwidth 
+
+P (ul)  
+
+> k
+
+, P (dl)  
+
+> k
+
+Communication power 
+
+E(ul)  
+
+> k
+
+, E (dl)  
+
+> k
+
+Communication energy 
+
+T (ul)  
+
+> k,l
+
+, T (dl)  
+
+> k,l
+
+Communication latency in one iteration 
+
+2.2 Wireless Network-aided LLMs 
+
+Wireless network-aided LLMs leverage cloud–edge collab-oration to offload computation from user devices to nearby Mobile Edge Computing (MEC) nodes or the cloud, thereby enhancing their feasibility in resource-constrained environ-ments [19]. Existing studies can be categorized into two directions, including wireless network-aided training and inference. For LLM training, two main approaches are em-ployed, namely Federated Learning (FL), which enables privacy-preserving collaboration across distributed devices for data-limited scenarios [20], [21], and Split Learning (SL), which partitions model execution between devices 4
+
+and servers to address compute-limited scenarios [22], [23]. Building on both, FedsLLM [24] unifies these paradigms with low-rank adaptation to enhance communication ef-ficiency and scalability in wireless training. Collectively, these approaches make distributed LLM training practi-cal for wireless environments. Although efficient train-ing lays the foundation for LLM development, real-world deployment is dominated by the inference stage, which handles massive user queries and ultimately determines overall efficiency and responsiveness. In wireless network-aided inference, existing approaches primarily address two key bottlenecks, including computation and commu-nication constraints. For computation-constrained scenar-ios, split inference partitions models between devices and servers to mitigate device-side computation and energy burdens. For instance, [25] optimizes partition points for efficiency, while [26] dynamically adapts split inference to device capabilities and network conditions, thereby allevi-ating device workload and maintaining stable latency. For communication-constrained scenarios, model compression techniques such as pruning and quantization are employed to compress intermediate features of LLMs, thereby re-ducing bandwidth consumption and improving end-to-end latency. Specifically, [27] jointly optimizes layer placement and quantization precision, while [28] applies structured pruning to reduce communication latency. These compres-sion strategies significantly improve data transfer efficiency to ease communication burdens. In summary, wireless network-aided inference effectively mitigates both computa-tion and communication bottlenecks, enabling scalable LLM deployment across dynamic wireless environments. 
+
+2.3 MoE-aided DRL 
+
+MoE architectures employ a gating network that acti-vates only the most relevant experts and have been ex-tensively explored for network optimization in MEC. Ex-isting MoE studies generally fall into two types, namely channel-aware and task-aware approaches. While channel-aware MoE leverages wireless channel state information to route data through experts that are best adapted to time-varying channel conditions [29], task-aware MoE assigns diverse computation subtasks to specialized experts, im-proving adaptability and efficiency in heterogeneous MEC environments [30], [31]. In parallel, DRL has also been widely applied to MEC network optimization, where agents learn to maximize system performance under complex and dynamic conditions [32]. Existing DRL-based meth-ods are typically grouped into computation-oriented and communication-oriented policies. Specifically, computation-oriented policies dynamically decide whether to execute tasks locally, remotely, or collaboratively. They also allocate Central Processing Unit (CPU) and Graphics Processing Unit (GPU) resources to balance latency and energy con-sumption [32]. Conversely, communication-oriented poli-cies jointly manage available radio resources to satisfy diverse QoS requirements in a wireless fading and inter-ference environment [33]. To harness the complementary strengths of conditional computation and policy learning, recent studies have integrated MoE layers into DRL archi-tectures, with experts specialized for either communication-Encoder  Recurrent   
+
+> Offload ？
+> Decoder
+> Wireless Transmission Pruning
+> No
+> Yes
+
+Fig. 2: System model for distributed latent LLM reasoning. The prelude encoder and coda decoder are executed on the device, while recurrent reasoning units are deployed across both the device and the server, enabling collaborative reasoning over a wireless channel. oriented or computation-oriented scenarios. In communica-tion tasks such as spectrum allocation, power control, and user scheduling, MoE provides fine-grained adaptability to dynamic channel conditions while DRL agents learn global coordination strategies [34], [35]. Similarly, in computation-oriented scenarios, this integrated framework facilitates ef-ficient edge–cloud offloading and resource scheduling by managing diverse workloads under DRL-driven decision-making [36], [37]. However, most studies address com-munication and computation separately, limiting adaptabil-ity across heterogeneous tasks. This motivates the inte-gration of task-aware expert design with joint computa-tion–communication resource optimization. 
+
+3 SYSTEM MODEL 
+
+In this section, we introduce the latent LLM reasoning and its distributed architecture as adopted in the MORES framework with the computation and communication sys-tem models. We further formulate the resource allocation problem that naturally arises within this framework. 
+
+3.1 Latent LLM Reasoning 
+
+LLM reasoning involves performing multi-step inference to transform input information into a final output through intermediate computational steps. During these computa-tional steps, the LLM processes and refines its understand-ing of the input to generate output tokens that align with the intended response. However, traditional LLM reason-ing typically requires a full forward pass for each rea-soning step, resulting in high computational and memory overhead. Latent LLM reasoning mitigates this issue by decoupling the reasoning process from the full network evaluation. Instead of processing every layer, the model projects the input into a latent space and iteratively refines a hidden state using a lightweight recurrent unit. This approach preserves the dynamics of step-by-step reasoning while significantly reducing computation. It mirrors the iterative nature of human thinking, where ideas are refined in memory before being verbalized. 51 4 8 12 16 20 24 28 32  
+
+> Recurrent steps r
+> ?take it does total in bolts many How .fiber white much that half and fiber blue of bolts 2takes be ro A
+> 10 20 30 40 50 60 70 80 90
+
+Fig. 3: Token-wise reasoning depth required for full conver-gence in latent space. We formalize the process as follows. Let x ∈ V n denote a sequence of n input tokens from the vocabulary set V.The input is first embedded and passed through a prelude encoder P to produce a latent representation e as 
+
+e = P(x), e ∈ Rn×v , (1) where v is the hidden size of the latent space. Latent reason-ing then proceeds by recurrent updates within this latent space. It starts from an initial latent state z0 sampled from a learned noise distribution or a Gaussian prior N (0 , σ 2 
+
+> z
+
+· I),where σz denotes the latent state noise scale and I is the identity matrix. A recurrent reasoning unit R then performs iterative updates as 
+
+zi = R(e, zi−1), i = 1 , 2, . . . , r, (2) where r denotes the number of recurrent steps, and each 
+
+zi ∈ Rv summarizes the internal state of the model after the i-th latent update. Finally, a coda decoder C maps the final latent state zr to a probability distribution over output tokens as 
+
+P = C(zr ), P ∈ [0 , 1] |V| , (3) where P represents the softmax scores for decoding. 
+
+3.2 Distributed Reasoning 
+
+Traditional LLM reasoning assumes the entire model resides on a single high-performance node, e.g., an A100 GPU, which imposes strict hardware demands and limits de-ployment flexibility. To enable LLM reasoning on resource-constrained devices, we propose a distributed reasoning framework that offloads several reasoning steps to an edge server while retaining lightweight processing locally. The proposed system model is illustrated in Fig. 2. This design allows low-power devices to handle input encoding and preliminary reasoning while delegating deeper inference to centralized infrastructure. As shown in Fig. 3, latent reasoning may exhibit un-even convergence patterns across tokens. Some tokens may converge quickly, while others require deeper iterative re-finement. This observation motivates a collaborative setting, 
+
+Algorithm 1 Distributed Latent LLM Reasoning for One Token Generation  
+
+> 1:
+
+Input: Input request xk, total recurrent steps r, edge recurrent steps re 
+
+> 2:
+
+Output: Generated one token for the prompt input xk
+
+[Edge Device]  
+
+> 3:
+
+Encode prompt: ek ← P (xk) 
+
+> 4:
+
+Initialize latent state: z0 ∼ N (0 , σ 2 
+
+> z
+
+· I) 
+
+> 5:
+
+for i = 1 to re do  
+
+> 6:
+
+zi ← R (ek, zi−1) 
+
+> 7:
+
+end for  
+
+> 8:
+
+Transmit (ek, zre ) to server  
+
+> 9:
+
+# Uplink Wireless Transmission 
+
+[Edge Server]  
+
+> 10:
+
+for i = re + 1 to r do  
+
+> 11:
+
+zi ← R (ek, zi−1) 
+
+> 12:
+
+end for  
+
+> 13:
+
+Transmit zr to device  
+
+> 14:
+
+# Downlink Wireless Transmission 
+
+[Edge Device]  
+
+> 15:
+
+Decode token: Pk ← C (zr ) 
+
+> 16:
+
+return arg max  
+
+> V
+
+Pk
+
+where the device performs initial encoding and the server extends the reasoning depth when needed. In MORES, the prelude encoder P is deployed on the edge device to transform the prompt input x into a latent representation e. A lightweight recurrent reasoning unit 
+
+R then performs the initial re steps of iterative reasoning locally on the edge device, updating the latent state from z0
+
+to zre . Both the latent representation e and the intermediate state zre are then transmitted to the server, where deeper inference continues for the remaining r − re steps. The final latent state zr is sent back to the edge device, where the coda decoder C maps it to token probabilities for generation. Note that re is an environmental parameter determined by the capabilities of the edge device. In the MORES framework, the server acts as a supplementary service to assist in com-pleting the reasoning process. Consequently, setting re = r
+
+corresponds to purely local reasoning, while re = 0 repre-sents offloading the entire recurrent reasoning to the server. The complete procedure is summarized in Algorithm 1. 
+
+3.3 Computation Model 
+
+In this section, we present the computation model of the MORES framework. A sequence of K reasoning requests arrives over time, indexed by K = {1, 2, . . . , K }. Each request k ∈ K is served in a corresponding time slot tk. The task set is denoted as D = {1, 2, . . . , D }, where the task type of request k is dk ∈ D . Specifically, each request k consists of an input prompt xk with nk input tokens and produces an output sequence yk with mk tokens. Output tokens are generated autoregressively. The LLM first processes xk to produce the first output token and subsequently generates each additional token based on the previous outputs. This results in mk rounds of computation and communication. 6
+
+Let each generation round be indexed by l ∈{1, 2, . . . , m k}. The number of tokens processed in the l-th 
+
+round is denoted by αk,l , where 
+
+αk, 1 = nk, ∀k, (4) and 
+
+αk,l = 1 , ∀l̸ = 1 , ∀k. (5) In each round l for request k, the device incurs a com-putational energy cost of αk,l · (Ep + re · Er + Ec), where 
+
+Ep, Er , and Ec denote the per-token energy costs of en-coding, recurrence, and decoding, respectively. The server performs the remaining rk − re reasoning steps, resulting in a recurrence cost of αk,l · (rk − re). The latency of the computation model is proportional to the recurrent steps rk
+
+and the number of tokens αk,l [38], given by 
+
+T (comp)  
+
+> k,l
+
+= c1 · rk · αk,l + c2, (6) where c1 and c2 are two constants determined by the underlying hardware and the employed model. 
+
+3.4 Communication Model 
+
+Under the MORES framework, each request involves two communication stages, comprising the uplink transmission of both the latent representation ek and the latent state 
+
+zre from the edge device to the server, and the downlink transmission of the final latent state zr from the server back to the device. We consider a block fading wireless channel with a path loss factor η, where the uplink and downlink channel gains, denoted by h(ul)  
+
+> k
+
+and h(dl)  
+
+> k
+
+, remain constant during the processing of one request. To simplify the problem, we assume hk = h(ul)  
+
+> k
+
+= h(dl)  
+
+> k
+
+without loss of generality. The channel gain hk is assumed to be unknown to both the device and the server. The uplink and downlink data rates R(ul)  
+
+> k
+
+and R(dl)  
+
+> k
+
+for the k-th request are given by 
+
+R(ul)  
+
+> k
+
+= B(ul)  
+
+> k
+
+· log 1 + η · h2 
+
+> k
+
+· P (ul) 
+
+> k
+
+σ2
+
+> h
+
+!
+
+, (7) 
+
+R(dl)  
+
+> k
+
+= B(dl)  
+
+> k
+
+· log 1 + η · h2 
+
+> k
+
+· P (dl) 
+
+> k
+
+σ2
+
+> h
+
+!
+
+, (8) where B(ul)  
+
+> k
+
+, B(dl)  
+
+> k
+
+, P (ul)  
+
+> k
+
+, and P (dl)  
+
+> k
+
+represent the band-widths and transmitted powers in the uplink and downlink transmissions, respectively, and σ2 
+
+> h
+
+is the noise power. For analytical simplicity, we consider uniform power and band-width allocation across requests as 
+
+P (ul)  
+
+> k
+
+= P (ul) , P (dl)  
+
+> k
+
+= P (dl) , ∀k, (9) 
+
+B(ul)  
+
+> k
+
+= B(ul) , B(dl)  
+
+> k
+
+= B(dl) , ∀k. (10) To reduce uplink overhead, we introduce a pruning rate 
+
+ρk ∈ [0 , 1) , which denotes the fraction of latent information pruned before transmission. We assume full transmission on the downlink, where ρ(dl)  
+
+> k
+
+= 0 . Let q denote the quantization bit width for each real-valued element, and recall that v
+
+denotes the hidden size. Thus, each token requires q · v bits for transmission. For request k in round l, the uplink and downlink communication latencies T (ul)  
+
+> k,l
+
+and T (dl)  
+
+> k,l
+
+are derived as 
+
+T (ul)  
+
+> k,l
+
+= 2 (1 − ρk) · q · v · αk,l 
+
+R(ul) 
+
+> k
+
+, T (dl)  
+
+> k,l
+
+= q · v · αk,l 
+
+R(dl) 
+
+> k
+
+. (11) The corresponding energy consumptions are 
+
+E(ul)  
+
+> k,l
+
+= P (ul)  
+
+> k
+
+· T (ul)  
+
+> k,l
+
+, E(dl)  
+
+> k,l
+
+= P (dl)  
+
+> k
+
+· T (dl)  
+
+> k,l
+
+. (12) Summing across all mk rounds of token generation, the total uplink and downlink energies for the k-th request are 
+
+E(ul)  
+
+> k
+
+= 2 (1 − ρk) · q · v · (nk + mk − 1) · P (ul) 
+
+R(ul) 
+
+> k
+
+, (13) 
+
+E(dl)  
+
+> k
+
+= q · v · (nk + mk − 1) · P (dl) 
+
+R(dl) 
+
+> k
+
+. (14) These equations capture the total communication cost incurred when serving the k-th request, reflecting the up-link and downlink transfers of latent intermediate features under optional pruning. 
+
+3.5 Problem Formulation 
+
+In this section, we model the resource allocation prob-lem that arises under the MORES framework, considering both computation and communication costs in wireless networks. Let δk ∈ {0, 1} denote the correctness of the reasoning result for the k-th request, where δk = 1 denotes a correct LLM answer and δk = 0 otherwise. The average system throughput over K requests is denoted as 
+
+U = 1
+
+K
+
+> K
+
+X
+
+> k=1
+
+δk. (15) The total energy consumption on the device side for the 
+
+k-th request is denoted by E(dev)  
+
+> k
+
+, which can be derived as 
+
+E(dev)  
+
+> k
+
+= E(ul)  
+
+> k
+
++
+
+> mk
+
+X
+
+> l=1
+
+αk,l · (Ep + re ·Er + Ec)= E(ul)  
+
+> k
+
++ ( nk + mk − 1) · (Ep + re ·Er + Ec) .
+
+(16) From an energy-efficient perspective, the device-side energy constraint is considered as 
+
+X
+
+> k
+
+E(dev)  
+
+> k
+
+≤ E(dev) max , (17) where E(dev) max denotes the energy budget for the device. Considering the reasoning capacity of the server, the total recurrence constraint is imposed to avoid system satu-ration and guarantee service stability, which is derived as 
+
+X
+
+> k,l
+
+αk,l · (rk − re) ≤ Gmax , (18) where Gmax represents the maximum recurrence budget for the total K requests. For each request k, the Time-Between-Tokens (TBT) la-tency constraint is introduced to guarantee a smooth user experience as 
+
+T (ul)  
+
+> k,l
+
++ T (comp)  
+
+> k,l
+
++ T (dl)  
+
+> k,l
+
+≤ Tmax , (19) 7
+
+where Tmax represents the maximum TBT latency for each request. The system aims to maximize the average through-put U , subject to the energy and latency constraints for both computation and communication, and the reasoning capacity limit as 
+
+(P1 ) max    
+
+> {rk,ρ k}
+
+U = 1
+
+K
+
+X
+
+> k
+
+δk,
+
+s.t. , X
+
+> k
+
+E(dev)  
+
+> k
+
+≤ E(dev) max ,
+
+X
+
+> k,l
+
+αk,l · (rk − re) ≤ Gmax ,T (ul)  
+
+> k,l
+
++ T (comp)  
+
+> k,l
+
++ T (dl)  
+
+> k,l
+
+≤ Tmax , ∀k, ∀l. 
+
+This formulation captures the trade-offs between reason-ing quality, energy efficiency, and resource availability. In (P1), rk serves as one of the decision variables for the total recurrent steps, with the cloud providing a supplementary service for any processing beyond the fixed re. Increasing the number of recurrent steps rk typically improves the correctness indicator δk but also increases computational latency and token-level inference overhead. On the other hand, reducing the uplink pruning rate ρk enhances latent information quality but incurs higher transmission latency and energy consumption. The optimizer must coordinate the recurrent steps and the pruning rate across requests to balance reasoning accuracy and overall system efficiency. In addition, the TBT latency constraint introduces a specific trade-off between computation and communication latency, since increasing the recurrent steps extends computation time, thereby limiting the time available for communication. To satisfy the latency limit under fixed transmission power, the system must adopt a higher pruning rate, which in turn reduces accuracy. Hence, the optimizer must carefully adjust the recurrent steps and the pruning rate to satisfy latency requirements while preserving model performance. 
+
+4 SEMANTIC MOE-BASED DRL A LGORITHM 
+
+In this section, we present our proposed semantic MoE-based DRL algorithm and explain the design of each key component, focusing on the semantic router for task-type classification and the MoE network for expert selection and adaptive reasoning. 
+
+4.1 Deep Reinforcement Learning Solutions 
+
+DRL formulates sequential decision-making as an agent interacting directly with an environment E. At each discrete time step t, the agent observes the current state st ∈ S 
+
+and selects an action at ∈ A according to its policy [39]. In response, the environment emits a reward ut ∈ R and transitions to a new state st+1 according to the dynamics 
+
+S × A → S . Following the above description, we formulate problem (P1) as a Markov decision process (MDP) and spec-ify its state space, action space, and environment reward. 
+
+State space S captures the instantaneous status of the system. The state st captured at time step t is defined as 
+
+st = {t, G res ,t , E (dev) res ,t }, (20) where Gres ,t and E(dev) res ,t denote the remaining recurrence budget and the remaining device energy budget at time step 
+
+t, respectively. For notational clarity, the request index k and the time slot t are used interchangeably without ambiguity. 
+
+Action space A defines the computation-communication resource allocation for request k at time step t as 
+
+at = {rt, ρ t}, (21) where rt and ρt denote the recurrent steps and the pruning rate configured for the request served in time slot t, respec-tively. These action variables are consistent with the decision variables in problem (P1). 
+
+Environment reward ut represents the feedback signal from the environment after executing action at in state st,and is set to ut = δt to reflect reasoning correctness. A higher reward indicates successful reasoning with efficient resource usage. Given the need to balance exploitation and exploration under hard constraints, we adopt the SAC algorithm to train the agent. SAC learns a stochastic policy that maximizes the expected cumulative reward while encouraging explo-ration via entropy regularization [40]. It is well-suited for dynamic wireless environments with uncertain channel con-ditions and variable resource budgets. After offline training, the learned policy can be deployed for real-time decision-making across reasoning tasks. The SAC algorithm mainly involves the updates of the actor and critic networks, which are described as fol-lows. The actor is optimized by maximizing the entropy-regularized policy objective 
+
+Jπ (ϕ) = Es∼B , a∼πϕ(·| s)
+
+h
+
+Qθ (s, a) − τ log πϕ(a|s)
+
+i
+
+, (22) where s ∼ B denotes sampling states from the replay buffer B, and a ∼ πϕ(·| s) denotes sampling actions from the current policy conditioned on s. The stochastic policy 
+
+πϕ is parameterized by ϕ, and Qθ is the state–action value function with parameters θ. The coefficient τ controls the trade-off between maximizing the expected return and the policy entropy, thereby encouraging exploration via entropy regularization while avoiding premature convergence to deterministic suboptimal policies. The critic is updated by minimizing the squared temporal-difference error, which is given by 
+
+JQ(θ) = E(s,a,u, s′)∼B 
+
+h
+
+Qθ (s, a) − y(s, a, u, s′)
+
+i2
+
+, (23) with the soft Bellman target given by 
+
+y(s, a, u, s′) = u + γ
+
+h
+
+Qθ′ (s′, a′) − τ log πϕ(a′|s′)
+
+i
+
+, (24) where a′ ∼ πϕ(·| s′) denotes the next action sampled from the current policy. In (24), γ is the discount factor and s′ is the next state in the sampled transition. The target network 
+
+Qθ′ is updated via soft updates to stabilize value estimation. This critic update encourages consistency between the cur-rent Q-value estimate and the soft Bellman target, thereby stabilizing value learning under entropy regularization. 
+
+4.2 Semantic Router 
+
+To achieve high-fidelity task representation and precise task mapping, the MORES framework incorporates a semantic 8Tom has four oranges and gives one    
+
+> away. How many are left?
+> Sarah buys three pencils at two dollars
+> each. How much does she pay?
+> Write a function that checks if a given
+> number is even or odd.
+> If it’s raining, what should you carry to
+> stay dry?
+> Write a function that returns the largest
+> value in a list. Semantic Router
+> Feature Space
+
+Fig. 4: Illustration of the semantic routing process, where the semantic router classifies different types of prompt inputs in the feature space through a trained network. router [41], which adaptively directs each request by cap-turing its inherent semantic characteristics. Specifically, for each incoming request k, the system employs a lightweight pre-trained encoder to extract its semantic features. The encoder maps the prompt input xk to a high-dimensional semantic embedding vk, which serves as a comprehensive semantic representation of the request. The semantic router then assigns the request to the most suitable category based on the semantic distance between vk and the predefined class prototypes. An illustration of this semantic routing process and the resulting classification within the feature space is depicted in Fig. 4. Since different tasks exhibit heterogeneous character-istics in terms of energy usage and accuracy sensitivity, the task information introduced by the semantic router is essential for maximizing system throughput under con-strained resources. By exploiting task-specific information, the semantic router enables the MORES system to allocate resources more effectively, thereby enhancing both energy efficiency and inference accuracy. In MORES, the seman-tic router is integrated into the DRL network architecture to differentiate processing strategies across heterogeneous tasks and scenarios. This design facilitates optimal resource allocation under varying task requirements and provides the foundation for the subsequent MoE network design. 
+
+4.3 Mixture of Experts Architecture 
+
+To better handle heterogeneous tasks and diverse scenarios, a single backbone network is often insufficient to adapt to these variations. Therefore, MORES adopts a design inspired by the MoE paradigm to enhance representational capacity and reduce negative transfer. Building on conven-tional MoE architectures [42], MORES introduces multiple expert branches and a shared backbone to capture both specialized and shared knowledge. Unlike conventional soft gating that probabilistically activates experts, our design employs a deterministic gating mechanism to select the experts for each task and scenario. The selected experts are then integrated with the shared expert to produce a fused representation, which is subsequently used to generate the final decision. In the following, we present the detailed formulation of this architecture and some analysis. The traditional actor and critic networks in SAC consist of the feature extraction layer F and the head layer H. First, the feature extraction layer learns the high-dimensional Input 
+
+> Output
+> Router
+> Input
+> Output
+
+Fig. 5: Traditional DRL network and our proposed MoE-based network architecture design. features from the input, and then the head layer projects the features to the final output, which can be formulated as 
+
+o = H (F (w)) , (25) where w and o represent the input and output, respectively. In our MoE-based architecture, I parallel feature extraction networks serve as experts for executing different types of tasks, denoted as {F 1, F2, . . . , FI }. Additionally, a shared feature extraction network, denoted as F0, is incorporated to extract the common knowledge among all types of tasks. The architecture of our proposed MoE-based network is depicted in Fig. 5. Let fi denote the features extracted by expert Fi, where 0 ≤ i ≤ I. Through a deterministic rout-ing mechanism conditioned on external task and scenario information, the selected features ˆf ∈ { f1, f2, . . . , fI } are merged element-wise with the common features f0, yielding the aggregated features ¯f as 
+
+¯f = g ⊙ f0 + (1 − g) ⊙ ˆf , (26) where the weights are learned from the common shared features through the gating network as g = G (f0). The weighted features are then fed to the head layer to generate the final output as o = H  ¯f . The proposed MoE-based feature extraction is integrated into both the actor and critic networks, providing task-sensitive representations to en-hance policy learning and improve value estimation across heterogeneous task and scenario distributions. Compared with conventional MoE architectures, our design differs in three key aspects. (1) Expert selection mecha-nism . In conventional MoE, the expert is chosen dynamically based on the input features provided to the gating network. In contrast, our architecture deterministically selects the ex-pert based on task and scenario information, which provides stable and consistent routing and adapts more effectively to heterogeneous conditions. (2) Incorporation of a shared expert . In conventional MoE, all experts are independent and parallel, without an explicit branch to capture common knowledge. To address this, our design introduces a shared expert that learns task-agnostic representations, which not only complements the task-specific experts but also en-hances knowledge transfer across tasks and scenarios. (3) 
+
+Fine-grained gating for feature fusion . In conventional MoE, 9
+
+gating primarily serves to select and weight experts at a coarse level. However, in our design, the expert is deter-ministically chosen in advance, so the gating mechanism no longer selects experts but instead operates at a finer gran-ularity by balancing the shared and task-specific features element-wise. This fine-grained feature fusion enables the model to better integrate common knowledge with task-specific representations, thereby improving generalization across heterogeneous tasks and scenarios. This proposed architecture provides several key bene-fits. First, the deterministic task-dependent routing provides stable computational paths, which improves training stabil-ity and accelerates convergence in reinforcement learning. Second, by activating only the selected expert during both training and inference, the model reduces gradient interfer-ence across tasks and lowers computational overhead, lead-ing to more efficient learning and decision-making. Third, by enabling effective integration of task-specific and shared knowledge, the architecture alleviates negative transfer and enhances generalization to heterogeneous tasks and scenar-ios. In addition, this modular design allows the architecture to scale flexibly by adding or removing experts as needed, enabling easy adaptation to new tasks and environments. Collectively, these benefits make our architecture particu-larly suitable for reinforcement learning across heteroge-neous tasks and dynamic wireless environments. Next, we analyze the computational complexity of the proposed MoE-based architecture. Let |w| denote the input dimension, L the hidden dimension of the network, and 
+
+N the number of fully connected layers in the feature extraction expert. The computational cost of a single feature extraction expert is O  |w|L + ( N − 1) L2 + N L . Consider-ing both the feature extraction and output head, the overall complexity of the baseline network is 
+
+Cbase = O |w|L + ( N − 1) L2 + N L + |o|L, (27) where |o| denotes the output dimension. For the semantic MoE-based network featuring gating and fusion mecha-nisms, the overall complexity becomes 
+
+Cprop = O 2|w|L + (2 N − 1) L2 + 2 N L + |o|L. (28) When the L2 term dominates the total computation, the leading terms are (N −1) L2 for the baseline and (2 N −1) L2
+
+for the proposed model. This indicates that the proposed de-sign incurs approximately twice the theoretical computation while remaining in the same asymptotic order. Beyond computational complexity, we further examine the parameter count of the proposed architecture. The fea-ture extraction expert contains S = |w|L + ( N − 1) L2
+
+parameters. For a model with I experts plus one shared expert, the total parameter count becomes S (I + 1) , and the gating network contains L2 parameters. Consequently, the proposed design introduces an additional SI + L2 param-eters compared with the baseline model. However, owing to sparse expert activation enabled by the semantic router, only the selected expert and the shared expert are activated during inference. Therefore, the additional parameter foot-print during inference is S +L2, which remains independent of the total number of experts. 
+
+5 EXPERIMENTS 
+
+In this section, we present empirical insights into the MORES system to demonstrate its necessity and efficiency. The performance of the proposed semantic MoE-based SAC algorithm is then comprehensively evaluated and compared with representative baselines. 
+
+5.1 Experimental Setup 
+
+Experimental Dataset. The MORES framework is evalu-ated on the GSM8K [43], MBPP [44], and HellaSwag [45] benchmarks to address numerical, programmatic, and com-monsense reasoning, respectively. GSM8K comprises 8,792 grade-school math word problems that require sequential arithmetic operations, and has become a standard bench-mark for multi-step mathematical reasoning. MBPP consists of 974 Python programming tasks with reference implemen-tations and unit tests, providing a clear measure of code gen-eration accuracy and functional correctness. HellaSwag con-tains approximately 60K multiple-choice questions derived from everyday activity descriptions, offering a rigorous test of grounded commonsense reasoning. It is worth noting that GSM8K and MBPP are generative tasks, whereas HellaSwag is formulated as a multiple-choice classification task. We built a composite dataset by sampling equally from the three datasets, ensuring that each source was fairly represented. 
+
+Experimental Platform. Our experiments were con-ducted on a workstation equipped with an NVIDIA A100 GPU (80 GB memory) and an Intel Xeon Platinum 8375C processor (32 cores). The system was running Ubuntu 20.04 LTS and employed PyTorch 2.6, together with CUDA 12.4 and cuDNN 9.1. 
+
+Environment Details. We train a DRL agent to allocate computation and communication resources in the MORES system with the number of requests K = 100 . Each request is sampled uniformly from the composite dataset. In addi-tion, each request is randomly associated with a wireless channel condition, characterized by a channel gain selected uniformly from {0.4, 0.7, 1.2}, corresponding to poor, fair, and good channels, respectively. For wireless communica-tions, the uplink and downlink bandwidths are set to 2 MHz and 20 MHz, respectively, while the uplink and downlink transmit powers are set to 0.2 W and 20 W, respectively. Without loss of generality, we set the path loss to η = 10 −12 ,and the noise power density to N0 = −174 dBm/Hz. Each real-valued element is quantized to q = 16 bits before trans-mission. For computation, the hidden size per token is set to v = 5280 . The per-token energy costs of encoding Ep and decoding Ec are both set to 2.5 × 10 −4 J, while the per-token energy cost of the recurrent unit Er is set to 3 × 10 −4 J. The maximum TBT latency is set to Tmax = 2 .5×10 −2, while the computational latency parameters are set to c1 = 5 × 10 −4
+
+and c2 = 0 . For simplicity, the number of recurrent steps is chosen from {8, 12 , 16 , 20 , 24 , 28 , 32 }, and the pruning rate is selected from {0, 2% , 4% , 6% , 8% }.
+
+5.2 Experimental Analysis 
+
+Fig. 6 illustrates the token-length distributions of GSM8K, MBPP, and HellaSwag, demonstrating the heterogeneity of reasoning tasks in terms of sequence length. First, the 10 GSM8K       
+
+> 0100 200 300 400 500 600
+> Number of tokens
+> 00.01 0.02 0.03 0.04 0.05 0.06 0.07 0.08 0.09
+> Probability
+
+(a) GSM8K token count distribution. MBPP        
+
+> 0100 200 300 400 500 600
+> Number of tokens
+> 00.05 0.1 0.15
+> Probability
+
+(b) MBPP token count distribution. HellaSwag        
+
+> 0100 200 300 400 500 600
+> Number of tokens
+> 00.02 0.04 0.06 0.08 0.1 0.12 0.14 0.16
+> Probability
+
+(c) HellaSwag token count distribution. 
+
+Fig. 6: Histogram of token count distributions of the GSM8K, MBPP, and HellaSwag datasets. 0 5 10 15             
+
+> Pruning rate ;(%)
+> 510 15 20 25 30 35 40 45 50
+> Accuracy (%)
+> GSM8K
+> r=8
+> r=12
+> r=16
+> r=24
+> r=32
+
+(a) GSM8K accuracy vs. pruning rate. 0 5 10 15              
+
+> Pruning rate ;(%)
+> 10 12 14 16 18 20 22 24 26 28 30
+> Accuracy (%)
+> MBPP
+> r=8
+> r=12
+> r=16
+> r=24
+> r=32
+
+(b) MBPP accuracy vs. pruning rate. 0 2 4 6 8             
+
+> Pruning rate ;(%)
+> 40 45 50 55 60
+> Accuracy (%)
+> HellaSwag
+> r=8
+> r=12
+> r=16
+> r=24
+> r=32
+
+(c) HellaSwag accuracy vs. pruning rate. 
+
+Fig. 7: Accuracy vs. pruning rate under different recurrent steps. three datasets exhibit different degrees of length variability. Specifically, MBPP exhibits the greatest dispersion in token length and GSM8K shows moderate dispersion, whereas HellaSwag is tightly concentrated within a narrow range. Intuitively, a narrower distribution implies more stable se-quence lengths and thus simplifies scheduling decisions. In contrast, a wider distribution induces larger length fluc-tuations, making scheduling decisions more challenging. Second, the average token length also varies across datasets. GSM8K has the longest sequences on average, followed by MBPP and HellaSwag. Consequently, tasks with longer sequences generally incur higher computation and trans-mission energy costs during reasoning. Overall, these results confirm substantial sequence-length heterogeneity across tasks, suggesting that task-dependent scheduling is neces-sary to support efficient reasoning. Fig. 7 and Fig. 8 jointly compare the accuracy trends of GSM8K, MBPP, and HellaSwag under different pruning rates and recurrent steps. For the generative tasks GSM8K and MBPP, two consistent patterns can be observed. First, for fixed recurrent steps, accuracy decreases as the pruning rate increases. Second, for a fixed pruning rate, accuracy im-proves as the recurrent steps increase, but the gain gradually diminishes and eventually saturates, which is more clearly illustrated in Fig. 8. However, the sensitivity to these factors varies significantly across datasets. In particular, MBPP is more resilient to the pruning rate. At r = 32 , increasing the pruning rate from ρ = 0 to ρ = 15% leads to only a 5% ac-curacy drop, while GSM8K experiences an accuracy decline of 20%. MBPP is also less sensitive to the recurrent steps, showing only a 2% accuracy difference between r = 12 and 
+
+r = 32 , whereas GSM8K shows an accuracy difference of 10%. This indicates that under resource-constrained settings, MBPP can be efficiently processed with fewer recurrent steps, while GSM8K requires deeper recurrent reasoning to maintain satisfactory performance. By contrast, HellaSwag, as a multiple-choice classification task, is much less sen-sitive to both the pruning rate and the recurrent steps. A moderate pruning rate yields negligible performance degra-dation, and the accuracy remains relatively stable as the recurrent steps increase. Overall, these results demonstrate that different tasks exhibit distinct response patterns to pruning rate and recurrent steps, indicating that resource allocation should be adaptively adjusted according to task characteristics. To provide an intuitive case-level perspective, Fig. 9 presents a representative GSM8K example evaluated under two pruning rates ( ρ = 0 and ρ = 20% ) and two recurrent steps settings ( r = 5 and r = 16 ), which clearly illustrates the impact of these parameters on reasoning performance. Only the configuration with r = 16 and ρ = 0 produces the correct answer with a coherent, step-by-step reasoning 11 8 12 16 24 32          
+
+> Recurrent steps r
+> 510 15 20 25 30 35 40 45 50
+> Accuracy (%)
+> GSM8K
+> ;=0%
+> ;=5%
+> ;=10%
+> ;=15%
+
+(a) GSM8K accuracy vs. recurrent steps. 8 12 16 24 32           
+
+> Recurrent steps r
+> 10 12 14 16 18 20 22 24 26 28 30
+> Accuracy (%)
+> MBPP
+> ;=0%
+> ;=5%
+> ;=10%
+> ;=15%
+
+(b) MBPP accuracy vs. recurrent steps. 8 12 16 24 32             
+
+> Recurrent steps r
+> 40 45 50 55 60
+> Accuracy (%)
+> HellaSwag
+> ;=0%
+> ;=2%
+> ;=4%
+> ;=6%
+> ;=8%
+
+(c) HellaSwag accuracy vs. recurrent steps. 
+
+Fig. 8: Accuracy vs. recurrent steps under different pruning rates. Prompt output : “Let's think through this step -by -step :                                                                                                                                                                                                                          
+
+> 1.Arobe takes 2bolts of blue fiber
+> 2.It takes half as much white fiber as blue fiber .
+> 3.To find out how much white fiber it takes, we need to divide the amount of blue fiber by 2.
+> 4.So, the amount of white fiber is 2bolts /2=1bolt .
+> 5.Now, we add the amount of blue and white fiber together to find the total number of bolts
+> needed :2bolts (blue) +1bolt (white) =3bolts .
+> Therefore, it takes atotal of 3bolts to make the robe .”
+> Prompt output :“The number of bolts in total is the sum of
+> the number of blue and white fibers .Since the number of
+> blue fibers is twice the number of white fibers, the total
+> number of white fibers is 2*10 =20 .Therefore, the total
+> number of bolts in total is 20 +20 =40 .The answer is 40 .”
+> Prompt output :“To find the total number of bolts in the robe,
+> we need to add the number of bolts of blue fiber to the
+> number of bolts of white fiber .The number of bolts of blue
+> fiber is 2bolts .The number of bolts of white fiber is half the
+> number of bolts of blue fiber, so it is 2bolts .Therefore, the
+> total number of bolts in the robe is 2+2=4bolts .”
+> 𝜌  = 20%
+
+Question : A robe takes 2 bolts of blue fiber and half that much white fiber . How many bolts in total does it take?                                                                                                                            
+
+> Prompt output :“The question is asking for the total number of bolts needed to make the
+> robe .The first part of the question states that the robe takes 2bolts of blue fiber and half that
+> much white fiber .This means that the robe takes 2bolts of blue fiber and 2bolts of white
+> fiber .The second part of the question asks for the total number of bolts needed to make the
+> robe .This means that we need to add the number of bolts of blue fiber and the number of
+> bolts of white fiber to get the total number of bolts needed .Therefore, the total number of
+> bolts needed to make the robe is 2bolts of blue fiber +2bolts of white fiber =4bolts .”
+
+r = 5  r = 16 
+
+> 𝜌  = 0%
+
+Fig. 9: Example GSM8K problem illustrating the effect of recurrent steps ( r) and pruning rate ( ρ) on reasoning outputs. process. In all other settings, the reasoning becomes unre-liable, with intermediate steps either omitted or incorrectly interpreted, ultimately leading to an incorrect output. This example aligns well with the trends in Fig. 7 and Fig. 8, showing that insufficient recurrent steps or aggressive prun-ing can compromise intermediate reasoning and thereby degrade final answer correctness. This further indicates that recurrent steps and pruning rate should be jointly selected to balance reasoning quality and resource efficiency. Fig. 10 and Fig. 11 compare the throughput of the pro-posed semantic MoE-based SAC and the conventional SAC under different resource constraints. Specifically, Fig. 10 evaluates performance with device energy budgets E(dev) max 
+
+of 60, 80, and 100, while the recurrence budget Gmax is fixed at 3 × 10 5. Conversely, Fig. 11 considers Gmax of 
+
+2 × 10 5, 3 × 10 5, and 4 × 10 5, with E(dev) max held constant at 60. For all these experiments, the number of edge recurrent steps is set to re = 4 . As shown in both figures, the pro-posed semantic MoE-based SAC achieves stable throughput gains over the conventional SAC baseline across all settings. For instance, when E(dev) max = 80 and Gmax = 3 × 10 5,the proposed method achieves an average throughput of 
+
+U = 33 compared with U = 28 for the baseline, yielding an improvement of 18%. As observed in Fig. 10, increasing the device energy budget results in higher throughput for the proposed method, and the performance gain over the baseline also increases. Specifically, as E(dev) max increases from 60 to 100, the average throughput of the proposed method rises from U = 25 to U = 37 , while the corresponding gain increases from 9% to 19%. A similar trend is observed in Fig. 11. In particular, as Gmax increases from 2 × 10 5 to 
+
+3 × 10 5, the throughput rises from U = 23 to U = 25 .However, further increasing the recurrence budget yields only marginal improvements, indicating that both methods are approaching saturation. Although these budgets are sufficient for both models in the saturation region, our proposed method consistently outperforms the baseline due to the semantic MoE-based architecture. Fig. 12 further compares the two schemes across different edge recurrent steps re. In this scenario, E(dev) max and Gmax are fixed at 60 and 4 × 10 5, respectively. Generally, a smaller re reduces device energy consumption but increases server recurrence usage for robust reasoning. As shown in the figure, our pro-posed method consistently performs better than the baseline regardless of re. We also observe that as re increases, the average throughput decreases from U = 34 to U = 25 .Since the device energy budget is the primary constraint in this setting, a higher re consumes more energy at the device and thus results in lower average throughput as expected. Fig. 13 illustrates the expert decision distributions across distinct task and channel conditions. Each sub-figure corre-sponds to a specific task–channel scenario, and the heatmap shows the probability of selecting different combinations of 12 0 2 4 6 8 10  
+
+> Time Epoch #10 4
+> 10 12 14 16 18 20 22 24 26 28
+> Throughput  U
+> Semantic MoE-based SAC Conventional SAC
+
+(a) Device energy budget E(dev) max = 60 .0 2 4 6 8 10   
+
+> Time Epoch #10 4
+> 18 20 22 24 26 28 30 32 34 36
+> Throughput  U
+> Semantic MoE-based SAC Conventional SAC
+
+(b) Device energy budget E(dev) max = 80 .0 2 4 6 8 10   
+
+> Time Epoch #10 4
+> 15 20 25 30 35 40 45
+> Throughput  U
+> Semantic MoE-based SAC Conventional SAC
+
+(c) Device energy budget E(dev) max = 100 .
+
+Fig. 10: Throughput over training epochs for MoE and baseline DRL models across different device energy budgets. 0 2 4 6 8 10  
+
+> Time Epoch #10 4
+> 12 14 16 18 20 22 24 26
+> Throughput  U
+> Semantic MoE-based SAC Conventional SAC
+
+(a) Recurrence budget Gmax = 2 × 10 5.0 2 4 6 8 10   
+
+> Time Epoch #10 4
+> 10 12 14 16 18 20 22 24 26 28
+> Throughput  U
+> Semantic MoE-based SAC Conventional SAC
+
+(b) Recurrence budget Gmax = 3 × 10 5.0 2 4 6 8 10   
+
+> Time Epoch #10 4
+> 10 12 14 16 18 20 22 24 26 28
+> Throughput  U
+> Semantic MoE-based SAC Conventional SAC
+
+(c) Recurrence budget Gmax = 4 × 10 5.
+
+Fig. 11: Throughput over training epochs for MoE and baseline DRL models across different server recurrence budgets. 0 2 4 6 8 10  
+
+> Time Epoch #10 4
+> 20 22 24 26 28 30 32 34 36
+> Throughput  U
+> Semantic MoE-based SAC Conventional SAC
+
+(a) Edge recurrent steps re = 0 .0 2 4 6 8 10   
+
+> Time Epoch #10 4
+> 16 18 20 22 24 26 28 30 32
+> Throughput  U
+> Semantic MoE-based SAC Conventional SAC
+
+(b) Edge recurrent steps re = 2 .0 2 4 6 8 10   
+
+> Time Epoch #10 4
+> 10 12 14 16 18 20 22 24 26 28
+> Throughput  U
+> Semantic MoE-based SAC Conventional SAC
+
+(c) Edge recurrent steps re = 4 .
+
+Fig. 12: Throughput over training epochs for MoE and baseline DRL models across different initial edge iterations. the recurrent steps and the pruning rate. The results indicate that each expert learns a distinct strategy under different task and channel conditions, which can be explained as follows. As indicated in Fig. 7 and Fig. 8, different tasks exhibit distinct sensitivities to the pruning rate and the re-current steps. Such task-dependent sensitivities are directly reflected in the expert strategies in Fig. 13. Specifically, since GSM8K is more sensitive to the pruning rate, the corresponding experts tend to choose a smaller pruning rate, whereas MBPP and HellaSwag tend to choose a larger pruning rate to reduce communication energy consumption. Meanwhile, GSM8K benefits more from larger recurrent steps, followed by MBPP and then HellaSwag. This is cap-tured by the higher probabilities of selecting larger recurrent steps for GSM8K under the same channel conditions. In addition, for a fixed task, better channel conditions lead experts to prefer larger recurrent steps, allowing the system to exploit higher channel quality for improved throughput. Table 2 compares the average throughput under different routing strategies. We compare three settings, including an 13 59.79% 16.67% 1.09% 21.99% 0.45%       
+
+> 812 16 20 24 28 32 02% 4% 6% 8%
+
+(a) GSM8K with poor channel 9.82% 48.87% 13.29% 3.37% 0.29% 2.74% 0.05% 15.65% 5.93%        
+
+> 812 16 20 24 28 32 02% 4% 6% 8%
+
+(b) GSM8K with fair channel 2.58% 44.12% 19.61% 0.51% 2.85% 9.12% 1.35% 2.75% 11.85% 5.25%        
+
+> 812 16 20 24 28 32 02% 4% 6% 8%
+
+(c) GSM8K with good channel 38.90% 1.79% 11.67% 10.38% 4.21% 5.31% 27.74%       
+
+> 812 16 20 24 28 32 02% 4% 6% 8%
+
+(d) MBPP with poor channel 12.93% 1.15% 1.34% 0.25% 0.05% 3.73% 11.89% 53.32% 15.33%        
+
+> 812 16 20 24 28 32 02% 4% 6% 8%
+
+(e) MBPP with fair channel 0.70% 0.69% 4.11% 0.08% 0.83% 11.37% 6.09% 0.01% 1.65% 12.51% 0.01% 35.44% 26.51%        
+
+> 812 16 20 24 28 32 02% 4% 6% 8%
+
+(f) MBPP with good channel 6.32% 24.32% 37.53% 18.64% 13.19%       
+
+> 812 16 20 24 28 32 02% 4% 6% 8%
+
+(g) HellaSwag with poor channel 0.02% 1.44% 1.64% 3.97% 5.79% 5.60% 0.27% 2.48% 73.81% 4.99%        
+
+> 812 16 20 24 28 32 02% 4% 6% 8%
+
+(h) HellaSwag with fair channel 0.04% 0.23% 0.25% 4.33% 15.36% 2.17% 1.25% 2.65% 0.13% 0.13% 0.05% 4.55% 31.88% 21.37% 15.63%        
+
+> 812 16 20 24 28 32 02% 4% 6% 8%
+
+(i) HellaSwag with good channel 
+
+Fig. 13: Expert decision distributions across distinct task and channel conditions. oracle baseline with ground-truth task types, the proposed semantic router scheme that predicts task types via clas-sification, and a random assignment baseline without task information. The results show that the proposed semantic router achieves throughput close to the oracle baseline, indicating that it can accurately predict task types and ef-fectively approximate oracle-level performance. In contrast, random assignment results in a 5% throughput reduction, demonstrating the importance of exploiting task semantics for expert selection. Moreover, this gain is expected to be more significant as task diversity increases. TABLE 2: Comparison of average system throughput under different routing strategies. 
+
+Routing Strategy Average Throughput U
+
+Oracle 30.1 Semantic 30.0 Random 28.4 
+
+6 CONCLUSION 
+
+We proposed MORES, an LLM reasoning framework that enables distributed inference-time scaling in wireless edge networks. By leveraging recursive latent reasoning, MORES supports natural computation partitioning between edge devices and edge servers, allowing devices to access on-demand reasoning depth under heterogeneous resource constraints. To ensure robust long-term performance under dynamic wireless conditions, we formulated a joint com-putation–communication scheduling problem and solved it through a semantic MoE-based DRL scheme. Experimental results demonstrate that the proposed DRL solution effec-tively handles the heterogeneity of the system, achieving consistent performance gains over representative baselines. In future work, we will extend MORES to incorporate multimodal reasoning capabilities and network-economic mechanisms in real-world wireless deployments. 
+
+REFERENCES 
+
+[1] T. Brown, B. Mann, N. Ryder et al. , “Language models are few-shot learners,” in Proc. Adv. Neural Inf. Process. Syst. , vol. 33, 2020, pp. 1877–1901. 14 
+
+[2] A. Singh, A. Fry, A. Perelman et al. , “OpenAI GPT-5 system card,” 
+
+arXiv preprint arXiv:2601.03267 , 2026. [3] DeepSeek-AI, “DeepSeek-V4: Towards highly efficient million-token context intelligence,” [Online]. Available: https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro, 2026. [4] Google, “A new era of intelligence with Gemini 3,” [Online]. Available: https://blog.google/products/gemini/gemini-3, 2025. [5] H. Zhou, C. Hu, Y. Yuan et al. , “Large language model (LLM) for telecommunications: A comprehensive survey on principles, key techniques, and opportunities,” IEEE Commun. Surveys Tuts. ,vol. 27, no. 3, pp. 1955–2005, 2024. [6] J. Hoffmann, S. Borgeaud, A. Mensch et al. , “An empirical analysis of compute-optimal large language model training,” in Proc. Adv. Neural Inf. Process. Syst. , vol. 35, 2022, pp. 30 016–30 030. [7] C. Snell, J. Lee, K. Xu, and A. Kumar, “Scaling LLM test-time compute optimally can be more effective than scaling model parameters,” arXiv preprint arXiv:2408.03314 , 2024. [8] D. Guo, D. Yang, H. Zhang, J. Song, P. Wang, Q. Zhu, R. Xu, R. Zhang, S. Ma, X. Bi et al. , “DeepSeek-R1: Incentivizing reasoning capability in LLMs via reinforcement learning,” arXiv preprint arXiv:2501.12948 , 2025. [9] Qwen Team, “QwQ-32B: Embracing the power of reinforcement learning,” [Online]. Available: https://qwenlm.github.io/blog/ qwq-32b, 2025. [10] A. Jaech, A. Kalai, A. Lerer et al. , “OpenAI o1 system card,” arXiv preprint arXiv:2412.16720 , 2024. [11] J. Geiping, S. McLeish, N. Jain, J. Kirchenbauer, S. Singh, B. Bar-toldson, B. Kailkhura, A. Bhatele, and T. Goldstein, “Scaling up test-time compute with latent reasoning: A recurrent depth ap-proach,” in Proc. Adv. Neural Inf. Process. Syst. , vol. 38, 2026, pp. 41 340–41 391. [12] R.-J. Zhu, T. Peng, T. Cheng et al. , “A survey on latent reasoning,” 
+
+arXiv preprint arXiv:2507.06203 , 2025. [13] C.-Y. Hsieh, C.-L. Li, C.-K. Yeh, H. Nakhost, Y. Fujii, A. Ratner, R. Krishna, C.-Y. Lee, and T. Pfister, “Distilling step-by-step! Out-performing larger language models with less training data and smaller model sizes,” in Proc. Findings Assoc. Comput. Linguist. ,2023, pp. 8003–8017. [14] J. Wei, X. Wang, D. Schuurmans, M. Bosma, F. Xia, E. Chi, Q. V. Le, D. Zhou et al. , “Chain-of-thought prompting elicits reasoning in large language models,” in Proc. Adv. Neural Inf. Process. Syst. ,vol. 35, 2022, pp. 24 824–24 837. [15] T. Kojima, S. S. Gu, M. Reid, Y. Matsuo, and Y. Iwasawa, “Large language models are zero-shot reasoners,” in Proc. Adv. Neural Inf. Process. Syst. , vol. 35, 2022, pp. 22 199–22 213. [16] K. Jin, Y. Wang, L. Santos, T. Fang, X. Yang, S. K. Im, and H. G. Oliveira, “Reasoning or not? A comprehensive evaluation of reasoning LLMs for dialogue summarization,” Expert Syst. Appl. ,p. 129831, 2025. [17] Y. Deng, K. Prasad, R. Fernandez, P. Smolensky, V. Chaudhary, and S. Shieber, “Implicit chain of thought reasoning via knowledge distillation,” arXiv preprint arXiv:2311.01460 , 2023. [18] S. Hao, S. Sukhbaatar, D. Su, X. Li, Z. Hu, J. Weston, and Y. Tian, “Training large language models to reason in a continuous latent space,” arXiv preprint arXiv:2412.06769 , 2024. [19] Y. Mao, C. You, J. Zhang, K. Huang, and K. B. Letaief, “A survey on mobile edge computing: The communication perspective,” IEEE Commun. Surveys Tuts. , vol. 19, no. 4, pp. 2322–2358, 2017. [20] T. Che, J. Liu, Y. Zhou, J. Ren, J. Zhou, V. Sheng, H. Dai, and D. Dou, “Federated learning of large language models with parameter-efficient prompt tuning and adaptive optimization,” in 
+
+Proc. Conf. Empirical Methods Nat. Lang. Process. , 2023, pp. 7871– 7888. [21] R. Ye, W. Wang, J. Chai, D. Li, Z. Li, Y. Xu, Y. Du, Y. Wang, and S. Chen, “OpenFedLLM: Training large language models on decentralized private data via federated learning,” in Proc. ACM SIGKDD Int. Conf. Knowl. Discovery Data Mining , 2024, pp. 6137– 6147. [22] S. Zhang, G. Cheng, Z. Li, and W. Wu, “SplitLLM: Hierarchical split learning for large language models over wireless network,” in Proc. IEEE Global Commun. Conf. Workshops , 2024, pp. 1–6. [23] Z. Lin, X. Hu, Y. Zhang, Z. Chen, Z. Fang, X. Chen, A. Li, P. Vepakomma, and Y. Gao, “SplitLoRA: A split parameter-efficient fine-tuning framework for large language models,” arXiv preprint arXiv:2407.00952 , 2024. [24] K. Zhao, Z. Yang, C. Huang, X. Chen, and Z. Zhang, “FedsLLM: Federated split learning for large language models over commu-nication networks,” in Proc. Int. Conf. Ubiquitous Commun. , 2024, pp. 438–443. [25] M. Zhang, X. Shen, J. Cao, Z. Cui, and S. Jiang, “EdgeShard: Efficient LLM inference via collaborative edge computing,” IEEE Internet Things J. , vol. 12, no. 10, pp. 13 119–13 131, 2024. [26] H. Jin and Y. Wu, “CE-CoLLM: Efficient and adaptive large lan-guage models through cloud-edge collaboration,” in Proc. IEEE Int. Conf. Web Services , 2025, pp. 316–323. [27] M. Hosseinzadeh and H. Khamfroush, “DILEMMA: Joint LLM quantization and distributed LLM inference over edge computing systems,” arXiv preprint arXiv:2503.01704 , 2025. [28] Z. Lyu, M. Xiao, J. Xu, M. Skoglund, and M. Di Renzo, “The larger the merrier? Efficient large AI model inference in wireless edge networks,” IEEE J. Sel. Areas Commun. , 2025. [29] Q. Song, S. Jing, S. Zhang, S. Zhang, and C. Huang, “Mixture-of-experts for distributed edge computing with channel-aware gating function,” in Proc. IEEE Int. Conf. Commun. Workshops , 2025, pp. 1353–1358. [30] H. Li and L. Duan, “Theory of mixture-of-experts for mobile edge computing,” in Proc. IEEE INFOCOM , 2025, pp. 1–10. [31] N. Xue, Y. Sun, Z. Chen, M. Tao, X. Xu, L. Qian, S. Cui, W. Zhang, and P. Zhang, “WDMoE: Wireless distributed mixture of experts for large language models,” IEEE Trans. Wireless Commun. , 2025. [32] S. Bi, L. Huang, H. Wang, and Y.-J. A. Zhang, “Lyapunov-guided deep reinforcement learning for Stable online computation of-floading in mobile-edge computing networks,” IEEE Trans. Wire-less Commun. , vol. 20, no. 11, pp. 7519–7537, 2021. [33] J. Yan, S. Bi, and Y. J. A. Zhang, “Offloading and resource alloca-tion with general task graph in mobile edge computing: A deep reinforcement learning approach,” IEEE Trans. Wireless Commun. ,vol. 19, no. 8, pp. 5404–5419, 2020. [34] Z. Liu, X. Wang, C. Feng, X. Sun, W. Zhan, and X. Chen, “Meta-reinforcement learning with mixture of experts for generalizable multi access in heterogeneous wireless networks,” IEEE Trans. Commun. , vol. 74, pp. 870–885, 2025. [35] H. Du, G. Liu, Y. Lin, D. Niyato, J. Kang, Z. Xiong, and D. I. Kim, “Mixture of experts for network optimization: A large language model-enabled approach,” arXiv preprint arXiv:2402.09756 , 2024. [36] T. Willi, J. Obando-Ceron, J. Foerster, K. Dziugaite, and P. S. Castro, “Mixture of experts in a mixture of RL settings,” arXiv preprint arXiv:2406.18420 , 2024. [37] J. Wang, H. Du, D. Niyato, J. Kang, Z. Xiong, D. I. Kim, and K. B. Letaief, “Toward scalable generative AI via mixture of experts in mobile edge networks,” IEEE Wireless Commun. , 2024. [38] G.-I. Yu, J. S. Jeong, G.-W. Kim, S. Kim, and B.-G. Chun, “Orca: A distributed serving system for Transformer-based generative models,” in Proc. USENIX OSDI , 2022, pp. 521–538. [39] R. S. Sutton and A. G. Barto, Reinforcement learning: An introduction .MIT press Cambridge, 1998. [40] T. Haarnoja, A. Zhou, P. Abbeel, and S. Levine, “Soft actor-critic: Off-policy maximum entropy deep reinforcement learning with a stochastic actor,” in Proc. Int. Conf. Mach. Learn. (ICML) , 2018, pp. 1861–1870. [41] D. M. Manias, A. Chouman, and A. Shami, “Semantic routing for enhanced performance of LLM-assisted intent-based 5G core network management and orchestration,” in Proc. IEEE Global Commun. Conf. (GLOBECOM) , 2024, pp. 2924–2929. [42] N. Shazeer, A. Mirhoseini, K. Maziarz, A. Davis, Q. Le, G. Hinton, and J. Dean, “Outrageously large neural networks: The sparsely-gated mixture-of-experts layer,” arXiv preprint arXiv:1701.06538 ,2017. [43] K. Cobbe, V. Kosaraju, M. Bavarian, M. Chen, H. Jun, L. Kaiser, M. Plappert, J. Tworek, J. Hilton, R. Nakano, C. Hesse, and J. Schulman, “Training verifiers to solve math word problems,” 
+
+arXiv preprint arXiv:2110.14168 , 2021. [44] J. Austin, A. Odena, M. Nye, M. Bosma, H. Michalewski, D. Do-han, E. Jiang, C. Cai, M. Terry, Q. Le et al. , “Program synthesis with large language models,” arXiv preprint arXiv:2108.07732 , 2021. [45] R. Zellers, A. Holtzman, Y. Bisk, A. Farhadi, and Y. Choi, “Hel-laSwag: Can a machine really finish your sentence?” in Proc. ACL ,2019, pp. 4791–4800.

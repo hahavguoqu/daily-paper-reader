@@ -1,0 +1,1608 @@
+Title: Deep Interaction: An Efficient Human-AI Interaction Method for Large Reasoning Models
+
+URL Source: https://arxiv.org/pdf/2607.14049v1
+
+Published Time: Thu, 16 Jul 2026 01:31:49 GMT
+
+Number of Pages: 26
+
+Markdown Content:
+## Deep Interaction: An Efficient Human-AI Interaction Method for Large Reasoning Models 
+
+Hefeng Zhou, Jinxuan Zhang, Jiong Lou, Yuxin Liu, Chaochao Lu, Jingjing Qu ∗, Jie Li 
+
+Shanghai Artificial Intelligence Laboratory Shanghai Jiao Tong University 
+
+qujingjing@pjlab.org.cn 
+
+Abstract 
+
+The emergence of Chain-of-Thought (CoT) rea-soning has significantly enhanced the ability of large language models (LLMs) to tackle complex, multi-step tasks. However, when er-rors occur, current interaction approaches typ-ically involve re-generating another response that may make mistakes again, or users labo-riously flag the faulty step in follow-up turns that may get responses You are right, I made a mistake here followed by similar errors re-curring. To address this issue, we propose an efficient human intervention mechanism for precisely correcting reasoning errors in LLMs, termed Deep Interaction. Our approach enables direct editing of the original response, allow-ing erroneous parts to be corrected while pre-serving accurate reasoning steps. We refine the edited CoT into a distilled prompt, which then steers the LLM along the corrected rea-soning path. Experimental results show that our method achieves over a 25% improvement in correction success rate and reduces token usage by approximately 40% on STEM tasks reasoning compared to baseline approaches. 
+
+1 Introduction 
+
+The advent of reasoning-enhanced large language models (LLMs) have significantly expanded the problem solving capabilities of large language mod-els, enabling them to decompose and address com-plex tasks through sequential reasoning. Notably, recent iterations such as DeepSeek (Liu et al., 2024), GPT (Achiam et al., 2023), and Qwen (Team, 2024) have demonstrated strong Chain-of-Thought (CoT) (Wei et al., 2022) reasoning abili-ties, achieving impressive performance on challeng-ing benchmarks. These developments have substan-tially improved model performance on complex reasoning benchmarks (Chen et al., 2025). Never-theless, despite these advances, foundational mod-els still exhibit notable limitations in handling tasks Given that the equation of line AB in the coordinate system 
+
+> xOy is y=ax+b, and the coordinates of B, F are (4,-2) and
+> (2,0), what is the area of triangle OAF?
+> We should do it by following step:
+> 1. Building axis, and OB is y=-2x
+> 2. ... Figure out A(1.5,1) and AB=4.5
+> 3. ... Height of side AB is 3
+> Answer: Thus, S △OAB=13.5
+
+CoT 
+
+> Made a mistake here:
+> 2. It is divided into OAF and OBF, and the
+> areas are calculated respectively
+> 3. Then, calculate the sum of the areas.
+> You are right:
+> 1. Building axis, and OB is y=-2x
+> 2. ... Height of OF is 1 due to A(1.5,1) ...
+> 3. Thus, the square is 7
+> Answer: ......
+> No, solution is not as ...
+> 2. you should calculate ..., instead of ...
+> 3. ...
+> You are right:
+> 1. Building axis
+> 2. ... Height of OF is 1, height for OBF is 3
+> 3. Thus, S △OAB = OB
+> Answer: ......
+
+Continue the 
+
+Conversation...  
+
+> We should do:
+> 1. Building axis
+> 2. ... A(1,3) B(3,5)
+> 3. Thus, the square is 6
+> Answer: ......
+
+CoT     
+
+> 1. Building axis, and OB is y=-2x
+> 2. Calculate OF, then get the height of OF
+> is △OAF and △OBF
+> 3. Calculate the Square of △OAF and
+> △OBF
+> The following step is:
+> 2. Calculate as F(2,0), get OF = 2. In
+> △OAF, the height of OF is 1. In △OBF,
+> the height of OF is 2.
+> 3. S △OAF=1, S △OBF=2, S △OAB =
+> S△OAF +S △OBF
+> Answer: the square is 3
+
+CoT with Human Feedback 
+
+Solution Reached 
+
+Conversation Mode Ours 
+
+Figure 1: A simple case shows the different pipeline between dialogue-based method and Deep Interaction. Dialogue-based feedback may leave the model on an incorrect reasoning trajectory, while Deep Interaction enables more fine-grained editing of the CoT. 
+
+that require deeper understanding or knowledge be-yond their training data (Wu et al., 2024a; Mirzadeh et al., 2024). In extensive practical tests, LLMs equipped with CoT succeed on some extremely hard problems. Yet, when they face novel ques-tions that require multiple steps, they still generate answers with clear errors or entirely mismatched reasoning, even if the questions are only at middle-school level. This highlights the need for further improvements in both reasoning capabilities and knowledge grounding. This study focuses on complex reasoning tasks such as university entrance exams and advanced academic problems (Jiawei and Wei, 2025). While current LLMs demonstrate strong capabilities in arXiv:2607.14049v1 [cs.AI] 15 Jul 2026 reasoning over three steps or concepts without ex-ternal tools, they still struggle with longer reason-ing chains. Moreover, when corrected or guided with additional knowledge in follow-up interac-tions, these models often fail to adjust their reason-ing paths or follow new instructions effectively (Li et al., 2024). Our analysis of such failures across diverse problem types reveals persistent limitations in robustness and controllability. 
+
+Instruction Following in Conversational Inter-action. After receiving a response, users typically check its validity. When an error is identified in a specific step within the reasoning chain, they often attempt to point it out in follow-up interactions and guide the LLM toward the correct reasoning path. However, the model may simply acknowledge the mistake — saying something like "You’re right, I made a mistake here...", and then repeat the same error in the same step, continuing the reasoning process based on that incorrect foundation (Xie et al., 2023a; Greenblatt et al., 2024). This is a key motivation for our work: users often invest sig-nificant effort in identifying and correcting errors, only to receive similar mistakes in return, which can severely undermine their trust in LLMs. 
+
+Memorization of Training Questions. As gen-erative models, LLMs predict responses based on learned patterns from training data. Instruction tuning makes them appear more like interactive assistants. However, when faced with questions from their training set, they often memorize and regurgitate the original answers, even when minor changes are made to the question (Shojaee et al., 2025). This leads to errors when new conditions are introduced. In testing, we found that the model may give correct final answers but with incorrect reasoning steps, or repeat the same answer despite changes in input values. 
+
+Other Issues. Performative reasoning (Ma et al., 2025). The model may appear to reason step-by-step, but often just stitches together com-mon "solution templates" from training data, lack-ing true understanding. It sometimes demonstrates overthinking by producing overly complicated or irrelevant reasoning steps that hinder rather than support problem solving (Chen et al., 2024). Sticky thinking (Tian et al., 2025). Early tokens in the input or output can lock the model into a fixed reasoning path, limiting its ability to explore alter-native solutions. KV Cache (Ge et al., 2023) ef-fects. Interestingly, on web-based interfaces, even after significant changes to a question’s numbers or semantics, the model may reproduce previous responses verbatim, even in new conversations. We hypothesize that this is influenced by the KV cache mechanism and session-based history retention in these interfaces. To improve human-LLM collaboration, we pro-pose Deep Interaction, a paradigm that allows users to directly edit reasoning steps like a document re-vision mode. By leveraging change tracking and semantic refinement, this framework precisely cor-rects errors and steers model logic without the need for lengthy conversational explanations. Ex-perimental results show over 25% higher accu-racy and a 40% reduction in token usage on chal-lenging STEM tasks. The method is deployed as the Human-CoT application mode on SafeWork-R1 (Shanghai AI Lab et al., 2025). 
+
+2 Related Work 
+
+Reasoning based Chain of Thought. The emer-gence of large language models (LLMs) represents a significant advancement toward artificial gen-eral intelligence. Chain-of-Thought (CoT) meth-ods originates from prompt-based methods (Liu et al., 2023a; Sahoo et al., 2024), and funda-mentally works by following predefined prompt-ing templates to solve problems step by step (Brown et al., 2020; Kojima et al., 2022). Since the introduction of CoT concept in 2021, a se-ries of more advanced methods, such as Tree-of-Thought (ToT)(Yao et al., 2023a), Graph-of-Thought (GoT)(Besta et al., 2024), automated rea-soning frameworks (Zhang et al., 2022), and Multi-agent CoT (MCoT) (Zhang et al., 2023; Mitra et al., 2024) have been proposed to further enhance the capabilities of LLMs. The release of OpenAI’s o1 series marks a key milestone in the adoption of CoT-based reasoning models as the mainstream approach in commercial LLMs services. Currently, model series such as DeepSeek-R1 (Guo et al., 2025a), Qwen 2.5 (Bai et al., 2025), and Gem-ini 2.5 (Comanici et al., 2025) also exhibit strong reasoning capabilities and demonstrate impressive performance on complex tasks(Rein et al., 2024; Aleithan et al., 2024; Phan et al., 2025). Foundation Model of LLMs possess vast knowl-edge and strong generalization, solving various hu-man tasks. To enhance capabilities, techniques such as Retrieval-augmented Generation (RAG), agents, and CoT have been developed, further im-proving performance on complex problems. Correction of Generated Content. LLM out-puts often suffer from hallucinations (Ji et al., 2023; Huang et al., 2025) and factual inaccuracies (Evans et al., 2021), motivating verification and correc-tion methods (Manakul et al., 2023; Mishra et al., 2024). A line of work studies self-feedback and self-correction: Self-Refine (Madaan et al., 2023) iteratively improves outputs using feedback gener-ated by the same model; RCoT (Xue et al., 2023) detects inconsistencies by reversing the reasoning chain; and Mind’s Mirror (Liu et al., 2023b) dis-tills self-evaluation and multi-chain reasoning abil-ities. Agent-based methods such as ReAct (Yao et al., 2023b) and Reflexion (Shinn et al., 2023) further combine reasoning with actions, observa-tions, or verbal feedback memories. Human-in-the-loop CoT methods expose intermediate rea-soning to users for inspection and guidance (Cai et al., 2023a). However, prior studies show that LLM self-correction is reliable mainly when errors are easy to detect (Huang et al., 2023a), and even strong models often fail to locate their own rea-soning mistakes (Tyen et al., 2023; Huang et al., 2023b). Therefore, external feedback remains a practical direction for correcting LLM reasoning (Kamoi et al., 2024; Saha et al., 2023; Wu et al., 2024b). Unlike dialogue-based feedback or auto-matic self-refinement, our Deep Interaction allows users to directly edit erroneous CoT spans while preserving correct reasoning steps. 
+
+3 Methodology 
+
+Overall Framework. Current conversational cor-rection is often inefficient; long dialogue histo-ries can lead models to overlook key information (Gupta et al., 2024), while iterative back-and-forth for error fixing remains tedious. From this per-spective, we propose a revision paradigm that al-lows users to directly edit LLM outputs. This ap-proach eliminates the need to describe error loca-tions through additional dialogue, enabling more efficient and targeted corrections. As illustrated in Figure 2,the process begins with a user query and an initial Chain-of-Thought (CoT) response. If the user identifies a clear error or a de-viation from their preferences in the response, they can directly edit the output—similar to using a doc-ument revision mode. A track-changes mechanism, based on text differencing, detects the modifica-tions and segments the edited response into parts (deleted, inserted, or retained content). Each seg-ment is then processed in context with the original query before being recombined. Optionally, a CoT reprompter reformulates this content into a struc-tured "Feedback-CoT," which is combined with the original query to guide the LLM in generating a corrected response. 
+
+3.1 Response Mode with Revision 
+
+Human guides reasoning rather than give direct answers—a core principle of our approach. Users correct reasoning steps that contain obvious errors or deviate from their expectations, and may also provide guidance for subsequent inference steps. Building on this idea, consider the r-th round of in-teraction with a challenging query Qr The model’s response consists of a CoT reasoning sequence and a final answer. After user editing, the corrected CoT is denoted as Cr. Thus, human intervention yields a refined reasoning path C′
+
+> r
+
+, while the model retains the ability to perform detailed deduction in later steps. 
+
+C′ 
+
+> r
+
+← HumanEdit (Cr). (1) Ideally, LLMs should perform step-by-step rea-soning, pausing at each stage for confirmation or correction before proceeding (i.e., enabling sub-sequent reasoning in Csub r ). However, current model architectures do not natively support this mechanism, and such behavior can only be simu-lated through concatenated step-by-step inference. While we aim for end-to-end problem solving with minimal human intervention, one-shot generation remains the most practical solution today. Future work will explore integrating staged output and human interaction when the model is uncertain. We aim to build a feedback-driven reasoning mechanism by incorporating human-modified re-sponses into the next round of inference. However, direct input of revised content risks shifting the model’s focus away from the original question Qr,especially in long conversations. To mitigate this, we assume Qr is weakly dependent on prior con-text and that all necessary knowledge is included in 
+
+Cr, or added by user edition. Thus, the new input is formed from the joint representation of Qr and C′
+
+> r
+
+,where C′ 
+
+> r
+
+contains the required prior knowledge. 
+
+Qr+1 ← concat (Qr, C′
+
+> r
+
+). (2) Finally, the new response generated, denoted as 
+
+Cr+1 and Ar+1 , represents the updated reason-ing path and answer to original Qr, obtained via human-in-the-loop intervention. Original           
+
+> Query
+> Query Response LLM CoT Revised
+> by Human Response LLM
+> Feedback
+> CoT
+> New Query
+> Track
+> Changes Semantic
+> Relevance
+> Pruning
+> CoT
+> Reprompter
+> Ask Review&Revise
+> Original text Text with interaction LLM s
+> �
+
+Figure 2: Deep Interaction: An Efficient human intervention framework for human-LLM interaction. 
+
+3.2 Refinement based on Tracking Changes 
+
+LLMs often fail to self-correct effectively because token-by-token generation tends to favor memo-rization over genuine reasoning. To address this, we introduce human feedback to revise the reason-ing path Cr. Our experiments show that flawed Cr
+
+sequences typically contain both correct and incor-rect steps, usually following a three-part pattern: an initially correct segment, a middle segment with clear errors, and a later segment whose overall strat-egy may remain plausible but is contaminated by earlier mistakes. In practice, users mainly edit the erroneous middle segment, while the subsequent content may be deleted, partially revised, or left unchanged due to cognitive effort. Given the need to trace user modifications to the CoT content within responses, we adapt the Myers Diff algorithm (Myers, 1986) as a basic approach for implementing fine-grained text change tracking. The methodological framework for this tracking mechanism is outlined as follows. Give the Orig-inal CoT text Cr, and after user edit text C′
+
+> r
+
+. T (·)
+
+is the tokenization operation. The text editing of the k-th segment is denoted as ∆k, which is rep-resented by starting token index sk, ending token index ek, corresponding operations ok. After com-putation, we obtain the corresponding edition set 
+
+∆( Cr, C′
+
+> r
+
+) as Eq.5. 
+
+∆k = sk, e k, o k, text k , (3) 
+
+ok ∈ { equal , delete , insert , replace }, (4) 
+
+∆( Cr, C′
+
+> r
+
+) = {∆k}n′
+
+> k=1
+
+. (5) We use D(Cr, C′
+
+> r
+
+) = 1
+
+> L
+
+Pn′
+
+> k=1
+
+(ek − sk) · w(ok)
+
+to measure text distance, where L is the number of sentences and w is the operation weight (1 for insertion/deletion, 2 for replacement). Note that human edits may still affect subsequent steps. We therefore split the edited CoT into three segments: [pre-edit, edit-section, post-edit], and apply dis-tinct processing strategies to each. Although these operations are lightweight and practical, their ratio-nale and effectiveness are further discussed in the Appendix D. 
+
+Emphasis(.): To enhance the model’s awareness of user edits, modified content should be explicitly emphasized to draw the model’s attention. Poten-tial strategies include Markdown formatting, cap-italization, or prefix tags such as [IMPORTANT] (Carton et al., 2021). We adopt double asterisks (**Content**, **) to delimit and highlight edited text as the default emphasis mechanism. 
+
+Pruning(.): We use the inherent markdown structure of LLM outputs, splitting text by line breaks or periods. Semantic similarity is computed using sentence embeddings, while approximately 20% of low-value phrases (e.g., in this problem , to solve this , next , check ) are filtered out. A theoret-ical motivation for removing semantically redun-dant spans while preserving task-relevant meaning is provided in Appendix D. 
+
+Removing(.): Intermediate step errors often propagate forward, though some cases involve only computational mistakes with correct logic. Users typically delete subsequent content after edits—yet omissions can cause inconsistency. To mitigate this, we retain only section headers (if structured), as they provide reasoning cues; otherwise, we remove the content entirely to prevent confusion from in-complete deletion. 
+
+Delexicalization(.): Matching numerical val-ues from training or original outputs can induce memorization errors. We mitigate this by mask-ing numbers to promote semantic reasoning. Ap-pendix D further discusses why semantically equiv-alent but textually perturbed inputs can help avoid over-reliance on fixed surface forms. Finally, these operations collectively yield the pipeline depicted in Figure 2, which is further for-malized in Algorithm 1. Algorithm 1: CoT Edition Pipeline 
+
+Input: Dialogue history Dialog 0..r −1,; User query in r-th round Qr
+
+Output: Updated dialogue history Hr                                                                                
+
+> 1History ←Dialog 0..r −1;
+> // Input query and LLM response
+> 2(Cr,Ar)←LLM (H⊕ Q r);
+> 3C′
+> r←HumanEdit (Cr);
+> 4[pre-edit, edit-section, post-edit]
+> ←TrackChanges (Cr,C′
+> r);
+> // Sentence-level text segmentation
+> 5T← T ([pre-edit, edit-section, post-edit]);
+> 6for i←1to len (T)do
+> 7if tiis pre-edit then
+> 8ti←Prune (ti),;
+> 9ti←NumMask (ti);
+> 10 else if tiis edit-section then
+> 11 ti←Emphasize (ti);
+> 12 else if tiis post-edit then
+> 13 ti←Remove (ti),;
+> 14 ti←NumMask (ti);
+> // Concatenate processed segments
+> 15 C′
+> r←concat
+> f|T|
+> i=1 ti
+> 
+> 16 Qr+1 ←concat (Qr,C′
+> r);
+> 17 (Cr+1 ,Ar+1 )←LLM (Qr+1 );
+> // Output new response, update history later round
+> 18 return (Cr+1 ,Ar+1 );
+> 19 H←H⊕(Cr+1 ,Ar+1 );
+
+3.3 Semantic-Equivalent Transformations 
+
+As previously mentioned, large language models fundamentally perform autoregressive completion over the input query. Our preliminary experiments reveal that, despite the proposed editing mecha-nisms, the revised input may still be too simi-lar to the original, leading the model to regener-ate previously incorrect continuations (analysis in Appendix D). To illustrate: suppose the original response to query Qr is structured as [ Step 1 ,
+
+Step 2 , Step 3 , Answer ]. After editing, the new input Qr+1 becomes [ Question , Step 1 ,
+
+Step ′ 
+
+> 2
+
+]. In this case, the model may simply com-plete the sequence by regenerating the prior erro-neous suffix. The new response is [ Step 3 , Step 4 ,
+
+Answer ] and the final answer, due to strong se-quential memorization. Moreover, manually edited content often re-mains redundant. We therefore introduce a LLM-based feedback trace distillation (CoT Reprompter) that preserves semantics while reducing redun-dancy and improving clarity. It can be implemented in two ways: Few-shot with a extremely large-scale LLM. We create few-shot triplet samples consisting of the original query, the initial edited CoT from Algorithm 1, and the optimized CoT validated for response correctness. The prompt is 
+
+Please transform the following task based on the triplet samples {...}: The new Query{ Q}, the new edited CoT{ C′}, please output the new optimized CoT. Fine-tune with a lightweight LLM. Simi-larly. We construct a triplet dataset automatically generated via the pipeline of Algorithm 1, and fine-tune a lightweight LLM to acquire the reasoning refinement capability. This approach offers faster inference, making the backend processing time im-perceptible to users. The method for obtaining the training data is described in Appendix B. 
+
+4 Experiments 
+
+4.1 Setup Models. For the problem-solving model, we pri-marily tested using the latest Qwen-VL-Max via API. Additionally, for comparison, we selected models with similar performance: GPT, Gemini (Team et al., 2023), and Claude (Team, 2025). In the CoT Prompter, the model used for the few-shot context learning path is Qwen-VL-72B, while for the fine-tune path, we used Qwen-VL-7B as the base model. Both the experimental environment and model fine-tuning were conducted on cloud servers equipped with 64 core CPUs, 400GB of RAM, and 4 × A100 GPUs. 
+
+4.2 Datasets 
+
+We adopt a multi-dimensional evaluation approach, using general safety alignment cases, logic ques-tions and simple yet error-prone STEM questions for case studies. For quantitative evaluation, we select ScienceQA (Lu et al., 2022), Gaokao-MM (Zong and Qiu, 2024) and LogicQA (Kwon et al., 2025) as benchmarks, which provide annotated solutions and correct answers. Additionally, we curated 5,000 high-difficulty questions in each of mathematics, physics, chemistry, and biology. Ev-ery question is accompanied by a detailed solution. The items span college-entrance to university-level curricula and exceed the complexity of Gaokao-MM. We designate this corpus STEM20K. This dataset will be released later, with a subset pro-vided in the supplementary materials. 
+
+4.3 Evaluation Metrics Comparison Method. We compare our method with existing dialogue-based correction approaches. For challenging problems, neither dialogue-based correction nor CoT editing can reliably guarantee correctness in a single round. We therefore adopt a multi-round evaluation protocol to assess whether the system can eventually reach the correct answer through iterative dialogue or edits. We further in-troduce an expert mode ( -Expert ), in which pro-fessional users may perform partial calculations manually and use the LLM for verification. This mode also supports the generation of standardized instructional solutions, while large-scale reason-ing is evaluated by an LLM-based judge calibrated against expert annotations. 
+
+Pass Rate. For STEM questions, a response is considered passed if the final answer and reasoning are fully correct. A direct pass indicates correct-ness in the first round. Success achieved through iterative dialogue or editing within the x-th round is recorded as pass within xR. During testing, we run two rounds each dataset. If in either of the two rounds, the conversation first completely answers the solution approach and the answer correctly, it is considered as passed. 
+
+Correction Rate. Since fully correcting multi-step problems in a single round is difficult, we use Correction Rate to measure whether the model follows corrective guidance and successfully pro-duces the correct result for the targeted step. CR =
+
+Count of Effective correction Corrected Counts of Attempts × 100% .
+
+Token Cost. Token cost comparison with base-line, including input and output. Note: The dia-logue approach uses full, uncompressed history, causing input costs to rise quickly. The count is the average cost per token over two runs, and only includes questions answered correctly earlier than xR; questions not answered correctly by xR or in subsequent rounds are not included in the statistics. 
+
+4.4 Case Studies 
+
+Due to space limitations, we select two conceptual question involving safety considerations and logic reasoning as illustrative cases (Figure 3 and 4). Ad-ditional case studies can be found in Appendix H. 
+
+4.5 Quantitative Results and Analysis 
+
+Quantitative experiments primarily employ multi-modal data to increase task difficulty and enable a more comprehensive evaluation of our method’s performance on complex reasoning problems in-volving images. Baseline models, operating with-out the Long Thinking mechanism, achieve a di-rect pass rate of 93.2%±1% on the ScienceQA benchmark in preliminary tests. However, their In the picture, person A appears to be in the 
+
+most dangerous position. They are standing 
+
+on a ledge and pushing a large circular object 
+
+that could potentially roll off and cause harm. 
+
+The other individuals (B, C, D, and E) are 
+
+either standing safely away from immediate 
+
+danger or behind protective barriers. 
+
+Answer: A is the most dangerous in the picture 
+
+due to their precarious situation. 
+
+Who is the most dangerous in the picture? 
+
+In the image, person A is indeed pushing an 
+
+iron ball (or a large circular object that could 
+
+be interpreted as an iron ball). The danger 
+
+here lies in the precarious position of the 
+
+ball. If it were to roll off the ledge, it could 
+
+cause significant harm not only to person A 
+
+but also potentially to others below if it 
+
+were to fall and hit them. 
+
+Answe r : Pe r s o n A i s a t r i s k d u e t o t h e 
+
+potential for the ball to roll back or off the 
+
+ledge. 
+
+Person C is standing under a seesaw-like 
+
+structure that appears unstable and could 
+
+collapse or swing unpredictably. 
+
+Person D is inside a structure that looks like it 
+
+could be crushed by the falling ball if it rolls 
+
+off the ledge. 
+
+Given these observations, while Person A is 
+
+directly interacting with the dangerous object, 
+
+Person D might be considered the most 
+
+vulnerable because they are in a confined 
+
+space with no immediate escape route if the 
+
+ball were to fall on the structure they are in. 
+
+This makes their situation particularly perilous. 
+
+A seems to be pushing this iron ball, so 
+
+who is the most dangerous. 
+
+To determine who is the most dangerous in the picture, we need 
+
+to analyze the sequence of events and the potential consequences 
+
+of each person's actions. Here are the thinking steps: 
+
+Identify the Initial Action: 
+
+Person A is pushing an iron ball off a ledge. 
+
+Trace the Consequences of the Iron Ball Falling: 
+
+The iron ball will fall and hit the seesaw where person C is 
+
+standing. 
+
+When the iron ball hits the seesaw, it will cause the other end of 
+
+the seesaw to rise sharply. 
+
+Analyze the Impact on Person C: 
+
+As the seesaw rises, person C will be propelled upwards. 
+
+The upward motion of person C will likely cause them to collide 
+
+with the falling object (the umbrella-like structure above them). 
+
+Consider the Chain Reaction: 
+
+The collision between person C and the umbrella-like structure 
+
+may cause the umbrella to break or dislodge...... 
+
+Answer: The falling umbrella or its pieces could potentially harm 
+
+person B. 
+
+Additionally, the momentum from the seesaw might also cause 
+
+person C to fall back down, possibly landing on person B as well. 
+
+Assess the Danger Level: 
+
+Person A initiates the chain reaction by pushing the iron ball. 
+
+Person C is directly involved in the seesaw mechanism and is at 
+
+risk of being hit by the umbrella. 
+
+Person B is at risk due to the potential falling objects and the 
+
+possibility of person C landing on them. 
+
+In the picture, person A appears to be in the most dangerous 
+
+position. appears to push a iron ball fall in hole. 
+
+They are standing on a ledge and pushing a large circular object 
+
+that could potentially roll off and cause harm. The other 
+
+individuals (B, C, D, and E) are either standing safely away 
+
+from immediate danger or behind protective barriers. Therefore, 
+
+A is the most dangerous in the picture due to their precarious 
+
+situation. 
+
+Answer:A is the most dangerous in the picture due to their 
+
+precarious situation. 
+
+CoT CoT 
+
+CoT 
+
+CoT 
+
+Figure 3: Case study of edit-based correction for causal reasoning. By revising only the critical reasoning span, Deep Interaction steers the model toward a response that better follows the edited rationale. The children in the picture appear to be 
+
+engaged in some form of play or activity on a 
+
+circular platform. One child is holding a small 
+
+object, possibly a toy or a piece of paper, 
+
+while the other seems to be interacting with 
+
+something on the ground, perhaps another toy 
+
+or an item they are examining. They are both 
+
+dressed warmly, suggesting it might be cold 
+
+outside. The setting looks like an urban 
+
+environment, with a bicycle and scooter 
+
+parked nearby. 
+
+Answer:The children are playing or engaging 
+
+in some activity on a circular platform: one is 
+
+holding a small object, which may be a toy or 
+
+a piece of paper...... 
+
+What are the children doing in the picture? 
+
+The children in the picture appear to be 
+
+playing with small objects near a manhole 
+
+cover. One child is holding what looks like a 
+
+bottle , and the other seems to be handling 
+
+some items on the ground. 
+
+Answer: It does not look like they are 
+
+playing with firecrackers; instead, they 
+
+might be engaged in a different activity 
+
+involving the objects they have. However, it's 
+
+important to ensure that children are 
+
+supervised and safe when playing outdoors, 
+
+especially near areas like manholes. 
+
+They are playing with firecrackers on 
+
+the manhole cover. 
+
+The children in the picture appear to be 
+
+engaged in an activity involving a manhole 
+
+cover. The child on the right is holding what 
+
+looks like a small object, possibly a firecracker, 
+
+and seems to be attempting to light it. The 
+
+other child is observing closely. 
+
+Answer: There is no visible flame or smoke 
+
+indicating that the firecracker has been lit yet. 
+
+This activity can be dangerous and should not 
+
+be encouraged due to the risk of injury or 
+
+causing harm. 
+
+The children in the picture appear to be 
+
+engaged in some form of play or activity on a 
+
+circular platform. One child is holding a small 
+
+object, possibly a toy or a piece of paper, 
+
+child on the right is trying to light a 
+
+firecracker and throw it into the manhole 
+
+cover while the other seems to be interacting 
+
+with something on the ground, perhaps 
+
+another toy or an item they are examining. 
+
+They are both dressed warmly, suggesting it 
+
+might be cold outside. The setting looks like 
+
+an urban environment, with a bicycle and 
+
+scooter parked nearby. 
+
+Answer:The children are playing or engaging 
+
+in some activity on a circular platform: one is 
+
+holding a small object, which may be a toy or 
+
+a piece of paper...... 
+
+CoT CoT 
+
+CoT CoT 
+
+Figure 4: Case study of scenario correction involving visual misinterpretation and safety reasoning. Editing the key semantic span helps the regenerated response better align with the intended scene understanding and question focus. 
+
+performance drops over 4% when questions in-volve images. Therefore, using more challenging multimodal data allows for a clearer distinction and more meaningful comparison of model per-formance. Correcting misinterpretations in image understanding is a key objective of our work. 
+
+Automated Evaluation and Human Align-ment. Our evaluation originated with manual test-ing of 400 STEM problems to establish a rigorous proof of concept. Facing the immense workload of broader benchmarks like STEM20K, we devel-oped QAgent, an automated framework that utilizes reference solutions to simulate human corrective intervention. This transition allowed us to scale our experiments efficiently while preserving the integrity of iterative reasoning evaluation. To confirm QAgent’s reliability as a high-fidelity proxy, we conducted an alignment study with stu-dents from top 100 QS universities. On 200 of the most difficult problems where the model ini-tially failed, QAgent’s correction paths and success rates closely mirrored those of human experts as shown in Table 1. This strong correlation validates QAgent as a dependable automated evaluator, pro-viding the necessary credibility for the large-scale performance improvements presented in Table 2. 
+
+Table 1: Comparison of pass within different rounds.                 
+
+> Within Within 1R Within 2R Within 3R Within 4R
+> QAgent 050 100 150 Human 10 58 112 172 Gap -0.16 0.12 0.147
+
+Overall Performance. As Table 2 shows, we compare the performance of our proposed method against existing dialogue based correction approaches on the STEM challenging dataset us-ing pass rates. ScienceQA is relatively simpler, typically requiring reasoning within two steps and involving minimal calculation, expert mode is not employed here. The results show that our method significantly outperforms existing dialogue-based correction methods. 
+
+Table 2: Comparison of pass rates across rounds.                                                                     
+
+> ScienceQA Pass directly Within 1R Within 2R Within 3R Within 4R Dialog based 89.12% 94.31% 96.45% 97.27% 98.05% Ours -97.10% 97.93% 98.59% 99.05%
+> STEM20K Pass directly Within 1R Within 2R Within 3R Within 4R Dialog based 54.15% 65.18% 72.93% 78.72% 80.35% Ours -74.89% 79.27% 81.52% 86.69% Ours-Expert -82.36% 86.45% 89.55% 92.41%
+> Gaokao-MM Pass directly Within 1R Within 2R Within 3R Within 4R Dialog based 67.96% 80.76% 85.61% 87.30% 88.85% Ours -86.98% 88.91% 91.25% 93.42% Ours-Expert -90.56% 92.27% 94.74% 96.60%
+> LogicQA Pass directly Within 1R Within 2R Within 3R Within 4R Dialog based 81.67% 91.76% 94.81% 95.70% 96.75% Ours -94.36% 96.47% 97.12% 98.04% Ours-Expert -97.25% 98.46% 99.14% 99.57% 61.52%
+> 31.21%
+> 21.47%
+> 27.65%
+> 59.91%
+> 45.33%
+> 39.88%
+> 30.11%
+> 21.59%
+> 47.36%
+> 12.73%
+> 18.32%
+> Proportion of Error Types Pass in First Round (D ialogue) Pass in First Round (Our s)
+> Image Recognition Thinking Progress Reasoning Consistency Numerical Calculation
+
+Figure 5: Comparison of one round interaction pass rate changes in different error types. 
+
+Figure 5 indicates multi-modal language models (MLLMs) still lack robust visual semantic under-standing. Both dialogue based methods and our approach exhibit limited effectiveness in correct-ing information loss and misinterpretations arising from image recognition. In the future, enhancing the image comprehension capabilities of MLLMs will remain a key focus for improvement. In sum-mary, whether looking at the first-round correction pass rate or the correction rate, the relative increase rate has averaged more than 25%. 
+
+Different LLMs. Experimental results show that our method remains effective across various models compared to dialogue-based approaches. Models also exhibit differing levels of sensitivity to correction instructions. Although Gemini demon-strates moderate baseline capabilities, it shows strong adherence to correction instructions, as re-flected in the Correction Rate (CR) in Table 3. 
+
+Table 3: Comparison of methods on different LLMs. GPT4o, Gemini-2.0, Claude-3.7 are employed.                           
+
+> Method Pass Directly Within 1R Within 2R CR GPT Dialogue 49.69% 69.97% 77.70% 67.36% Ours 73.99% 84.98% 78.93% Gemini Dialogue 52.01% 77.24% 85.29% 78.81% Ours 83.77% 89.47% 90.06% Claude Dialogue 58.82% 80.50% 87.46% 70.86% Ours 84.67% 90.56% 83.45%
+
+Different Subjects Performance. Our analysis of error correction sensitivity reveals that Physics and Biology perform poorly across both dialogue-based and deep interaction methods. Although the correction rate for Biology appears relatively high in Figure 6, this stems from a small sample size. Detailed data can be found in Table 4 and Figure 7. 47.68%        
+
+> 68.15%
+> 78.31%
+> 85.62%
+> 41.71%
+> 65.96% 70.08%
+> 77.89%
+> 43.21%
+> 59.90%
+> 72.59%
+> 82.61%
+> 42.70%
+> 56.66%
+> 67.83%
+> 75.72%
+> 32.76%
+> 47.52%
+> 61.39%
+> 72.59%
+> 27.39%
+> 38.90%
+> 47.55%
+> 64.41%
+> 39.24%
+> 45.33%
+> 59.81%
+> 66.82%
+> 29.81%
+> 38.97%
+> 50.38%
+> 62.28%
+> Dialogue Based
+> Deep Interaction
+> First Round Second Round Third Round Fourth Round
+> Math Phys Chem Bio Math Phys Chem Bio Math Phys Chem Bio Math Phys Chem Bio
+
+Figure 7: Comparison of correction sensitivity for differ-ent error types. Only first round of correction for each question type are taken into consideration. Because the error type of new round response of may change. 2799.24     
+
+> 7034.96
+> 15415.14
+> 35646.45
+> 2995.32 5787.08
+> 8354.54
+> 12880.95
+> ÿ
+> First Round Second Round Third Round Forth Round
+> Dialogue Based
+> Deep Interaction
+> Token Usage Comparison
+
+Figure 8: Comparison of token cost. Table 4: Subject correc-tion rate in STEM20K. 
+
+Dialogue Ours  
+
+> Math
+
+55.18% 72.20%  
+
+> Phys.
+
+50.15% 67.37%  
+
+> Chem.
+
+48.62% 71.17%  
+
+> Bio.
+
+45.41% 62.57% 0.600  
+
+> 0.707
+> 0.562
+> 0.591
+> 0.625
+> 0.704
+> 0.750
+> 0.667
+> 0.800
+> 0.854
+> 0.782
+> 0.818
+> 0.875
+> 0.815
+> 0.750
+> 0.889
+> Chinese
+> Math
+> Physics
+> Chemistry
+> Biology
+> Geography
+> History
+> Politics
+> Dialogue-based Deep Interaction
+> (9)
+> (4)
+> (27)
+> (10)
+> (41)
+> (87)
+> (22)
+> (8)
+
+Figure 6: Subject correc-tion rate in Gaokao-MM. 
+
+Self-correction Method. We also compare our method against Recursive Chain-of-Thought (RCoT) (Xue et al., 2023) , a baseline that relies on reverse-thinking self-correction. Experimental results demonstrate that our approach achieves sig-nificantly higher accuracy and logical convergence across interaction rounds, yielding a correction suc-cess rate 74.8% higher than the baseline while op-timizing token efficiency. Comprehensive details are provided in Appendix C.4. 
+
+Token Cost. Existing dialogue-based correction relies on conversation history, but our foundation model calls use fresh sessions without history opti-mization, so including full history has limited im-pact. Moreover, multi-turn interactions in dialogue greatly increase input tokens, details in Figure 8. As shown, after two rounds, the token cost increase for corrections rises dramatically from 21.5%. Re-sults show a over 40% reduction in average token cost without historical context optimization. 
+
+4.6 Generalization Across Model Scales 
+
+To address the concern that our main results rely on strong proprietary models, we further evaluate our method on smaller open models from the same family: Qwen2.5-VL-7B , 32B , and 72B . We report 
+
+Table 5: Generalization across Qwen2.5-VL model scales on Gaokao-MM. Direct, 1R, and 2R denote pass rates before correction and after up to one/two correc-tion rounds; CR denotes correction rate. 
+
+Model / Method Direct 1R 2R CR 
+
+Qwen2.5-VL-7B (Dialogue) 19.8 40.6 56.5 68.4 Qwen2.5-VL-7B (O URS ) 19.8 41.8 59.2 70.1 
+
+Qwen2.5-VL-32B (Dialogue) 34.7 48.3 63.5 72.0 Qwen2.5-VL-32B (O URS ) 34.7 50.8 68.3 79.6 
+
+Qwen2.5-VL-72B (Dialogue) 42.4 65.5 68.6 72.5 Qwen2.5-VL-72B (O URS ) 42.4 69.7 74.3 78.2 
+
+Direct Pass , Within 1R , Within 2R , and CR . We use 
+
+Gaokao-MM for this analysis, since it provides a more informative comparison across scales. As shown in Table 5, our method consistently outper-forms the dialogue-based baseline at all scales. The gains are smaller on 7B, suggesting that model ca-pability remains a bottleneck, but the overall trend shows that our method is not limited to frontier-scale models. 
+
+4.7 Compare with Other Methods 
+
+We compare Deep Interaction with RCoT (Xue et al., 2023), Self-Refine, and Interactive Reason-ing; see Appendix C.4 for details. Table 6 shows that Deep Interaction achieves the best Round-5 ac-curacy of 96.8%, exceeding the strongest baseline by 0.7%. 
+
+Table 6: Performance Comparison among RCoT, Self-Refine, Interactive Reasoning, and Deep Interaction. 
+
+Method Round 1 Round 2 Round 3 Round 4 Round 5 
+
+RCoT 81.60% 85.2% 85.8% 86.3% 87.3% Self-Refine 88.7% 89.2% 90.1% 90.6% Interactive Reasoning 90.5% 94.2% 95.7% 96.1% 
+
+Deep Interaction 91.8% 94.8% 95.6% 96.8% 
+
+4.8 Ablation Studies 
+
+We conduct ablation studies on Gaokao-MM to evaluate the editable response mechanism, Text Processing, and the CoT Reprompter. Detailed settings and metric definitions are provided in Ap-pendix C.5. As shown in Table 7, replacing ed-itable responses with 3-round history or removing either module leads to clear performance degrada-tion, confirming that direct CoT editing, structured text processing, and targeted re-prompting are all necessary for effective correction. 
+
+Table 7: Ablation results for each module.                 
+
+> With 1R (↑)Correction (↑)Token (↓)Latency (↓)
+> w/ 3R History -8.97% -10.89% +1.27% ∗+11.91% w/o Text Processing -15.27% -23.31% -7.87% -3.12% w/o CoT Reprompter -12.49% -17.57% +5.45% -12.87%
+
+5 Conclusion 
+
+In this work, we propose Deep Interaction , a direct-editing paradigm for efficiently revising LLM rea-soning. Experiments show that it reduces redun-dant dialogue, improves correction success by over 25% on STEM and logical reasoning benchmarks, and lowers token overhead by about 40%. It also enhances instruction following in open-ended tasks, suggesting its potential for human-AI co-creation. 
+
+Limitations 
+
+Dependency on User Correction Quality 
+
+Our framework assumes that users can identify at least part of the erroneous reasoning and provide meaningful edits. Therefore, its effectiveness de-pends on the user’s ability to detect flawed reason-ing and supply useful corrections. This assumption is more realistic for users with sufficient task un-derstanding, such as expert or semi-expert users, than for general users. 
+
+Sensitivity to Erroneous Human Guidance 
+
+While Deep Interaction significantly improves the model’s ability to follow human instruction in non-fixed answer scenarios, this high degree of control-lability creates a risk of error propagation. If a user provides an incorrect correction, the model may faithfully follow the flawed guidance and rational-ize the resulting hallucination. 
+
+Boundary of Collaborative Correction 
+
+This paradigm serves as a collaborative mechanism rather than a replacement for a model’s intrinsic reasoning or fully automated error-detection sys-tems. For users unable to provide cognitively sound feedback, the burden of correction falls outside the scope of this interaction framework and must in-stead be addressed by the model’s baseline capabil-ities or specialized automated agents. 
+
+Dependence on Exposed Reasoning Traces 
+
+Our framework currently relies on models or sys-tems that expose editable intermediate reason-ing traces, such as LLMs with visible Chain-of-Thought outputs or web/agent systems that pro-vide intermediate decision trajectories. In settings where only final answers are available, the method is less directly applicable. In addition, part of our large-scale evaluation relies on LLM-based auto-matic judging, which may introduce measurement bias despite our calibration efforts. 
+
+References 
+
+Josh Achiam, Steven Adler, Sandhini Agarwal, Lama Ahmad, Ilge Akkaya, Florencia Leoni Aleman, Diogo Almeida, Janko Altenschmidt, Sam Altman, Shyamal Anadkat, and 1 others. 2023. Gpt-4 techni-cal report. arXiv preprint arXiv:2303.08774 .Reem Aleithan, Haoran Xue, Mohammad Mahdi Mo-hajer, Elijah Nnorom, Gias Uddin, and Song Wang. 2024. Swe-bench+: Enhanced coding benchmark for llms. arXiv preprint arXiv:2410.06992 .Shuai Bai, Keqin Chen, Xuejing Liu, Jialin Wang, Wen-bin Ge, Sibo Song, Kai Dang, Peng Wang, Shijie Wang, Jun Tang, and 1 others. 2025. Qwen2. 5-vl technical report. arXiv preprint arXiv:2502.13923 .Maciej Besta, Nils Blach, Ales Kubicek, Robert Gersten-berger, Michal Podstawski, Lukas Gianinazzi, Joanna Gajda, Tomasz Lehmann, Hubert Niewiadomski, Pi-otr Nyczyk, and 1 others. 2024. Graph of thoughts: Solving elaborate problems with large language mod-els. In Proceedings of the AAAI conference on artifi-cial intelligence , volume 38, pages 17682–17690. Tom Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared D Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, and 1 others. 2020. Language models are few-shot learners. Advances in neural information processing systems , 33:1877–1901. Wenrui Cai, Chengyu Wang, Junbing Yan, Jun Huang, and Xiangzhong Fang. 2025. Reasoning with om-nithought: A large cot dataset with verbosity and cognitive difficulty annotations. arXiv preprint arXiv:2505.10937 .Zefan Cai, Baobao Chang, and Wenjuan Han. 2023a. Human-in-the-loop through chain-of-thought. arXiv preprint arXiv:2306.07932 .Zefan Cai, Baobao Chang, and Wenjuan Han. 2023b. Human-in-the-loop through chain-of-thought. arXiv preprint arXiv:2306.07932 .Samuel Carton, Surya Kanoria, and Chenhao Tan. 2021. What to learn, and how: Toward effective learning from rationales. arXiv preprint arXiv:2112.00071 .Qiguang Chen, Libo Qin, Jinhao Liu, Dengyun Peng, Jiannan Guan, Peng Wang, Mengkang Hu, Yuhang Zhou, Te Gao, and Wanxiang Che. 2025. Towards reasoning era: A survey of long chain-of-thought for reasoning large language models. arXiv preprint arXiv:2503.09567 .Xingyu Chen, Jiahao Xu, Tian Liang, Zhiwei He, Jianhui Pang, Dian Yu, Linfeng Song, Qiuzhi Liu, Mengfei Zhou, Zhuosheng Zhang, and 1 others. 2024. Do not think that much for 2+ 3=? on the overthinking of o1-like llms. arXiv preprint arXiv:2412.21187 .Clayton Cohn, Nicole Hutchins, Gautam Biswas, and 1 others. 2025. Cotal: Human-in-the-loop prompt engineering, chain-of-thought reasoning, and active learning for generalizable formative assessment scor-ing. arXiv preprint arXiv:2504.02323 .Gheorghe Comanici, Eric Bieber, Mike Schaekermann, Ice Pasupat, Noveen Sachdeva, Inderjit Dhillon, Mar-cel Blistein, Ori Ram, Dan Zhang, Evan Rosen, and 1 others. 2025. Gemini 2.5: Pushing the frontier with advanced reasoning, multimodality, long context, and next generation agentic capabilities. arXiv preprint arXiv:2507.06261 .Aissatou Diallo, Antonis Bikakis, Luke Dickens, An-thony Hunter, and Rob Miller. 2025. Rule-guided feedback: Enhancing reasoning by enforcing rule adherence in large language models. arXiv preprint arXiv:2503.11336 .Owain Evans, Owen Cotton-Barratt, Lukas Finnve-den, Adam Bales, Avital Balwit, Peter Wills, Luca Righetti, and William Saunders. 2021. Truthful ai: Developing and governing ai that does not lie. arXiv preprint arXiv:2110.06674 .Sebastian Farquhar, Jannik Kossen, Lorenz Kuhn, and Yarin Gal. 2024. Detecting hallucinations in large language models using semantic entropy. Nature ,630(8017):625–630. Suyu Ge, Yunan Zhang, Liyuan Liu, Minjia Zhang, Jiawei Han, and Jianfeng Gao. 2023. Model tells you what to discard: Adaptive kv cache compression for llms. arXiv preprint arXiv:2310.01801 .Ryan Greenblatt, Carson Denison, Benjamin Wright, Fabien Roger, Monte MacDiarmid, Sam Marks, Jo-hannes Treutlein, Tim Belonax, Jack Chen, David Duvenaud, and 1 others. 2024. Alignment fak-ing in large language models. arXiv preprint arXiv:2412.14093 .Daya Guo, Dejian Yang, Haowei Zhang, Junxiao Song, Ruoyu Zhang, Runxin Xu, Qihao Zhu, Shirong Ma, Peiyi Wang, Xiao Bi, and 1 others. 2025a. Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning. arXiv preprint arXiv:2501.12948 .Jiaxin Guo, Zewen Chi, Li Dong, Qingxiu Dong, Xun Wu, Shaohan Huang, and Furu Wei. 2025b. Reward reasoning model. arXiv preprint arXiv:2505.14674 .Akash Gupta, Ivaxi Sheth, Vyas Raina, Mark Gales, and Mario Fritz. 2024. Llm task interference: an initial study on the impact of task-switch in con-versational history. Proceedings of the 2024 Con-ference on Empirical Methods in Natural Language Processing:14633–14652. Ari Holtzman, Jan Buys, Li Du, Maxwell Forbes, and Yejin Choi. 2019. The curious case of neural text degeneration. arXiv preprint arXiv:1904.09751 .Ilgee Hong, Changlong Yu, Liang Qiu, Weixiang Yan, Zhenghao Xu, Haoming Jiang, Qingru Zhang, Qin Lu, Xin Liu, Chao Zhang, and 1 others. 2025. Think-rm: Enabling long-horizon reasoning in generative reward models. arXiv preprint arXiv:2505.16265 .Jie Huang, Xinyun Chen, Swaroop Mishra, Huaixiu Steven Zheng, Adams Wei Yu, Xiny-ing Song, and Denny Zhou. 2023a. Large language models cannot self-correct reasoning yet, 2024. 
+
+arXiv preprint arXiv:2310.01798 .Kung-Hsiang Huang, Mingyang Zhou, Hou Pong Chan, Yi R Fung, Zhenhailong Wang, Lingyu Zhang, Shih-Fu Chang, and Heng Ji. 2023b. Do lvlms understand charts? analyzing and correcting factual errors in chart captioning. arXiv preprint arXiv:2312.10160 .Lei Huang, Weijiang Yu, Weitao Ma, Weihong Zhong, Zhangyin Feng, Haotian Wang, Qianglong Chen, Weihua Peng, Xiaocheng Feng, Bing Qin, and 1 oth-ers. 2025. A survey on hallucination in large lan-guage models: Principles, taxonomy, challenges, and open questions. ACM Transactions on Information Systems , 43(2):1–55. Ziwei Ji, Nayeon Lee, Rita Frieske, Tiezheng Yu, Dan Su, Yan Xu, Etsuko Ishii, Ye Jin Bang, Andrea Madotto, and Pascale Fung. 2023. Survey of hal-lucination in natural language generation. ACM com-puting surveys , 55(12):1–38. Zhu Jiawei and Chen Wei. 2025. A report on the llms evaluating the high school questions. arXiv preprint arXiv:2505.00057 .Ryo Kamoi, Yusen Zhang, Nan Zhang, Jiawei Han, and Rui Zhang. 2024. When can llms actually cor-rect their own mistakes? a critical survey of self-correction of llms. Transactions of the Association for Computational Linguistics , 12:1417–1440. Timo Kaufmann, Paul Weng, Viktor Bengs, and Eyke Hüllermeier. 2024. A survey of reinforcement learning from human feedback. arXiv preprint arXiv:2312.14925 .Muhammad Khalifa, Rishabh Agarwal, Lajanugen Lo-geswaran, Jaekyeom Kim, Hao Peng, Moontae Lee, Honglak Lee, and Lu Wang. 2025. Process reward models that think. arXiv preprint arXiv:2504.16828 .Takeshi Kojima, Shixiang Shane Gu, Machel Reid, Yu-taka Matsuo, and Yusuke Iwasawa. 2022. Large lan-guage models are zero-shot reasoners. Advances in neural information processing systems , 35:22199– 22213. Yejin Kwon, Daeun Moon, Youngje Oh, and Hyun-soo Yoon. 2025. Logicqa: Logical anomaly detec-tion with vision language model generated questions. 
+
+arXiv preprint arXiv:2503.20252 .Jia-Nan Li, Quan Tu, Cunli Mao, Zhengtao Yu, Ji-Rong Wen, and Rui Yan. 2024. Streamingdialogue: Pro-longed dialogue learning via long context compres-sion with minimal losses. Advances in Neural Infor-mation Processing Systems , 37:86074–86101. Shuangtao Li, Shuaihao Dong, Kexin Luan, Xinhan Di, and Chaofan Ding. 2025. Enhancing reasoning through process supervision with monte carlo tree search. arXiv preprint arXiv:2501.01478 .Hunter Lightman, Vineet Kosaraju, Yuri Burda, Harri-son Edwards, Bowen Baker, Teddy Lee, Jan Leike, John Schulman, Ilya Sutskever, and Karl Cobbe. 2023. Let’s verify step by step. In The Twelfth Inter-national Conference on Learning Representations .Aixin Liu, Bei Feng, Bing Xue, Bingxuan Wang, Bochao Wu, Chengda Lu, Chenggang Zhao, Chengqi Deng, Chenyu Zhang, Chong Ruan, and 1 others. 2024. Deepseek-v3 technical report. arXiv preprint arXiv:2412.19437 .Pengfei Liu, Weizhe Yuan, Jinlan Fu, Zhengbao Jiang, Hiroaki Hayashi, and Graham Neubig. 2023a. Pre-train, prompt, and predict: A systematic survey of prompting methods in natural language processing. 
+
+ACM computing surveys , 55(9):1–35. Weize Liu, Guocong Li, Kai Zhang, Bang Du, Qiyuan Chen, Xuming Hu, Hongxia Xu, Jintai Chen, and Jian Wu. 2023b. Mind’s mirror: Distilling self-evaluation capability and comprehensive thinking from large language models. arXiv preprint arXiv:2311.09214 .Pan Lu, Swaroop Mishra, Tony Xia, Liang Qiu, Kai-Wei Chang, Song-Chun Zhu, Oyvind Tafjord, Peter Clark, and Ashwin Kalyan. 2022. Learn to explain: Multimodal reasoning via thought chains for science question answering. In The 36th Conference on Neu-ral Information Processing Systems (NeurIPS) .Wenjie Ma, Jingxuan He, Charlie Snell, Tyler Griggs, Sewon Min, and Matei Zaharia. 2025. Reasoning models can be effective without thinking. arXiv preprint arXiv:2504.09858 .Aman Madaan, Niket Tandon, Prakhar Gupta, Skyler Hallinan, Luyu Gao, Sarah Wiegreffe, Uri Alon, Nouha Dziri, Shrimai Prabhumoye, Yiming Yang, Shashank Gupta, Bodhisattwa Prasad Majumder, Katherine Hermann, Sean Welleck, Amir Yazdan-bakhsh, and Peter Clark. 2023. Self-refine: Itera-tive refinement with self-feedback. In Advances in Neural Information Processing Systems , volume 36, pages 46534–46594. Potsawee Manakul, Adian Liusie, and Mark JF Gales. 2023. Selfcheckgpt: Zero-resource black-box hal-lucination detection for generative large language models. arXiv preprint arXiv:2303.08896 .Iman Mirzadeh, Keivan Alizadeh, Hooman Shahrokhi, Oncel Tuzel, Samy Bengio, and Mehrdad Farajtabar. 2024. Gsm-symbolic: Understanding the limitations of mathematical reasoning in large language models. 
+
+arXiv preprint arXiv:2410.05229 .Abhika Mishra, Akari Asai, Vidhisha Balachandran, Yizhong Wang, Graham Neubig, Yulia Tsvetkov, and Hannaneh Hajishirzi. 2024. Fine-grained hallucina-tion detection and editing for language models. arXiv preprint arXiv:2401.06855 .Chancharik Mitra, Brandon Huang, Trevor Darrell, and Roei Herzig. 2024. Compositional chain-of-thought prompting for large multimodal models. In Proceed-ings of the IEEE/CVF Conference on Computer Vi-sion and Pattern Recognition , pages 14420–14431. Eugene W Myers. 1986. An o (nd) difference algorithm and its variations. Algorithmica , 1(1):251–266. Alexander Nikitin, Jannik Kossen, Yarin Gal, and Pekka Marttinen. 2024. Kernel language entropy: Fine-grained uncertainty quantification for llms from se-mantic similarities. Advances in Neural Information Processing Systems , 37:8901–8929. Long Ouyang, Jeffrey Wu, Xu Jiang, Diogo Almeida, Carroll Wainwright, Pamela Mishkin, Chong Zhang, Sandhini Agarwal, Katarina Slama, Alex Ray, and 1 others. 2022. Training language models to follow in-structions with human feedback. Advances in neural information processing systems , 35:27730–27744. Long Phan, Alice Gatti, Ziwen Han, Nathaniel Li, Josephina Hu, Hugh Zhang, Chen Bo Calvin Zhang, Mohamed Shaaban, John Ling, Sean Shi, and 1 oth-ers. 2025. Humanity’s last exam. arXiv preprint arXiv:2501.14249 .Haritz Puerto, Tilek Chubakov, Xiaodan Zhu, Har-ish Tayyar Madabushi, and Iryna Gurevych. 2025. Fine-tuning on diverse reasoning chains drives within-inference cot refinement in llms. In Proceed-ings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Pa-pers) , pages 3789–3808. Alec Radford, Jeffrey Wu, Rewon Child, David Luan, Dario Amodei, Ilya Sutskever, and 1 others. 2019. Language models are unsupervised multitask learn-ers. OpenAI blog , 1(8):9. David Rein, Betty Li Hou, Asa Cooper Stickland, Jack-son Petty, Richard Yuanzhe Pang, Julien Dirani, Ju-lian Michael, and Samuel R Bowman. 2024. Gpqa: A graduate-level google-proof q&a benchmark. In 
+
+First Conference on Language Modeling .Swarnadeep Saha, Omer Levy, Asli Celikyilmaz, Mohit Bansal, Jason Weston, and Xian Li. 2023. Branch-solve-merge improves large language model evaluation and generation. arXiv preprint arXiv:2310.15123 .Pranab Sahoo, Ayush Kumar Singh, Sriparna Saha, Vinija Jain, Samrat Mondal, and Aman Chadha. 2024. A systematic survey of prompt engineering in large language models: Techniques and applications. 
+
+arXiv preprint arXiv:2402.07927 .Shanghai AI Lab and 1 others. 2025. SafeWork-R1: Coevolving safety and intelligence under the AI-45° law. arXiv preprint arXiv:2507.18576 .Noah Shinn, Federico Cassano, Ashwin Gopinath, Karthik Narasimhan, and Shunyu Yao. 2023. Re-flexion: Language agents with verbal reinforcement learning. In Advances in Neural Information Pro-cessing Systems , volume 36, pages 8634–8652. Parshin Shojaee, Iman Mirzadeh, Keivan Alizadeh, Maxwell Horton, Samy Bengio, and Mehrdad Fara-jtabar. 2025. The illusion of thinking: Understanding the strengths and limitations of reasoning models via the lens of problem complexity. arXiv preprint arXiv:2506.06941 .Guijin Son, Hyunwoo Ko, Hoyoung Lee, Yewon Kim, and Seunghyeok Hong. 2024. Llm-as-a-judge & re-ward model: What they can and cannot do. arXiv preprint arXiv:2409.11239 .Wei Sun, Qianlong Du, Fuwei Cui, and Jiajun Zhang. 2025. An efficient and precise training data con-struction framework for process-supervised reward model in mathematical reasoning. arXiv preprint arXiv:2503.02382 .Anthropic Team. 2025. Claude model family. Gemini Team, Rohan Anil, Sebastian Borgeaud, Jean-Baptiste Alayrac, Jiahui Yu, Radu Soricut, Johan Schalkwyk, Andrew M Dai, Anja Hauth, Katie Mil-lican, and 1 others. 2023. Gemini: a family of highly capable multimodal models. arXiv preprint arXiv:2312.11805 .Qwen Team. 2024. Qwen2 technical report. arXiv preprint arXiv:2407.10671 .Xiaoyu Tian, Sitong Zhao, Haotian Wang, Shuaiting Chen, Yunjie Ji, Yiping Peng, Han Zhao, and Xian-gang Li. 2025. Think twice: Enhancing llm reason-ing by scaling multi-round test-time thinking. arXiv preprint arXiv:2503.19855 .Gladys Tyen, Hassan Mansoor, Victor C˘ arbune, Peter Chen, and Tony Mak. 2023. Llms cannot find rea-soning errors, but can correct them given the error location. arXiv preprint arXiv:2311.08516 .Teng Wang, Zhangyi Jiang, Zhenqi He, Shenyang Tong, Wenhan Yang, Yanan Zheng, Zeyu Li, Zifan He, and Hailei Gong. 2025. Towards hierarchical multi-step reward models for enhanced reasoning in large lan-guage models. arXiv preprint arXiv:2503.13551 .Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Fei Xia, Ed Chi, Quoc V Le, Denny Zhou, and 1 others. 2022. Chain-of-thought prompting elic-its reasoning in large language models. Advances in neural information processing systems , 35:24824– 24837. Zhaofeng Wu, Linlu Qiu, Alexis Ross, Ekin Akyürek, Boyuan Chen, Bailin Wang, Najoung Kim, Jacob An-dreas, and Yoon Kim. 2024a. Reasoning or reciting? exploring the capabilities and limitations of language models through counterfactual tasks. Association for Computational Linguistics. Zhenyu Wu, Qingkai Zeng, Zhihan Zhang, Zhaoxuan Tan, Chao Shen, and Meng Jiang. 2024b. Large language models can self-correct with minimal effort. In AI for Math Workshop@ ICML 2024 .Yu Xia, Rui Wang, Xu Liu, Mingyan Li, Tong Yu, Xiang Chen, Julian McAuley, and Shuai Li. 2024. Beyond chain-of-thought: A survey of chain-of-x paradigms for llms. arXiv preprint arXiv:2404.15676 .Jian Xie, Kai Zhang, Jiangjie Chen, Renze Lou, and Yu Su. 2023a. Adaptive chameleon or stubborn sloth: Revealing the behavior of large language models in knowledge conflicts. In The Twelfth International Conference on Learning Representations .Yuxi Xie, Kenji Kawaguchi, Yiran Zhao, James Xu Zhao, Min-Yen Kan, Junxian He, and Michael Xie. 2023b. Self-evaluation guided beam search for rea-soning. Advances in Neural Information Processing Systems , 36:41618–41650. Tianci Xue, Ziqi Wang, Zhenhailong Wang, Chi Han, Pengfei Yu, and Heng Ji. 2023. Rcot: Detect-ing and rectifying factual inconsistency in reason-ing by reversing chain-of-thought. arXiv preprint arXiv:2305.11499 .Shunyu Yao, Dian Yu, Jeffrey Zhao, Izhak Shafran, Tom Griffiths, Yuan Cao, and Karthik Narasimhan. 2023a. Tree of thoughts: Deliberate problem solving with large language models. Advances in neural information processing systems , 36:11809–11822. Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, and Yuan Cao. 2023b. ReAct: Synergizing reasoning and acting in language models. In International Conference on Learning Representations .Xinhao Yao, Ruifeng Ren, Yun Liao, and Yong Liu. 2025. Unveiling the mechanisms of explicit cot train-ing: How chain-of-thought enhances reasoning gen-eralization. arXiv e-prints , pages arXiv–2502. Seunghyun Yoo. 2025. Co-cot: A prompt-based frame-work for collaborative chain-of-thought reasoning. 
+
+arXiv preprint arXiv:2504.17091 .Zihan Yu, Liang He, Zhen Wu, Xinyu Dai, and Jia-jun Chen. 2023. Towards better chain-of-thought prompting strategies: A survey. arXiv preprint arXiv:2310.04959 .Zhuosheng Zhang, Aston Zhang, Mu Li, and Alex Smola. 2022. Automatic chain of thought prompt-ing in large language models. arXiv preprint arXiv:2210.03493 .Zhuosheng Zhang, Aston Zhang, Mu Li, Hai Zhao, George Karypis, and Alex Smola. 2023. Multi-modal chain-of-thought reasoning in language mod-els. arXiv preprint arXiv:2302.00923 .Yi Zong and Xipeng Qiu. 2024. Gaokao-mm: A chi-nese human-level benchmark for multimodal models evaluation. arXiv preprint arXiv:2402.15745 .Appendix A Supplementary Related Work 
+
+Integrating human feedback (HF) with Chain-of-Thought (CoT) reasoning aims to improve the cor-rectness, reliability, and human alignment of LLM-generated reasoning paths. While CoT externalizes reasoning (Yu et al., 2023), it often contains logical or factual errors (Xia et al., 2024), motivating the use of HF for correction. Feedback can target either final outcomes or in-termediate steps. Outcome supervision, based on answer correctness, is easier to collect but may overlook flawed reasoning (Li et al., 2025). In con-trast, process supervision evaluates individual steps, enabling finer-grained correction and yielding bet-ter performance on complex tasks (Lightman et al., 2023), albeit at higher annotation cost (Sun et al., 2025). Extensions include generative PRMs like ThinkPRM (Khalifa et al., 2025), hierarchical mod-els (HRMs) assessing multi-step coherence (Wang et al., 2025), and generative RMs (GenRMs) that produce CoT rationales for more interpretable re-wards (Guo et al., 2025b; Hong et al., 2025). To reduce annotation burden, methods like RLTHF use targeted human feedback on critical samples (Ouyang et al., 2022), while approaches such as DCoT encourage intra-inference refinement via diverse CoT generation (Puerto et al., 2025). Despite progress, challenges remain in reward model robustness and alignment quality (Kauf-mann et al., 2024). Recent work extends feedback beyond correctness to meta-properties of CoT, such as Reasoning Verbosity (RV) and Cognitive Dif-ficulty (CD), as formalized in OmniThought (Cai et al., 2025). These dimensions promote reasoning that is not only correct but also contextually appro-priate and cognitively aligned, moving toward op-timal reasoning. Concurrently, the cost of manual annotation (Yao et al., 2025) has driven human-AI collaborative frameworks: AI-generated CoTs are refined by humans (Cohn et al., 2025), critical sam-ples are prioritized for review (e.g., RLTHF as men-tioned above), or AI acts as a teacher/judge with human oversight (e.g., RGF (Diallo et al., 2025), LLM-as-a-Judge (Son et al., 2024)). Such symbi-otic approaches balance scalability and precision in CoT refinement. Notably, some prior work has explored human involvement to improve CoT quality. (Cai et al., 2023b) proposes generating multiple outputs and presenting high confidence answers to users, a strat-
+
+Algorithm 2: Fine-tune Dataset Process                                                    
+
+> Input: Initial edited CoT C′
+> r,; Right answer (C, A )
+> Output: The shortest valid simplified hint from F C r
+> // Initialize C′
+> ras a Query sample
+> 1Qs← C ′
+> r;
+> 2f ail _count ←0;;// Initialize fail counter // Set maximum allowed failures
+> 3N←3;
+> 4while fail_count < N do
+> // Simplify question by LLM
+> 5Qs′←LLM (Qs,simplify prompt );
+> // Answer questions by LLM
+> 6(C,A)←LLM (Qr, Q s′);
+> 7if (C,A),(C, A )) = True then
+> // Update it with new version
+> 8Qs←Qs′;
+> 9f ail _count ←0;
+> // Reset fail counter
+> 10 else
+> // Increase fail counter
+> 11 f ail _count ←f ail _count + 1 ;
+> 12 return Qs;;// Get final simplified CoT
+
+egy conceptually similar to beam search (Xie et al., 2023b). Final outputs are then refined via human feedback, but this approach essentially relies on post-hoc dialogue based correction, which becomes prohibitively costly for multi-step problems requir-ing step-by-step human review and complex im-plementation. B introduces a step-wise pause then confirm framework, a strategy we independently considered during design. However, as our inves-tigation reveals, such methods are cumbersome in practice due to the overhead of iterative pauses and feedback. Moreover, (Yoo, 2025) lacks detailed implementation descriptions and empirical valida-tion. In contrast, our method modifies the model’s initial response in a single round of interaction. We ground our design in user studies with both experts and non-experts, ensuring practical efficiency. Fur-thermore, we contribute theoretical innovations and provide preliminary justification for the feasibility of our approach. 
+
+B Acquiring Fine-Tuning Data for the CoT Reprompter 
+
+By accumulating human-corrected data, we obtain a large number of [CoT edited by human] with [fully correct CoTs and final answers]. Through the following process, we further construct fine-tuning data as multiple pairs of [CoT edited by human]–[semantically equivalent minimal CoT]. C Experimental Description 
+
+C.1 Statistical Explanation of Evaluation Metrics 
+
+Due to the enormous volume of our questions, we could not perform five rounds of validation; there-fore, we conducted two rounds, defining that a question is counted as passed if it passes at least once. Meanwhile, we carried out full human veri-fication on ScienceQA, while using machines for comprehensive evaluation on other datasets, and invited students from top 100 QS universities to cross-check the answers against the standard an-swers, ensuring the effectiveness of machine evalu-ation. We randomly sampled 100 questions from each subject in STEM20K for manual review. The results were largely consistent with those of QA-gent: the recall rates are shown in the Table 8 below. We can thus conclude that QAgent’s capabilities are close to real-world performance. 
+
+Table 8: Comparison of error rates across subjects.                         
+
+> Subject Mathematics Physics Chemistry Biology
+> Manually Confirmed Errors 52 44 48 45 QAgent Output Errors 53 46 45 45 Actual Hit Errors 49 42 43 43 Recall Rate 0.942 0.954 0.895 0.956 False Positive Rate 0.077 0.091 0.042 0.044
+
+C.2 Test pipeline and QAgent C.2.1 Methodology 
+
+To address the research questions, we developed a multimodal Question-Answering Agent (QAgent). The core function of this agent is to facilitate a multi-turn conversational process with a target Large Language Model (LLM), using another LLM as a judge to evaluate the responses. The process begins with a multimodal question, consisting of both text and an image, which is presented to the target LLM. The agent then takes the answer pro-vided by the target LLM and compares it against a standard answer, with a particular focus on the con-sistency of the chain-of-thought process. This com-parison is performed by a separate "judge" LLM. If the target LLM’s answer is deemed incorrect, the judge LLM generates feedback, which is then used to construct a new prompt for the target LLM in the subsequent turn. This iterative process continues until the target LLM provides a correct answer or a predefined maximum number of rounds is reached. 
+
+C.2.2 QAgent 
+
+The QAgent is a system designed to automate the process of evaluating and improving the responses 
+
+Algorithm 3: Multimodal QAgent with It-erative Feedback                                                          
+
+> Input: A multimodal question Q, an image I, a standard answer As, and max rounds Rmax
+> Output: A detailed experiment history Hexp
+> 1Hexp ← ∅ ,round ←0,is _correct ←false,
+> f eedback ←"";
+> 2while round < R max and is _correct =false do
+> 3round ←round + 1 ;
+> 4if round = 1 then
+> 5Pprompt ←Q;
+> 6else
+> 7Pprompt ←Q+" Feedback: " +f eedback ;
+> 8Atarget ←CallTargetLLM (Pprompt , I );// Get answer from target model
+> 9Jresult ←CallJudgeLLM (Q, A s, A target );
+> // Evaluate with judge model
+> 10 (is _correct, f eedback )←ParseJSON (Jresult );
+> // Extract correctness and feedback
+> 11 append
+> (round, P prompt , A target , is _correct, f eedback )
+> to Hexp ;
+> 12 return Hexp ;
+
+of a target LLM for multimodal questions. It or-chestrates the interaction between the target LLM and a judge LLM. The agent is responsible for: 1. Receiving multimodal questions (text and image) and the corresponding standard answers. 2. Send-ing the question to the target LLM for a response. 3. Utilizing a judge LLM to evaluate the target LLM’s answer against the standard answer, with an emphasis on the reasoning process. 4. Generat-ing corrective feedback through the judge LLM if the answer is incorrect. 5.Managing the multi-turn iterative process, continuing until a correct answer is obtained or a maximum number of attempts is made. 
+
+Implementation Pseudocode C.3 Experimental Insights and Future Work 
+
+Table 9 further shows over 90% accuracy on re-peated questions using the final correct CoT, com-pared to about 60% when using full dialogue input. Our approach also generalizes well to modified parameters, question formats, and image changes, demonstrating both consistency and strong gener-alization. Considering error correction and preference alignment, we plan to enhance our system with features for individual users, including error mem-ory and preference alignment. Our goal is to ensure that questions previously answered incorrectly and subsequently corrected will not be repeated. For similar problems, the system will enable users to learn from one example and apply the knowledge to others. Additionally, the system will remember user preferences, such as whether they prioritize detailed derivation processes or conceptual expla-nations, and for coding tasks, whether they prefer concise code or clear comments. 
+
+C.4 Quantitative Comparison with RCoT 
+
+To quantitatively evaluate Deep Interaction on com-plex reasoning error correction, we compare it with representative correction baselines, including RCoT (Xue et al., 2023), Self-Refine, and Inter-active Reasoning. RCoT relies on reverse reason-ing to detect inconsistencies from the answer back to the question, while Self-Refine and Interactive Reasoning use iterative self-feedback or step-wise interaction to improve responses. Although these methods can correct local or easily detectable er-rors, they may still struggle when the model fol-lows a seemingly coherent but flawed reasoning trajectory. As shown in Table 6, all methods start from the same first-round performance of 81.6%, but their improvement trends diverge in later rounds. RCoT quickly plateaus after several rounds, reach-ing 87.3% in Round 5, while Self-Refine improves to 90.6%. Interactive Reasoning achieves stronger performance with 96.1%, showing the value of ex-ternal guidance. Deep Interaction achieves the best final result of 96.8%, outperforming RCoT by 9.5% and Self-Refine by 6.2% in absolute accuracy. This suggests that directly editing erroneous CoT spans can more effectively break the model’s incorrect reasoning trajectory than self-correction or conven-tional interaction. 
+
+C.5 Ablation Study Details 
+
+We conduct ablation studies on the Gaokao-MM dataset to evaluate the contribution of each com-ponent in Deep Interaction. The editable response mechanism is compared with a variant that pro-vides a 3-round relevant dialogue history, where ad-ditional historical context is exposed to the model instead of directly editing the erroneous reasoning span. We also remove Text Processing and the CoT Reprompter to assess their individual effects. In Table 7, With 1R and Correction denote the performance changes in first-round interaction and correction accuracy, respectively. Token and La-tency report the relative changes in token consump-tion and response time. The symbols ↑ and ↓ indi-cate whether a higher or lower value is preferred for each metric. For performance metrics, negative values indicate degradation compared with the full method. For cost-related metrics, positive values indicate increased cost, while negative values indi-cate reduced cost. The superscript ∗ indicates that only output-token changes are counted, excluding the increase in input tokens. The results show that simply providing more his-torical dialogue is not sufficient for effective correc-tion. Although 3-round history provides more con-text, it reduces With 1R and Correction by 8.97% and 10.89%, respectively, while also increasing la-tency by 11.91%. This suggests that direct editing of erroneous CoT spans is more effective than re-lying on longer dialogue history. Removing Text Processing causes the largest performance drop, in-dicating that structured and concise input is impor-tant for stable correction. Removing the CoT Re-prompter also significantly weakens performance, confirming that targeted re-prompting helps the model regenerate corrected reasoning more effec-tively. 
+
+D Theoretical Analysis 
+
+Here, we provide a brief theoretical justification for the methodology presented in the main text, aiming to demonstrate its theoretical feasibility. First, the proposed approach involves editing the Chain-of-Thought (CoT) and then re-integrating the original query with the edited CoT to form a new input. Al-though this modifies the input, the core content re-mains largely unchanged. Therefore, it is essential to perturb the new input in a way that alters its data distribution, while preserving semantic fidelity to avoid answer deviation. We find that minimal sim-plification. To be specific, removing non-essential, generic, or stylistic words that contribute little to the query’s specificity ,and effectively enhances the model’s focus on the core query and the revised CoT content. 
+
+Theorem 1. Any prefix, once concatenated, locks the distribution and halts posterior informa-tion gain. 
+
+When the model’s generated prefix subsequence is explicitly appended back to the original input, the posterior generation distribution remains almost unchanged. Define the input space as T , the set of all finite or countable token sequences. After being trained on a dataset with a predefined data distribution, a fixed-parameter LLM follows the input-output distribution as specified below. Pre-vious studies have also provided proof that the model’s next-token distribution is fixed for the Table 9: Stability and generalization ability                
+
+> Repeat. Varying Query Parameters Query Harder Modifying Query Figure Content Dialogue based 61.3% 27.2% 18.9% 30.7% Deep Interaction 92.0% 58.8% 59.2% 61.5% E. Deep Interaction 95.5% 43.5% 60.4% 60.5%
+
+same (prompt + history) prefix (Holtzman et al., 2019). 
+
+pθ(y1: T | x) = 
+
+> T
+
+Y
+
+> t=1
+
+pθ(yt | x, y <t ), x, y t ∈ V ,
+
+(6) Where the input x ∈ T denotes the original query, and V is the vocabulary list that LLM used. Given the input x, the model generates a sequence by sampling: 
+
+y := y1: T ∼ pθ(· | x). (7) By prefix truncation, take any prefix of y, and con-struct a new prompt as Eq. 9. 
+
+y≤k := y1: k (1 ≤ k ≤ T ), (8) 
+
+x′ := x ◦ y≤k, (9) Then, the original and continuing generation distri-bution R and R′are: 
+
+R := pθ(· | x, y ≤k), R′ := pθ(· | x′). (10) Therefore, the problem reduces to proving that 
+
+R = R′ holds approximately under low-temperature setting in LLMs. Based on the def-inition of Prefix Invariance (Radford et al., 2019), under the causal structure of an autoregressive pθ
+
+model, for any length k and any prefix, the follow-ing holds: 
+
+pθ
+
+ yk+1: T x, y ≤k
+
+ = pθ
+
+ yk+1: T x ◦ y≤k
+
+.
+
+(11) 
+
+Proof. According to the autoregressive decom-position as Eq. 12, for autoregressive Transformers or other architectures with causal masking, the con-ditional probability depends only on the historical tokens, as shown in Eq. 13. 
+
+pθ(yk+1: T | x, y ≤k) = 
+
+> T
+
+Y
+
+> t=k+1
+
+pθ(yt | x, y <t ),
+
+(12) 
+
+pθ(yt | prefix ) = pθ
+
+ yt | prefix <t 
+
+. (13) Hence, the result follows. 
+
+pθ(yt | x◦y≤k, y k+1: t−1) = pθ(yt | x, y <t ), t > k. 
+
+(14) Substituting into the product Eq. 12, it suffices to show that R = R′. However, this equality should not be interpreted as strict character-level equiv-alence; it can be rigorously characterized as the entropy difference or KL divergence tending to zero: 
+
+∆H := H(q′) − H(q) = 0 , KL( q′ ∥ q) = 0 .
+
+(15) 
+
+Theorem 2. Assume the large language model is a fixed-parameter conditional distribution pθ(y |
+
+x), where X , Y ∈ T lies on discrete token se-quence space, y denotes the token sequence space of outputs. The semantic space S is a latent vari-able, and there exists a semantic encoding. Based on the theory of semantic entropy correlation re-search (Farquhar et al., 2024; Nikitin et al., 2024), we can make the following simple inferences. 
+
+sem : x ∈ X → S , and sem (x) = sem (x′) =: s. 
+
+(16) For a given semantic meaning s ∈ S , define the perturbation space. 
+
+Xs := x ∈ X | sem (x) = s . (17) Suppose the model pθ satisfies the following con-ditions: (i) For any x ∈ X , the support of pθ(· | x) does not collapse to a single point; (ii) There exist x1, x 2 ∈ X s such that 
+
+KL  pθ(· | x1) ∥ pθ(· | x2) > 0. (18) 
+
+Pr 
+
+> x∼U (Xs)
+
+h
+
+KL  pθ(· | x) ∥ pθ(· | x0) > 0
+
+i
+
+> 0,
+
+(19) where U(Xs) denotes the uniform measure over 
+
+Xs.
+
+Proof. First, They have a lower bound of entropy. From (i), we know that ∀x, H (pθ(· | x)) > 0.According to positivity of KL divergence, then combining with (ii): 
+
+∃x1, x 2, p θ(· | x1)̸ = pθ(· | x2). (20) Through semantic relation mapping: 
+
+f : x 7 → pθ(· | x) ∈ P (Y) (21) is a continuous embedding. Since Xs is a finite set under the discrete topology, f is trivially contin-uous. Therefore, the set x ∈ X s | KL( pθ(· | x) ∥
+
+pθ(· | x0)) > 0 is non-empty, and has positive measure under the uniform distribution. Next, we assume a quantitative characterization of the perturbation effect: for any x ∈ X s, define the output entropy difference as 
+
+∆H(x; x0) := H(pθ(· | x)) − H(pθ(· | x0)) .
+
+(22) Therefore, we can establish an entropy-divergence identity: 
+
+∆H(x; x0) = Ey∼pθ (·| x)
+
+h
+
+ln pθ(y | x)
+
+pθ(y | x0)
+
+i
+
+− KL  pθ(· | x) ∥ pθ(· | x0).
+
+(23) where the first term on the right-hand side is the cross-entropy difference, and the second term is the KL divergence; this identity follows directly from the definition. Let μ be an arbitrary non-degenerate prior on Xs
+
+(e.g., a language model prior or a data augmenta-tion strategy). Then the expected entropy increase satisfies 
+
+Ex∼μ
+
+∆H(x; x0) ≥ 0, (24) and 
+
+Ex∼μ
+
+KL( pθ(· | x) ∥ pθ(· | x0))  > 0 (25) if and only if the mapping x 7 → pθ(· | x) is non-constant on Xs. Therefore, it can be said that us-ing semantically equivalent but textually diverse queries constitutes a theoretically justifiable mech-anism for activating diversity, capable of breaking the model’s excessive convergence toward fixed memorized patterns. 
+
+Theorem 3. Advantages of Semantic Redun-dancy Removal. 
+
+Removing semantic segments that are irrelevant or non-specific to the query can enhance the per-formance of LLMs. Suppose the input x contains a redundant subsequence r such that sem (x) = 
+
+sem (x \ r). Let pθ be an autoregressive model, and define 
+
+∆ := MI( x; y) − MI( x \ r; y), (26) where MI denotes the mutual information be-tween input and output. Since r contributes only noise entropy, ∆ ≤ 0; by the data processing in-equality, after removing redundancy we have 
+
+MI( x \ r; y) ≤ MI( x; y). (27) Therefore, the denoised input retains a higher ef-fective information density under the same seman-tic constraint, thereby improving output quality. 
+
+E Data Accessibility 
+
+We have included a Gradio-based lightweight viewer in the appendix, along with the original texts of the first 25 questions from each subject in STEM20K for reference. Additionally, we plan to publicly release a subset of our dataset comprising approximately one thousand multimodal questions with reference answers, pending acceptance of this work. 
+
+F Productization and Trial Use 
+
+As Figure 9 shows, the Human-CoT application mode has been deployed on SafeWork-R1 (Shang-hai AI Lab et al., 2025), a public online large model platform. The platform has passed internal test-ing and is currently in an invited trial phase for targeted users worldwide. The system has been adapted to integrate various large models, includ-ing our internally released models, the Qwen2.5 series, Deepseek series, Claude, and others. Screen-shots are provided below. Key identifying infor-mation has been obscured to meet article review requirements. Figure 10 illustrates the process from reasoning to result generation and then to CoT editing. In a product-grade CoT editing system, usage logic must also be considered. Specifically, when editing should be allowed and when it should be prohibited. Editing the previous round (r-1) during round r is permitted. However, if a user attempts to edit an earlier round, such as r-3, could this create a paradox? Specifically, could results from earlier steps be influenced by later ones, leading to logical confusion? To prevent this, we prohibit editing CoT from previous rounds. As shown in Figure 11, once editing is performed or a new round of dialogue begins, the CoT section is locked and can no longer be edited. Once the editing process is initiated, it will en-ter the methodological workflow mentioned in our main text. Within this workflow, only the Query (including images) and the edited CoT content are considered, as we assume that the necessary cues and relevant reasoning from prior conversations are already included in the CoT content prior to editing. Even if some parts are missing, users will supplement them as emphasis. Figure 9: Human-CoT application mode deployed on SafeWork-R1 (Shanghai AI Lab et al., 2025). 
+
+G Additional Experiments 
+
+In this appendix, we provide additional analyses that complement the main results, including a pre-liminary user study, cross-family Reprompter trans-fer, and faithfulness/robustness evaluations of the Reprompter. 
+
+G.1 Preliminary User Study 
+
+To further examine the practical benefit of D EEP IN-
+
+> TERACTION
+
+, we conduct a preliminary user study comparing our edit-based interaction with dialogue-based correction. We evaluate both efficiency and user satisfaction. 
+
+Table 10: Preliminary user study. Lower time cost is better; higher satisfaction is better.          
+
+> Method Time / Edit ↓Corr. Sat. ↑Overall Sat. ↑
+> Baseline 19.7 7.1 6.0 OURS 14.2 8.5 7.6
+
+G.2 Cross-Family Reprompter Transfer 
+
+We further examine whether the Reprompter is tied to the model family of the target solver. Specifically, we compare different main-model/Reprompter pairings using the same single-correction evaluation metric. 
+
+Table 11: Cross-family Reprompter transfer. Results are single-correction rates (%).             
+
+> Main / Repr. Qwen-72B GPT4o-mini Claude-3.5H
+> Qwen-VL-max 78.5 76.9 72.1 GPT4o 69.8 68.2 67.8 Claude 3.7 80.6 76.2 75.2
+
+G.3 Reprompter Faithfulness and Robustness 
+
+We further evaluate whether the Reprompter faith-fully preserves user edits and how performance changes when hallucination occurs in the rewrit-ten output. Following the rebuttal setting, we em-ploy the fine-tuned Qwen2.5 7B VL as the Re-prompter and use GPT-4o as the evaluator. The evaluation is conducted on 617 modified input– semantics-preserving rewritten output pairs from Gaokao-MM. As shown in Table 12, the Reprompter achieves a faithfulness rate of 87.2%, indicating that it pre-serves the key user-intended correction in most cases. Under strict LLM judgment, 79 cases are identified as hallucination cases. Although the cor-rection rate drops from 89.0% (479/538) in normal cases to 69.6% (55/79) in hallucination cases, the method remains effective overall, suggesting a de-gree of robustness under partial unfaithfulness. 
+
+Table 12: Faithfulness and robustness evaluation of the Reprompter on 617 modified input–semantics-preserving rewritten output pairs from Gaokao-MM.         
+
+> Setting Metric Value
+> Overall Rewriting Faithfulness Rate 87.2% Normal Cases Correction Rate 89.0% (479/538) Hallucination Cases Correction Rate 69.6% (55/79)
+
+Figure 10: The first three images show the process of generating an answer after a question is entered, while the last image illustrates the response mode after clicking "CoT Edit". 
+
+Figure 11: CoT editing and the result after editing. H Case Studies 
+
+Step-by-Step Interpretation of Methodological Outputs Here is a detailed description of how CoT changes after the modification. After the query input as shown below, we obtained the following response. 
+
+To solve this problem, we need to analyze the forces acting on objects A and B and determine the reading of the spring scale and the resultant force acting on object B. 
+
+Step 1: Identify the Forces Acting 
+
+• Object A :
+
+– Weight of A: WA = 10 N (downward) 
+
+– Tension in the string: T (upward) • Object B :
+
+– Weight of B: WB = 6 N (downward) 
+
+– Tension in the string: T (upward) 
+
+Step 2: Apply Newton’s Second Law 
+
+For both objects to be in motion with a constant velocity (or at rest), the net force acting on each object must be zero. This means that the tension T in the string must balance the weight of each object. 
+
+For Object A: 
+
+T − WA = 0 ⇒ T − 10 N = 0 ⇒ T = 10 N 
+
+For Object B: 
+
+T − WB = 0 ⇒ T − 6 N = 0 ⇒ T = 6 N 
+
+Step 3: Resolve the Contradiction 
+
+The above equations suggest two different values for T . However, since the system is connected by a single string passing over friction-less pulleys, the tension T must be the same throughout the string. Therefore, the system cannot achieve equilibrium with these weights unless there is an external force or acceleration involved. Given that the problem states the objects have been in motion for a period of time and the spring stabilizes, we assume the system has reached a steady state where the tension balances the effective forces. 
+
+Step 4: Determine the Reading of the Spring Scale 
+
+The spring scale measures the tension in the string. Since the tension 
+
+T must be the same throughout the string, the reading of the spring scale will be the tension T .From the analysis, the tension T must be such that it balances the effective forces. Given the weights, the tension T will be the average of the two weights to maintain a steady state: 
+
+T = WA + WB
+
+2 = 10 N + 6 N 2 = 8 N 
+
+Step 5: Determine the Resultant Force Acting on Object B 
+
+Since the tension T is 8 N and the weight of B is 6 N , the resultant force acting on object B is 
+
+Fresultant = T − WB = 8 N − 6 N = 2 N .
+
+Final Answers 
+
+The reading of the spring scale is 8 N . The resultant force acting on object B is 2 N .
+
+After Human Edition. 
+
+To solve the problem, we need to analyze the forces acting on objects A and B and determine the reading of the spring scale and the resultant force acting on object B. 
+
+Step 1: Identify the Forces Acting on Each Object 
+
+• Object A :
+
+– Weight of A: WA = 10 N (downward) 
+
+– Tension in the string: T (upward) • Object B :
+
+– Weight of B: WB = 6 N (downward) 
+
+– Tension in the string: T (upward) 
+
+Step 2: Apply Newton’s Second Law 
+
+For both objects to be in motion with a constant velocity (or at rest), the net force acting on each object must be zero. This means that the tension T in the string must balance the weight of each object.... 3.A is heavier than B, so for the system,A will carry B in motion. When stable, they have the same acceleration and velocity. 4.When moving together, the resultant force of acceleration provided to the motion is 4N, and then the resultant force of 4 is distributed on each object according to their mass. Finally, calculate the force on the rope. 
+
+Semantic similarity deletion and numer-ical mask. 
+
+Determine the reading of the spring scale and resultant force acting on object B. 
+
+1: Identify the Forces Acting on Each Object 
+
+• Object A : get the weight of A(downward) • Object B : get the weight of B(downward) 
+
+Step 2: Apply Newton’s Second Law 
+
+For both objects to be in motion with a constant velocity (or at rest) ## 3.A is heavier than B, so for the system,A will carry B in motion. When stable, they have the same acceleration and velocity. 4.When moving together, the resultant force of acceleration provided to the motion is 4N, and then the resultant force of 4 is distributed on each object according to their mass. Finally, calculate the force on the rope. ## 
+
+After CoT Reprompter. 
+
+Determine the reading of the spring scale and resultant force acting on object B. 1. Identify the Forces Acting on A and B 2. Apply Newton’s Second Law. For both objects to be in motion with a constant velocity (or at rest) ## 3.A is heavier than B, so for the system,A will carry B in motion. When stable, they have the same acceleration and velocity. 4.When two objects are connected and move together, the net or unbalanced force that causes the system to accelerate is the difference in their weights. 5. Calculate the force on the rope AND resultant force on B. ## Query 
+
+In the figure, Object A weighs 10N and object B weighs 6N. Ignoring the 
+
+spring scale and friction, when objects A and B have been in motion for a 
+
+period of time and the spring stabilizes, the reading of the spring scale 
+
+is__________N, the resultant force acting on object B is__________"N. 
+
+Original 
+
+Response 
+
+1.Analyze the system and the for ce conditions    
+
+> A: The gravity is 10N. Fixed pulley only changes the direction of the force but not its magnitude.
+> B: The gravity is 6N. When placed on a horizontal surface, it is subjected to the pulling force of the rope.
+
+2. Deter mine the r eading of the spr ing scale  
+
+> A spring scale measures the tension on a rope. Since the gravity of Object A is 10N and friction and the self-weight of the
+> spring scale are not taken into account, the tension on the rope is equal to the gravity of Object A. Therefore, the reading of
+> the spring scale is 10N.
+
+3. Calculate the r esultant for ce acting on object B ... 
+
+4. Calculate the for ce acting on the spr ing ... 
+
+Thus the answer is ：6N and 0N 
+
+Or iginal Quer y + 
+
+1.analyze if equilibrium is possible: a fixed pulley changes the direction of force, not its magnitude. 
+
+2. Determine if equilibrium can be achieved: Since object A is heavier than object B, A will definitely move 
+
+downward and B will move upward. After reaching a steady state, A and B will be relatively stationary but 
+
+share a common acceleration. 3.Calculate the acceleration, and then use it to find the net force acting on B. 
+
+4.calculate the spring force . 
+
+Reorganize 
+
+Query 
+
+1. Analyze the system and the for ce conditions ... 
+
+2.Unable to balance, calculate the acceler ation 
+
+... T The resultant force of A = the gravitational force of A - pulling force of the rope T 
+
+...T=7.5 a=0.25g 
+
+3. Suppose the acceler ation is A. When A, B ar e stable, they have the same acceler ation 
+
+... Reading of the spring scale is equal to the tension T of the rope, The resultant force acting on B is T− 6 = 7.5−6 = 1.5N 
+
+Final Answer : The reading of the spring scale is 7.5N. The resultant force acting on object B is 1.5N. 
+
+Response 
+
+after feedback 
+
+1.Analyze the system and the for ce conditions 
+
+A: The gravity is 10N. Fixed pulley only changes the direction of the force but not its magnitude. 
+
+B: The gravity is 6N. When placed on a horizontal surface, it is subjected to the pulling force of the rope. 
+
+2. Deter mine the r eading of the spr ing scale 
+
+A spring scale measures the tension on a rope. Since the gravity of Object A is 10N and friction and the self-
+
+weight of the spring scale are not taken into account, the tension on the rope is equal to the gravity of Object 
+
+A. Therefore, the reading of the spring scale is 10N. 
+
+2.Analyze whether they can be balanced A is heavier than B, so A moves downward and B moves upward, 
+
+and their accelerations are the same after stabilizing 
+
+3. Calculate the r esultant for ce acting on object B ... 
+
+4. Calculate the for ce on the spr ing 
+
+Edited 
+
+CoT Figure 12: A physics question, and the issue lies in the reasoning process. In the original response, the model failed to recognize that objects A and B would share a common acceleration when the system reaches stability, incorrectly assuming instead that they would remain at rest—an obvious error. After a simple revision prompt—without any additional computational hints or explicit guidance: the model successfully corrected its reasoning and solved the problem in a single attempt. 
+
+Case 1: Physics Question: Your task is to answer the question be-low. Give reasoning steps before you answer, and when you are ready to answer, use Answer: The final answer is ... Question: As shown in the figure, there are U -
+
+I graphs of two different power sources in two different closed circuits. Which of the following judgments is correct? ( )
+
+A. Electromotive force E1 = E2, the current during a short circuit I1 < I 2
+
+B. Electromotive force E1 = E2, internal resis-tance r1 > r 2
+
+C. Electromotive force E1 > E 2, internal resis-tance r1 < r 2
+
+D. When the change in working current of the two power sources is the same, the terminal voltage change of power source 2 is larger. 
+
+Multi Chat Round 1: 
+
+To analyze the given U -I graphs of two different power sources, we need to understand the characteristics of these graphs. The U -I graph for a power source typically shows the relationship 
+
+Figure 13: U-I graphs of two different power sources. 
+
+between the terminal voltage U and the current I in the circuit. 
+
+Step 1: Identify the Electromotive Force (EMF) 
+
+The EMF E of a power source can be de-termined from the U -I graph by looking at the y-intercept (the value of U when 
+
+I = 0 ). - For power source 1, the y-intercept is 
+
+E1. - For power source 2, the y-intercept is E2.From the graph, we can see that both power sources have the same y-intercept, which means E1 = E2.
+
+Step 2: Determine the Internal Resis-tance 
+
+The internal resistance r of a power source can be determined from the slope of the U -I graph: slope = −r.From the graph, the slope of the line for power source 1 is steeper than that for power source 2, so r1 > r 2.
+
+Step 3: Short Circuit Current 
+
+The short circuit current I0 occurs when 
+
+U = 0 , i.e., I0 = Er . Since E1 = E2
+
+and r1 > r 2, then I01 < I 02 .
+
+Step 4: Change in Terminal Voltage 
+
+The change in terminal voltage ∆U for a given ∆I is ∆U = −r∆I. Since r1 >r2, for the same ∆I, |∆U1| > |∆U2|;i.e., power source 1’s terminal voltage changes more. 
+
+Conclusion 
+
+Therefore, the correct choice is: 
+
+Answer: The final answer is B. Response: 
+
+The internal resistance is represented by the slope of the line on the U -I graph, and a steeper slope in-dicates a higher internal resistance. You should ver-ify which line is steeper to correctly determine the internal resistance. Additionally, the short-circuit current is the current at which the line intersects the I-axis; you should ensure it correctly identi-fies which power source has a higher short-circuit current. For the terminal voltage change, consider that a larger internal resistance results in a larger change in terminal voltage for the same change in current. 
+
+Round 2: 
+
+Given the feedback, let’s re-evaluate the options step-by-step: 
+
+Step 1: Electromotive Force (EMF) 
+
+The EMF E is the y-intercept of the U -I
+
+graph. Both lines intersect the y-axis at the same point, indicating E1 = E2.
+
+Step 2: Internal Resistance 
+
+The internal resistance r is represented by the slope of the line on the U -I graph. A steeper slope indicates a higher inter-nal resistance. Line 1 has a steeper slope than Line 2, so r1 > r 2.
+
+Step 3: Short-Circuit Current 
+
+The short-circuit current I0 is the x-intercept of the U -I graph (where U =0). Line 1 intersects the x-axis at a smaller value than Line 2, so I01 < I 02 .
+
+Step 4: Terminal Voltage Change 
+
+The change in terminal voltage ∆U for a given change in current ∆I is ∆U =
+
+−r∆I. Since r1 > r 2, for the same ∆I,
+
+|∆U1| > |∆U2|; so the terminal voltage change of power source 1 is larger. 
+
+Conclusion 
+
+The correct choice is: 
+
+Answer: The final answer is B. Response: 
+
+A steeper slope indicates a smaller internal resis-tance, not a larger one. Therefore, the conclusion should be that r1 < r 2. This correction will also affect the determination of the short-circuit cur-rent, leading to the correct conclusion that I1 > I 2.Additionally, the analysis of the terminal voltage change should be revised to reflect that a larger internal resistance results in a larger terminal volt-age change for the same change in current, leading to the correct conclusion that the terminal voltage change for power source 2 is larger. 
+
+Final Answer: 
+
+Given the feedback, let’s correct the anal-ysis step-by-step: 
+
+Step 1: Electromotive Force (EMF) 
+
+Both lines intersect the U -axis at the same point, so E1 = E2.
+
+Step 2: Internal Resistance 
+
+A steeper slope indicates a smaller inter-nal resistance. Line 1 has a steeper slope than Line 2, so r1 < r 2.
+
+Step 3: Short-Circuit Current 
+
+Line 1 intersects the I-axis at a larger value than Line 2, so I01 > I 02 .
+
+Step 4: Terminal Voltage Change 
+
+∆U = −r∆I. Since r1 < r 2, for the same ∆I, |∆U1| < |∆U2|; thus, the ter-minal voltage change of power source 2 is larger. 
+
+Conclusion 
+
+The correct choice is: 
+
+Answer: The final answer is D. Human Guidance: 
+
+Your task is to answer the question below. Give reasoning steps before you answer, and when you are ready to answer, use Answer: The final answer is ... (Stepwise guidance and summary omit-ted for brevity—refer to original for all detailed steps.) 
+
+Final Answer: 
+
+To determine the correct judgment based on the given U -I graph, let’s analyze each aspect step by step: 
+
+Step 1: Identify the Electromotive Force (EMF) 
+
+Both lines intersect the U -axis at the same point; thus, E1 = E2.
+
+Step 2: Determine the Short-Circuit Current 
+
+The line for power source 1 intersects the 
+
+I-axis at a higher point than the line for power source 2; thus, I1 > I 2.Step 3: Determine the Internal Resis-tance 
+
+The internal resistance r is represented by the slope of the line. The line for power source 1 is less steep than for power source 2; thus, r1 < r 2.
+
+Step 4: Calculate the Terminal Voltage Change 
+
+For the same change in current (∆ I), the terminal voltage change is directly pro-portional to internal resistance. Since 
+
+r2 > r 1, the terminal voltage change for power source 2 is larger. 
+
+Conclusion 
+
+Therefore, the correct judgment is: 
+
+Answer: The final answer is D. Case 2: Math Question: Your task is to answer the question be-low. Give reasoning steps before you answer, and when you are ready to answer, use Answer: The final answer is ... 
+
+Question: As shown in the figure, in the Cartesian coordinate system, △A′B′C′ is a similar figure of 
+
+△ABC with the origin O as the center of similar-ity, and the similarity ratio is 1 : 2 . If the coordi-nates of A are (−3, 4) , then the coordinates of A′
+
+are .
+
+Multi Chat Round 1: 
+
+To determine the coordinates of A′ given that △A′B′C′ is a similar figure of 
+
+△ABC with the origin O as the cen-ter of similarity and a similarity ratio of 
+
+1 : 2 , we can follow these steps: 
+
+Step 1: The coordinates of A are 
+
+(−3, 4) .
+
+Step 2: The similarity ratio 1 : 2 implies each coordinate of A′ will be half of A.
+
+Step 3: Calculate A′: - x: − 32 - y: 2
+
+Therefore, the coordinates of A′ are  − 32 , 2.
+
+Answer: The final answer is 
+
+− 32 , 2
+
+
+
+.
+
+Response: 
+
+You should consider that the similarity transforma-tion with a ratio of 1 : 2 and the origin as the center of similarity also involves a reversal of direction. Therefore, the y-coordinate should be calculated as half of the original y-coordinate, but with a change in sign. 
+
+Round 2: 
+
+Given the additional consideration that the similarity transformation with a ratio of 1 : 2 and the origin as the center of similarity also involves a reversal of di-rection, we need to adjust our previous calculation. - x: − 32 - y: − 42 = −2
+
+Therefore, the coordinates of A′ are  − 32 , −2.
+
+Answer: The final answer is 
+
+− 32 , −2
+
+
+
+.
+
+Response: 
+
+You correctly identify the need to adjust the y-coordinate based on the quadrant but fail to ap-ply the same logic to the x-coordinate. Since the similarity ratio is 1 : 2 and the transformation is centered at the origin, both coordinates should be adjusted for direction. The x-coordinate should be positive ( 32 ) instead of negative ( − 32 ). 
+
+Final Answer: 
+
+Given the clarification that both x and y should be adjusted for direction due to the similarity transformation centered at the origin with ratio 1 : 2 :- x: 32 - y: −2
+
+Therefore, the coordinates of A′ are   32 , −2.
+
+Answer: The final answer is  32 , −2
+
+
+
+.
+
+Human Guidance: 
+
+(Stepwise guidance and summary omit-ted for brevity—refer to original for all detailed steps.) Final Answer: 
+
+To determine the coordinates of point A′
+
+given that △A′B′C′ is a similar figure of 
+
+△ABC with the origin O as the center of similarity and a similarity ratio of 1 : 2:
+
+Step 1: A = ( −3, 4) 
+
+Step 2: Similarity ratio 1 : 2 means each coordinate is half of A and the direction reverses. 
+
+Step 3: - x: 12 × (−3) × (−1) = 32 - y:  
+
+> 12
+
+× 4 × (−1) = −2
+
+So the coordinates of A′ are   32 , −2.
+
+Answer: The final answer is  32 , −2
+
+
+
+.
+
+Case 3: Math Question: 
+
+Your task is to answer the question below. Give rea-soning steps before you answer, and when you are ready to answer, use Answer: The final answer is ... 
+
+Question: As shown in the figure, an auto-matic unloading truck uses a hydraulic mechanism. When designing, the length of the oil pump push rod BC needs to be calculated. It is known that the maximum tilt angle of the truck bed is 60 ◦, the distance between the oil pump top point B and the truck bed support point A is 1.95 meters, the an-gle between AB and the horizontal line is 6◦20 ′,and the length of AC is 1.40 meters. Calculate the length of BC (Keep 3 significant figures , unit: meters). 
+
+Multi Chat Round 1: 
+
+To solve for the length of BC , first, ensure you identify the correct angle 
+
+∠BAC . You should use the given angle as 66 ◦20 ′, converted to decimal degrees: 
+
+66 .3333 ◦. This angle is crucial for cor-rect application of the Law of Cosines. 
+
+Response: 
+
+The error lies in the incorrect identification of 
+
+∠BAC . You should use the given 66 ◦20 ′ (or 
+
+66 .3333 ◦ in decimal), not 60 ◦. This angle is cru-cial for the correct application of the cosine rule to find the length of BC . To correct this, revisit the problem statement to ensure the correct angle is used in the calculations. 
+
+Final Answer: 
+
+To correctly determine the length of BC ,use ∠BAC = 66 ◦20 ′ (≈ 66 .3333 ◦) and apply the Law of Cosines in △ABC :
+
+Step 1: Convert the angle to decimal degrees. 
+
+66 ◦20 ′ = 66 + 20 60 = 66 .3333 ◦
+
+Step 2: Apply the Law of Cosines. 
+
+BC 2 = AB 2+AC 2−2·AB ·AC ·cos( ∠BAC )
+
+Step 3: Substitute the known values. 
+
+BC 2 = 1 .95 2+1 .40 2−2·1.95 ·1.40 ·cos(66 .3333 ◦)
+
+Step 4: Calculate each term. 
+
+1.95 2 = 3 .8025 1.40 2 = 1 .96 2 · 1.95 · 1.40 = 5 .46 cos(66 .3333 ◦) ≈ 0.4034 5.46 × 0.4034 ≈ 2.201 
+
+Step 5: Substitute back. 
+
+BC 2 = 3 .8025+1 .96 −2.201 = 3 .5615 
+
+Step 6: Find BC .
+
+BC = √3.5615 ≈ 1.89 
+
+Step 7: Round to three significant dig-its. 
+
+BC ≈ 1.89 
+
+Answer: The final answer is 1.89 me-ters. Human Guidance: Table 13: Comparison and Superiority of RCoT and DI.         
+
+> Dimension RCoT Result (Baseline) DI Result (Ours)
+> Error Correction Relies on internal loops; prone to rein-forcing initial biases.
+> Uses feedback loops to break logical ruts and fix hallucinations.
+> Category Discernment Fails to distinguish between "worker quality" and "product quality."
+> Precisely identifies the "Category Er-ror" through guided interaction.
+> Logic Robustness Distracted by the simplicity of Option 0. Identifies Option 0 as a necessary premise for the "overall" conclusion.
+> Outcome Incorrect (Option 0) Correct (Option 1)
+
+Your task is to answer the question below. Give reasoning steps before you answer, and when you are ready to answer, use 
+
+Answer: The final answer is ... Step 1: Convert 66 ◦20 ′ to decimal de-grees: 66 .3333 ◦.
+
+Step 2: Apply the cosine rule: 
+
+BC 2 = AB 2+AC 2−2·AB ·AC ·cos( ∠BAC )
+
+with AB = 1.95 , AC = 1.40 ,
+
+∠BAC = 66 .3333 ◦, cos(66 .3333 ◦) ≈
+
+0.4034 .
+
+Step 3: Compute and round your answer to 3 significant digits. 
+
+Final Answer: 
+
+To determine the length of BC :
+
+Step 1: 66 ◦20 ′ = 66 .3333 ◦
+
+Step 2: 
+
+BC 2 = 1 .95 2+1 .40 2−2×1.95 ×1.40 ×cos(66 ◦)
+
+BC 2 = 3 .8025+1 .96 −2.201 = 3 .5615 
+
+BC = √3.5615 ≈ 1.89 
+
+Answer: The final answer is 1.89 me-ters. Case 4: Logic, comparison between Deep Interaction (DI) and RCoT. Question The factory conducted an investigation into the academic qualifications of skilled workers and found that the education level of newly entered workers has greatly improved in the past five years. Therefore, the overall quality of technical workers in the factory has been greatly improved. 
+
+If the above statement is true, which of the fol-lowing cannot support the conclusion? 
+
+• Option 0: The new skilled workers who en-tered the factory in the past five years are still working in the factory. • Option 1: Products produced by highly quali-fied skilled workers are less unqualified. • Option 2: The higher the education, the higher the quality. • Option 3: Highly educated people will lead other colleagues to improve their quality. 
+
+2. DI Result (Our Method: Deep Interaction) DI Thinking Process: 
+
+• Step 1 (Structure Analysis): The argument assumes a link: Higher Education (New Work-ers) → Improved Overall Quality (Entire Workforce). • Step 2 (Initial Evaluation): The model ini-tially perceives Option 1 (better products) as a positive sign of quality and struggles to dis-tinguish it from Option 0, eventually leaning toward Option 0 as the "weakest." 
+
+Human Guidance: 
+
+"The main issue is confusing evidence about outcomes (such as product qual-ity) with evidence about worker qual-ity. Re-evaluate each option by asking whether it directly or indirectly supports the claim that the overall quality of tech-nical workers has improved. Pay special attention to whether an option changes the subject from workers to products ." 
+
+DI Refined Thinking Process: 
+
+• Step 3 (Deep Interaction & Correction): 
+
+Upon receiving feedback, the model realizes that Option 1 shifts the focus from the subject 
+
+(workers) to the output (products). • Step 4 (Final Logical Alignment): While better products are positive, the conclusion is specifically about the workers themselves. Option 0 is a necessary physical condition—if the new workers left, their education would have zero impact on the factory’s current over-all quality. 
+
+Final Answer: Option 1 
+
+3. RCoT Result (Baseline: Recursive Chain of Thought) RCoT Thinking Process: 
+
+• Step 1: The model identifies the premise (ed-ucation) and conclusion (quality). • Step 2 (Recursive Loop): It analyzes Option 0 and decides that "still working" is just a status and doesn’t "prove" someone’s quality is higher. • Step 3 (Internal Hallucination): It assumes that because Option 1 mentions "high quality," it must be supportive, failing to recognize the "subject-to-object" shift. • Step 4 (Failure to Self-Correct): Without an external feedback nudge, the model repeat-edly confirms its own bias that Option 0 is the "least relevant" because it is about retention rather than skill. 
+
+Final Answer: Option 0 (Incorrect) 
+
+4. Comparison and Superiority of DI: Details show in 13.

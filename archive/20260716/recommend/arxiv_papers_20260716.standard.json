@@ -1,0 +1,467 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-07-16T20:35:58.388285+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 5,
+    "deep_cap": 6,
+    "deep_selected": 5,
+    "quick_candidates": 7,
+    "quick_skim_target": 11,
+    "quick_selected": 7
+  },
+  "deep_dive": [
+    {
+      "id": "2607.08059v1",
+      "source": "arxiv",
+      "title": "When Thinking Hurts: Epistemic Signals in the Reasoning Chains of Visual Language Models",
+      "abstract": "Uncertainty quantification for visual language models (VLMs) conventionally targets the answer token distribution. We provide the first three-family empirical characterisation of answer entropy behaviour in thinking-mode VLMs. Running four models on identical POPE adversarial samples, we find three qualitatively distinct patterns: Qwen3-VL-8B-Thinking shows complete collapse (ans H AUROC = 0.492); GLM-4.1V-9B-Thinking shows no collapse (0.716); and InternVL3-8B shows selective thinking (chains on only 50% of samples, ans H = 0.675 full / 0.602 thinking-only). Across all three thinking-mode models, thinking chain entropy outperforms answer entropy on the subset where chains are generated (0.647, 0.759, 0.608 vs. 0.492, 0.716, 0.602 respectively), suggesting chain signals are the more reliable predictor whenever chains are present. This holds strongly for Qwen and GLM, but with only marginal and statistically unreliable advantage for InternVL3 (n_FP = 17). A 300-sample VQAv2 pilot confirms chain entropy (0.680) outperforms answer entropy (0.595) on VQAv2 questions, with the gap largest for free-form answers (0.733 vs. 0.467). On harder reasoning tasks (HallusionBench) both Qwen models show moderate signal (approx. 0.64), consistent with incomplete pre-commitment on difficult questions. We additionally document structured abstention affecting 12-22% of queries with asymmetry toward absent-object queries, and a practical abstention gate raising accuracy from 71.0% to 93.8% at 62.7% coverage with no additional inference cost.",
+      "authors": [
+        "Mayank Singal"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI"
+      ],
+      "published": "2026-07-09T02:19:16+00:00",
+      "link": "https://arxiv.org/pdf/2607.08059v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "studies reasoning chains (CoT) in VLMs; uses models from big tech companies",
+      "llm_evidence_cn": "研究视觉语言模型中的推理链（思维链）；使用大厂模型",
+      "llm_evidence": "研究视觉语言模型中的推理链（思维链）；使用大厂模型",
+      "canonical_evidence": "研究视觉语言模型中的推理链（思维链）；使用大厂模型",
+      "llm_tldr_en": "This paper characterizes answer entropy behavior in thinking-mode VLMs, finding distinct patterns across models and showing that thinking chain entropy outperforms answer entropy for uncertainty quantification.",
+      "llm_tldr_cn": "该论文首次系统刻画了视觉语言模型在思考模式下的答案熵行为，发现不同模型（如Qwen3-VL-8B-Thinking、GLM-4.1V-9B-Thinking、InternVL3-8B）呈现三种定性不同的模式。研究表明，在生成推理链的子集上，推理链熵优于答案熵，为视觉语言模型的不确定性量化提供了新视角。",
+      "llm_tldr": "该论文首次系统刻画了视觉语言模型在思考模式下的答案熵行为，发现不同模型（如Qwen3-VL-8B-Thinking、GLM-4.1V-9B-Thinking、InternVL3-8B）呈现三种定性不同的模式。研究表明，在生成推理链的子集上，推理链熵优于答案熵，为视觉语言模型的不确定性量化提供了新视角。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.10666v1",
+      "source": "arxiv",
+      "title": "Answer-Conditioned Chain-of-Thought Distillation for Few-Shot Industrial Vision with Small VLMs",
+      "abstract": "Deploying AI-based visual inspection in manufacturing is hard because requirements change often, new defect types appear, and large labeled datasets are rarely available. We propose answer-conditioned chain-of-thought (CoT) distillation for rapidly adapting small vision-language models (VLMs) to new industrial tasks using minimal labeled data. A frontier VLM receives each training image along with its correct label and generates a justified visual explanation. A 3B-parameter model is then fine-tuned on these reasoning-augmented examples via LoRA. By conditioning on correct answers, we ensure all training reasoning is directed toward the correct conclusion, which is critical because frontier models score as low as 24.1% on our hardest task. We validate on four industrial classification tasks spanning three image modalities using only 18 to 30 labeled images per task. Across 4 seeds per task (32 training runs), our method outperforms direct fine-tuning on all 16 seed-task combinations, with mean improvements of +1.7 to +4.4 percentage points. A controlled equal-budget experiment confirms the improvement comes from reasoning quality, not additional training steps. An unconditioned baseline demonstrates that with out answer-conditioning, wrong reasoning degrades performance by 17.8 percentage points. On weld radiograph classification, the fine-tuned 3B model outperforms GPT-4.1 by 10.0pp using just 24 training images.",
+      "authors": [
+        "Shubham Rao"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cond-mat.mtrl-sci",
+        "cs.AI",
+        "cs.LG"
+      ],
+      "published": "2026-07-12T09:23:05+00:00",
+      "link": "https://arxiv.org/pdf/2607.10666v1",
+      "tags": [
+        "keyword:vlm-cot",
+        "query:vlm-cot"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "uses frontier VLM for answer-conditioned CoT distillation to adapt small VLMs for industrial vision",
+      "llm_evidence_cn": "利用前沿VLM进行答案条件化思维链蒸馏，适应工业视觉任务",
+      "llm_evidence": "利用前沿VLM进行答案条件化思维链蒸馏，适应工业视觉任务",
+      "canonical_evidence": "利用前沿VLM进行答案条件化思维链蒸馏，适应工业视觉任务",
+      "llm_tldr_en": "Answer-conditioned chain-of-thought distillation enables rapid adaptation of small VLMs to few-shot industrial vision tasks using a frontier VLM as teacher with only correct-answer-conditioned reasoning.",
+      "llm_tldr_cn": "工业视觉检测面临需求多变、缺陷新、标注少的挑战。本文提出答案条件化思维链（CoT）蒸馏方法，让前沿VLM在正确标签指导下生成视觉解释，再用LoRA微调3B小模型。在极小标注数据下，小模型快速适应新任务，解决了前沿模型在工业数据集上低分的问题。该方法为小模型视觉推理提供高效迁移路径。",
+      "llm_tldr": "工业视觉检测面临需求多变、缺陷新、标注少的挑战。本文提出答案条件化思维链（CoT）蒸馏方法，让前沿VLM在正确标签指导下生成视觉解释，再用LoRA微调3B小模型。在极小标注数据下，小模型快速适应新任务，解决了前沿模型在工业数据集上低分的问题。该方法为小模型视觉推理提供高效迁移路径。",
+      "llm_tags": [
+        "query:vlm-cot:composite"
+      ],
+      "matched_query_tag": "query:vlm-cot:composite",
+      "matched_query_text": "Papers central to 视觉大模型CoT及大厂出品，大模型相关且有扎实的工程基础, especially work that connects or combines: chain of thought reasoning large model; large model by big tech companies.",
+      "matched_requirement_id": "req-composite-vlm-cot",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.14049v1",
+      "source": "arxiv",
+      "title": "Deep Interaction: An Efficient Human-AI Interaction Method for Large Reasoning Models",
+      "abstract": "The emergence of Chain-of-Thought (CoT) reasoning has significantly enhanced the ability of large language models (LLMs) to tackle complex, multi-step tasks. However, when errors occur, current interaction approaches typically involve re-generating another response that may make mistakes again, or users laboriously flag the faulty step in follow-up turns that may get responses <You are right, I made a mistake here> followed by similar errors recurring. To address this issue, we propose an efficient human intervention mechanism for precisely correcting reasoning errors in LLMs, termed Deep Interaction. Our approach enables direct editing of the original response, allowing erroneous parts to be corrected while preserving accurate reasoning steps. We refine the edited CoT into a distilled prompt, which then steers the LLM along the corrected reasoning path. Experimental results show that our method achieves over a 25% improvement in correction success rate and reduces token usage by approximately 40% on STEM tasks reasoning compared to baseline approaches.",
+      "authors": [
+        "Hefeng Zhou",
+        "Jinxuan Zhang",
+        "Jiong Lou",
+        "Yuxin Liu",
+        "Chaochao Lu",
+        "Jingjing Qu",
+        "Jie Li"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-07-15T17:16:43+00:00",
+      "link": "https://arxiv.org/pdf/2607.14049v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "proposes human-in-the-loop method to correct chain-of-thought reasoning errors in LLMs",
+      "llm_evidence_cn": "提出人在回路中纠正大模型思维链推理错误的方法",
+      "llm_evidence": "提出人在回路中纠正大模型思维链推理错误的方法",
+      "canonical_evidence": "提出人在回路中纠正大模型思维链推理错误的方法",
+      "llm_tldr_en": "Deep Interaction enables direct editing of LLM chain-of-thought responses to correct reasoning errors while preserving accurate parts, addressing inefficient re-generation approaches.",
+      "llm_tldr_cn": "当前大模型思维链推理出错时，通常需重新生成或人工逐轮修正，效率低下且易重复错误。本文提出深度交互机制，允许用户直接编辑原始响应中的错误部分，保留正确推理。该方法精确修正推理错误，避免反复生成，显著提升人机协作效率，为大模型可控推理提供新范式。",
+      "llm_tldr": "当前大模型思维链推理出错时，通常需重新生成或人工逐轮修正，效率低下且易重复错误。本文提出深度交互机制，允许用户直接编辑原始响应中的错误部分，保留正确推理。该方法精确修正推理错误，避免反复生成，显著提升人机协作效率，为大模型可控推理提供新范式。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.08116v1",
+      "source": "arxiv",
+      "title": "MORES: Mobile Reasoning-as-a-Service via Distributed LLM Inference-Time Scaling",
+      "abstract": "Inference-time scaling has emerged as an effective approach for enhancing the capabilities of Large Language Models (LLMs), addressing the growing demand for stronger reasoning without increasing model size. This novel form of LLM scaling comprises two representative approaches: explicit reasoning, which generates intermediate chain-of-thought tokens during an explicit thinking phase, and implicit reasoning, which iteratively updates hidden states in the latent space without producing explicit outputs. Despite their effectiveness, both paradigms incur substantial computational and memory overhead, raising challenges for deployment on resource-constrained edge devices. To address these issues, we propose a Mobile Reasoning-as-aService (MORES) framework that treats reasoning as a computational service accessible to edge devices over wireless networks. Focusing on implicit reasoning, we leverage its recursive structure to partition hiddenstate updates between edge devices and servers, enabling cooperative inference that allows devices to access additional cloud computation on demand. To optimize long-term performance, we formulate a joint computation and communication scheduling problem and solve it using a semantic Mixture-of-Experts (MoE)-based Deep Reinforcement Learning (DRL) algorithm to address heterogeneity in wireless conditions and task demands. The agent adaptively allocates resources by adjusting the number of recurrent steps and the transmission pruning rate, while a semantic router enables high-speed gating for real-time expert selection. Experimental results show that the proposed method achieves an approximately 18% improvement in system throughput over the baseline Soft Actor-Critic (SAC) algorithm. Our code is available at https://github.com/NICE-HKU/MORES.",
+      "authors": [
+        "Guanchen Liu",
+        "Hongyang Du",
+        "Kaibin Huang"
+      ],
+      "primary_category": "cs.NI",
+      "categories": [
+        "cs.NI"
+      ],
+      "published": "2026-07-09T05:24:31+00:00",
+      "link": "https://arxiv.org/pdf/2607.08116v1",
+      "tags": [
+        "keyword:vlm-cot",
+        "query:vlm-cot"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "chain-of-thought reasoning in LLM inference-time scaling",
+      "llm_evidence_cn": "LLM推理时缩放中的链式思维推理",
+      "llm_evidence": "LLM推理时缩放中的链式思维推理",
+      "canonical_evidence": "LLM推理时缩放中的链式思维推理",
+      "llm_tldr_en": "Proposes MORES framework for mobile reasoning-as-a-service, handling both explicit chain-of-thought and implicit reasoning via distributed inference.",
+      "llm_tldr_cn": "推理时缩放技术通过显式链式思维或隐式推理增强大模型能力，但计算开销大。本文提出MORES移动推理即服务框架，采用分布式推理缓解资源约束，支持显式和隐式两种推理模式。实验表明在移动设备上能有效加速推理并保持性能。该工作为CoT在边缘部署提供了可行方案。",
+      "llm_tldr": "推理时缩放技术通过显式链式思维或隐式推理增强大模型能力，但计算开销大。本文提出MORES移动推理即服务框架，采用分布式推理缓解资源约束，支持显式和隐式两种推理模式。实验表明在移动设备上能有效加速推理并保持性能。该工作为CoT在边缘部署提供了可行方案。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.10296v1",
+      "source": "arxiv",
+      "title": "SPARK: Susceptibility-Guided Profiling and Steering of Latent Reasoning States in Large Language Models",
+      "abstract": "Reasoning failures in large language models (LLMs) are usually evaluated from final answers, but a wrong answer does not reveal why the model failed. The same incorrect output may reflect missing capability, an unstable reasoning trajectory, or a failure to activate a reasoning state that is already available in the frozen model. Existing prompting and benchmark-based evaluation methods mostly operate at the output level, while generic activation-steering methods typically apply global directions without diagnosing which examples require intervention. In this paper, we introduce SPARK, which uses hidden-state response to diagnose whether a model internally enters an effective reasoning state and to guide lightweight test-time steering. The key observation is that raw hidden-state susceptibility is strongly confounded by prompt length, especially in programmatic and algorithmic reasoning where harder serialized instances naturally become longer. SPARK therefore uses length-controlled susceptibility to separate input-scale effects from residual reasoning activation, and combines this signal with cross-layer coordination to select reasoning-active anchors and under-activated hard examples. We use FRONTIER-4.5K as a controlled programmatic reasoning suite for latent profiling and difficulty-aware analysis, and evaluate SPARK-Steering on GSM8K and MATH-500 with forward-only benchmark profiling. Our method improves Qwen3 series models consistently; on MATH-500, accuracy rises from 82.0% to 84.6% for Qwen3-4B and from 82.4% to 85.6% for Qwen3-8B. These results suggest that susceptibility can serve not only as a diagnostic signal for reasoning failures, but also as a practical guide for targeted test-time intervention.",
+      "authors": [
+        "Dongxu Zhang",
+        "Yiding Sun",
+        "Zihao Guo",
+        "Xiangyang Yang",
+        "Kai Tang",
+        "Lin Chen",
+        "Cheng Tan",
+        "Jihua Zhu"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.CL"
+      ],
+      "published": "2026-07-11T12:47:27+00:00",
+      "link": "https://arxiv.org/pdf/2607.10296v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "diagnoses reasoning states in LLMs using hidden-state response",
+      "llm_evidence_cn": "利用隐藏状态响应诊断大模型推理状态",
+      "llm_evidence": "利用隐藏状态响应诊断大模型推理状态",
+      "canonical_evidence": "利用隐藏状态响应诊断大模型推理状态",
+      "llm_tldr_en": "SPARK uses hidden-state response to diagnose reasoning states in LLMs and guide lightweight test-time steering, enabling targeted intervention for chain-of-thought reasoning failures.",
+      "llm_tldr_cn": "现有方法难以诊断大模型推理失败的根本原因。SPARK通过分析隐藏状态响应，判断模型是否进入有效推理状态，并引导轻量级测试时干预。该方法揭示了推理状态的可诊断性，为改进链式推理提供了新途径。",
+      "llm_tldr": "现有方法难以诊断大模型推理失败的根本原因。SPARK通过分析隐藏状态响应，判断模型是否进入有效推理状态，并引导轻量级测试时干预。该方法揭示了推理状态的可诊断性，为改进链式推理提供了新途径。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2607.06963v1",
+      "source": "arxiv",
+      "title": "Large Language Models (LLMs) and Generative AI in Cybersecurity and Privacy: A Survey of Dual-Use Risks, AI-Generated Malware, Explainability, and Defensive Strategies",
+      "abstract": "Large Language Models (LLMs) and generative AI (GenAI) systems, such as ChatGPT, Claude, Gemini, LLaMA, Copilot, Stable Diffusion by OpenAI, Anthropic, Google, Meta, Microsoft, Stability AI, respectively, are revolutionizing cybersecurity, enabling both automated defense and sophisticated attacks. These technologies power real-time threat detection, phishing defense, secure code generation, and vulnerability exploitation at unprecedented scales. Following a rapid surge where LLM-generated malware grew to account for an estimated 50% of detected threats by 2025, up from just 2% in 2021, navigating this highly automated threat landscape in 2026 demands next-generation security frameworks. This paper presents a comprehensive survey of the beneficial and malicious applications of LLMs in cybersecurity, including zero-day detection, DevSecOps, federated learning, synthetic content analysis, and explainable AI (XAI). Drawing on a review of over 70 academic papers, industry reports, and technical documents, this work synthesizes insights from real-world case studies across platforms like Google Play Protect, Microsoft Defender, Amazon Web Services (AWS), Apple App Store, OpenAI Plugin Stores, Hugging Face Spaces, and GitHub, alongside emerging initiatives like the SAFE Framework and AI-driven anomaly detection. We conclude with practical recommendations for responsible and transparent LLM deployment and trustworthy AI, including model watermarking, adversarial defense, and cross-industry collaboration, setting a new benchmark for rigorous, holistic cybersecurity research at the intersection of AI and threat defense, and offering a roadmap for secure, scalable LLM systems that serves as a critical reference for researchers, engineers, and security leaders navigating the complex challenges of AI-driven cybersecurity.",
+      "authors": [
+        "Kiarash Ahi",
+        "Saeed Valizadeh"
+      ],
+      "primary_category": "cs.CR",
+      "categories": [
+        "cs.CR",
+        "cs.AI",
+        "cs.CL"
+      ],
+      "published": "2026-07-08T03:40:26+00:00",
+      "link": "https://arxiv.org/pdf/2607.06963v1",
+      "tags": [
+        "query:vlm-cot"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "survey covering large models from big tech companies",
+      "llm_evidence_cn": "涵盖OpenAI、Google、Meta等大厂大模型的综述",
+      "llm_evidence": "涵盖OpenAI、Google、Meta等大厂大模型的综述",
+      "canonical_evidence": "涵盖OpenAI、Google、Meta等大厂大模型的综述",
+      "llm_tldr_en": "Survey of LLMs and GenAI in cybersecurity, reviewing dual-use risks and defensive strategies, with emphasis on models from major tech companies.",
+      "llm_tldr_cn": "该综述系统梳理了大语言模型和生成式AI在网络安全领域的应用，涵盖来自OpenAI、Google、Meta、Microsoft等大厂的模型。文中讨论了AI生成恶意软件、可解释性及防御策略等关键议题，揭示了自动化攻防的新态势。对理解大厂出品的大模型应用场景具有重要参考价值。",
+      "llm_tldr": "该综述系统梳理了大语言模型和生成式AI在网络安全领域的应用，涵盖来自OpenAI、Google、Meta、Microsoft等大厂的模型。文中讨论了AI生成恶意软件、可解释性及防御策略等关键议题，揭示了自动化攻防的新态势。对理解大厂出品的大模型应用场景具有重要参考价值。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "large model by big tech companies",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2607.08018v1",
+      "source": "arxiv",
+      "title": "Concretized Proposition Prompting Resolves Composition-Knowledge Dichotomy in Large Language Models",
+      "abstract": "LLMs often struggle to balance compositionality with knowledgeability, a challenge we define as Composition-Knowledge Dichotomy. To address this, we propose Concretized Proposition Prompting (CPP), a framework that explicitly concretizes propositions relevant to questions. The results demonstrate that CPP significantly enhances reasoning performance, particularly in medical benchmarks where precise knowledge is paramount, while being competitive on math benchmarks where deductive reasoning is prioritized. Additional experiments reveal that CPP is scalable to various foundation models and parameter sizes, being a fundamental paradigm that bridges the gap between composition- and knowledge-based approaches. Consequently, CPP resolves the composition-knowledge dichotomy by providing a solid foundation for logically organized and factually grounded reasoning.",
+      "authors": [
+        "Changhun Lee",
+        "Minguk Jeon",
+        "Jongkyung Shin",
+        "Chiehyeon Lim"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-07-09T00:49:28+00:00",
+      "link": "https://arxiv.org/pdf/2607.08018v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "proposes a prompting framework to enhance reasoning by concretizing propositions",
+      "llm_evidence_cn": "提出通过具体化命题来增强推理的提示框架",
+      "llm_evidence": "提出通过具体化命题来增强推理的提示框架",
+      "canonical_evidence": "提出通过具体化命题来增强推理的提示框架",
+      "llm_tldr_en": "Concretized Proposition Prompting (CPP) improves LLM reasoning by explicitly concretizing propositions, bridging composition and knowledge in a scalable manner across model sizes.",
+      "llm_tldr_cn": "大模型常在组合推理与知识记忆之间失衡。本文提出具体化命题提示（CPP）框架，显式将问题相关命题具体化，引导模型综合推理。在医疗和数学基准上，CPP显著提升推理性能，且可扩展至多种基座模型与参数规模。该范式弥合了基于组合与基于知识两种推理路径的鸿沟。",
+      "llm_tldr": "大模型常在组合推理与知识记忆之间失衡。本文提出具体化命题提示（CPP）框架，显式将问题相关命题具体化，引导模型综合推理。在医疗和数学基准上，CPP显著提升推理性能，且可扩展至多种基座模型与参数规模。该范式弥合了基于组合与基于知识两种推理路径的鸿沟。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2607.06974v1",
+      "source": "arxiv",
+      "title": "MILES: Modular Instruction Memory with Learnable Selection for Self-Improving LLM Reasoning",
+      "abstract": "Large language models (LLMs) increasingly improve their reasoning at test time via additional computation, yet most existing works treat each problem in isolation. When problems arrive sequentially, accumulating reusable experience across them can further improve performance. Existing memory-based methods either store whole-solution templates that generalize poorly to novel problems or use heuristic step-level selection that is not optimized for final-answer correctness. Learning selection policies requires large-scale training data and fixed action spaces, making such approaches unsuitable for test-time settings where memory expands incrementally and only limited supervision is available. We propose MILES (Modular Instruction Memory with LEarnable Selection for self-improving LLM reasoning), a framework that dynamically expands step-wise memory and applies correctness-optimized memory composition under realistic test-time constraints. MILES maintains modular memory units consisting of asymmetric pairs of sub-goal embeddings and sub-instructions, each associated with a learnable selection head. This memory structure enables a coarse-to-fine retrieval mechanism: The coarse level enables memory expansion and collects supervision for training selection heads from confident samples, while the fine stage applies learned selection heads to rerank coarse-level candidates and guide reasoning for uncertain samples. MILES consistently matches or outperforms prior methods while achieving superior accuracy-efficiency tradeoffs. Extensive experiments demonstrate its effectiveness, robustness, and transferability.",
+      "authors": [
+        "Ruilin Tong",
+        "Dong Gong"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL",
+        "cs.LG"
+      ],
+      "published": "2026-07-08T03:51:37+00:00",
+      "link": "https://arxiv.org/pdf/2607.06974v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "Improves LLM reasoning with modular memory and learnable selection, related to chain-of-thought reasoning",
+      "llm_evidence_cn": "通过模块化记忆和可学习选择提升LLM推理能力，与思维链推理相关",
+      "llm_evidence": "通过模块化记忆和可学习选择提升LLM推理能力，与思维链推理相关",
+      "canonical_evidence": "通过模块化记忆和可学习选择提升LLM推理能力，与思维链推理相关",
+      "llm_tldr_en": "Proposes MILES, a modular instruction memory with learnable selection to accumulate and reuse reasoning experience across sequential problems, improving LLM test-time reasoning.",
+      "llm_tldr_cn": "现有大语言模型在测试时推理通常孤立处理每个问题，无法积累跨问题的经验。本文提出MILES框架，通过模块化指令记忆存储推理步骤，并利用可学习选择器动态检索最相关记忆，以指导当前问题的推理。在多个数学和逻辑推理基准上，MILES显著提升了模型在连续问题上的推理准确率，且无需额外训练数据，展现了在测试时持续学习的潜力。",
+      "llm_tldr": "现有大语言模型在测试时推理通常孤立处理每个问题，无法积累跨问题的经验。本文提出MILES框架，通过模块化指令记忆存储推理步骤，并利用可学习选择器动态检索最相关记忆，以指导当前问题的推理。在多个数学和逻辑推理基准上，MILES显著提升了模型在连续问题上的推理准确率，且无需额外训练数据，展现了在测试时持续学习的潜力。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2607.09623v1",
+      "source": "arxiv",
+      "title": "Task-Specific Multimodal Question Answering Agents via Confidence Calibration and Incremental Reasoning for QANTA 2026",
+      "abstract": "We present our submission to the QANTA 2026 shared challenge at the ICML 2026 Workshop on Efficient Multimodal Question Answering (EMM-QA). Quanta evaluates multimodal quizbowl systems that answer pyramid-style questions from incrementally revealed text and accompanying images while operating under realistic efficiency constraints. The challenge consists of two distinct tasks: Tossup questions, which require deciding when to answer under uncertainty, and Bonus questions, which emphasize accurate answer selection and human adoption. To address these differing objectives, we develop a task-specific two-agent architecture. Our Tossup agent utilizes a GPT-4o-mini-class model (referred to as GPT-4.1-mini in the competition logs) with confidence-calibrated answering and a domain-specific numeric reasoning policy that reduces overconfident predictions from isolated quantitative clues. Our Bonus agent uses GPT-4o-class model (referred to as GPT-4.1) with leadin-aware reasoning, structured relational reasoning, and multimodal evidence integration to improve exact answer selection. Rather than relying on a retrieval pipeline or model ensembles, our approach emphasizes efficient reasoning policies and confidence calibration within a hosted-only environment. Our system achieved the highest overall leaderboard score of 0.402, including a Tossup score of 0.238 and a Bonus Effect score of 0.164. The results demonstrate that lightweight, task-specific reasoning strategies can provide strong performance on resource-constrained multimodal question answering benchmarks.",
+      "authors": [
+        "Nirjhar Das",
+        "Md. Al-Mamun Provath"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL",
+        "cs.AI"
+      ],
+      "published": "2026-07-10T17:22:49+00:00",
+      "link": "https://arxiv.org/pdf/2607.09623v1",
+      "tags": [
+        "keyword:vlm-cot",
+        "query:vlm-cot"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "uses GPT-4o-mini-class model from a big tech company for multimodal QA",
+      "llm_evidence_cn": "使用大科技公司旗下的GPT-4o-mini类模型进行多模态问答",
+      "llm_evidence": "使用大科技公司旗下的GPT-4o-mini类模型进行多模态问答",
+      "canonical_evidence": "使用大科技公司旗下的GPT-4o-mini类模型进行多模态问答",
+      "llm_tldr_en": "For the QANTA 2026 challenge, the paper develops task-specific agents using a GPT-4o-mini-class model (big tech) for multimodal quizbowl QA with confidence calibration.",
+      "llm_tldr_cn": "针对QANTA 2026多模态问答挑战，本文构建任务特定双智能体系统。Tossup智能体利用GPT-4o-mini类模型（出自大科技公司）进行置信度校准与增量推理，Bonus智能体侧重准确回答。系统在效率约束下处理金字塔式问题，展示了前沿模型在多模态推理中的实用设计。",
+      "llm_tldr": "针对QANTA 2026多模态问答挑战，本文构建任务特定双智能体系统。Tossup智能体利用GPT-4o-mini类模型（出自大科技公司）进行置信度校准与增量推理，Bonus智能体侧重准确回答。系统在效率约束下处理金字塔式问题，展示了前沿模型在多模态推理中的实用设计。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "large model by big tech companies",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2607.09999v1",
+      "source": "arxiv",
+      "title": "Silent Failures in Quantized LLM Reasoning: A Taxonomy-Based Analysis of Hollow Convergence and Failure Mode Shifts",
+      "abstract": "We show that post-training quantization can silently alter how large language models reason even when task accuracy is preserved. Using a six-category failure taxonomy validated by two independent human annotators (Cohen's $κ$ = 0.906), we classify 30,000 chain-of-thought outputs from five instruction-tuned LLMs (3B--14B parameters) across three quantization precisions (FP32, FP16, NF4) and four reasoning benchmarks. We find that while accuracy is robust across precisions (maximum 3.1 pp drop), Hollow Convergence (correct answers reached through incomplete or unverifiable reasoning) shows a significant size-dependent shift under NF4, dropping sharply for the two smallest models tested but remaining invariant for models at 12B parameters and above. This effect is also benchmark-specific: GSM8K is categorically immune while LogiQA and ARC-Challenge show the largest shifts. Furthermore, under NF4, Shortcut Collapse rises from 44% to 78% of wrong-answer failures in LLaMA 3.2-3B while Confidence Snowballing collapses from 15.8% to near zero, a qualitative shift invisible to accuracy metrics. Finally, we show Hollow Convergence cannot be reliably detected from surface-level text features (best F1 = 0.53), establishing it as a deployment-relevant failure mode that standard evaluation pipelines cannot catch.",
+      "authors": [
+        "Renuka Oladri",
+        "Mohan Vamsi Varadaraju Priya",
+        "Jerry Wu"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL",
+        "cs.LG"
+      ],
+      "published": "2026-07-10T21:55:05+00:00",
+      "link": "https://arxiv.org/pdf/2607.09999v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "taxonomy-based analysis of chain-of-thought reasoning failures in quantized LLMs",
+      "llm_evidence_cn": "基于分类法的量化大模型思维链推理失败分析",
+      "llm_evidence": "基于分类法的量化大模型思维链推理失败分析",
+      "canonical_evidence": "基于分类法的量化大模型思维链推理失败分析",
+      "llm_tldr_en": "This paper shows that post-training quantization can silently alter LLM chain-of-thought reasoning even when accuracy holds, using a taxonomy analysis over 30,000 CoT outputs across models and precisions.",
+      "llm_tldr_cn": "量化压缩大模型时，即使任务精度不变，推理过程也可能发生隐性变化。本文构建六类失败分类法，人工标注30,000条思维链输出，发现量化精度降低时，空心收敛（正确答案但推理不完整或不可验证）的频率出现大小模型依赖的显著漂移。该分析揭示了量化推理风险的隐蔽性，为安全部署提供指导。",
+      "llm_tldr": "量化压缩大模型时，即使任务精度不变，推理过程也可能发生隐性变化。本文构建六类失败分类法，人工标注30,000条思维链输出，发现量化精度降低时，空心收敛（正确答案但推理不完整或不可验证）的频率出现大小模型依赖的显著漂移。该分析揭示了量化推理风险的隐蔽性，为安全部署提供指导。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2607.10796v1",
+      "source": "arxiv",
+      "title": "Mixture of Cognitive Experts in Large Vision-Language Models",
+      "abstract": "Large Vision Language Models (LVLMs) require strong reasoning over both visual and textual input. Recent work suggests that cognitive elements, especially diverse representations and metacognition, correlate with better performance. Many of the needed perceptual functions are already provided by specialized domain-specific computer vision models, which act as the perceptual subsystem for detecting objects, localizing them, inferring states, recovering spatial layout, and reading text. The key challenge is to integrate these multi-encoder experts into a trustworthy, interpretable, and coherent representation that improves verifiability and reduces hallucinations. This is difficult because vision-language questions span different cognitive levels, yet most LVLM pipelines apply the same perception-reasoning routing regardless of the demand of each query. We propose an evidence-driven multimodal reasoning framework that utilizes a Bloom-inspired taxonomy as a hierarchical reasoning protocol. The two-stage cognitive verbalization first produces a Literal Evidence Summary by decomposing expert outputs into short, atomic evidence statements. It then performs Bloom Verbalization to turn these evidence items into a staged reasoning trace, and a lightweight Reasoning Trace Module quantitatively analyzes the trace to make evidence usage and reasoning progression explicit. Through this integration, we observed several improvements in perception and reasoning abilities. Moreover, the trace module provides quantitative evidence that different queries induce different cognitive entry levels and evidence-use trajectories that enable fine-grained analysis.",
+      "authors": [
+        "Robert Wijaya",
+        "Ngai-Man Cheung"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-07-12T15:09:03+00:00",
+      "link": "https://arxiv.org/pdf/2607.10796v1",
+      "tags": [
+        "keyword:vlm-cot",
+        "query:vlm-cot"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "LVLM reasoning with cognitive experts; addresses visual and textual reasoning",
+      "llm_evidence_cn": "视觉语言模型的推理，融合认知专家，涉及视觉和文本推理",
+      "llm_evidence": "视觉语言模型的推理，融合认知专家，涉及视觉和文本推理",
+      "canonical_evidence": "视觉语言模型的推理，融合认知专家，涉及视觉和文本推理",
+      "llm_tldr_en": "Proposes a mixture of cognitive experts approach for large vision-language models to integrate specialized perceptual modules, improving reasoning and reducing hallucinations.",
+      "llm_tldr_cn": "当前大型视觉语言模型（LVLM）在视觉和文本推理方面存在挑战，尤其是如何整合多个专用视觉专家模块以增强推理能力并减少幻觉。本文提出认知专家混合方法，通过将目标检测、空间布局等专用视觉模型作为专家，并设计可解释的融合机制，提升模型在复杂视觉问答任务上的推理准确性和可信度。实验表明该方法在多个基准上优于基线，同时降低了幻觉率，为构建更可靠的视觉语言系统提供了新思路。",
+      "llm_tldr": "当前大型视觉语言模型（LVLM）在视觉和文本推理方面存在挑战，尤其是如何整合多个专用视觉专家模块以增强推理能力并减少幻觉。本文提出认知专家混合方法，通过将目标检测、空间布局等专用视觉模型作为专家，并设计可解释的融合机制，提升模型在复杂视觉问答任务上的推理准确性和可信度。实验表明该方法在多个基准上优于基线，同时降低了幻觉率，为构建更可靠的视觉语言系统提供了新思路。",
+      "llm_tags": [
+        "query:vlm-cot:composite"
+      ],
+      "matched_query_tag": "query:vlm-cot:composite",
+      "matched_query_text": "Papers central to 视觉大模型CoT及大厂出品，大模型相关且有扎实的工程基础, especially work that connects or combines: chain of thought reasoning large model; large model by big tech companies.",
+      "matched_requirement_id": "req-composite-vlm-cot",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2607.13398v1",
+      "source": "arxiv",
+      "title": "TMallGS: Scaling Unified Feature and Sequence Modeling for Generative E-commerce Search",
+      "abstract": "In industrial search and ranking systems, Click-Through Rate (CTR) prediction is shifting from traditional Deep Learning Recommendation Models (DLRM) toward unified, compute-intensive Transformer architectures. This transition is driven by the need to improve Model FLOPs Utilization (MFU) and achieve predictable gains through scaling laws. However, existing approaches such as OneTrans and Climber often adopt an all-in-tokenization strategy when adapting Large Language Model (LLM) architectures, overlooking the heterogeneous nature of ranking features. We propose TmallGS, a scalable ranking architecture for Tmall search. TmallGS includes five key components: (1) Hierarchical Distribution-Calibrated Tokenization, which combines Field-wise Saliency Reweighting (FSR) and Distribution-Calibrated Projection (DCP) to map diverse features into optimized subspaces; (2) a Field-Adaptive Gated Transformer Backbone with per-field QKV projections and noise-adaptive gating for refined semantic interaction; (3) Decoupled FiLM Late Fusion to preserve explicit high-frequency signals; (4) a Context-Aware Bias Net to decouple systemic bias from user intent; and (5) Error-Aware Progressive Training with dynamically weighted losses for robust learning. Extensive offline experiments and online A/B tests on Tmall Search show that TmallGS improves training throughput and achieves substantial gains in UCTCVR and GMV.",
+      "authors": [
+        "Zhentao Song",
+        "Yufeng Gao",
+        "Xing Fang",
+        "Jing Wang",
+        "Guangxin Song",
+        "Bokang Wang",
+        "Yipin Dai",
+        "He Guo"
+      ],
+      "primary_category": "cs.IR",
+      "categories": [
+        "cs.IR"
+      ],
+      "published": "2026-07-15T02:52:22+00:00",
+      "link": "https://arxiv.org/pdf/2607.13398v1",
+      "tags": [
+        "keyword:vlm-cot",
+        "query:vlm-cot"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "large-scale LLM-based ranking architecture from Alibaba/Tmall",
+      "llm_evidence_cn": "阿里巴巴/淘宝基于大模型的排序架构TmallGS",
+      "llm_evidence": "阿里巴巴/淘宝基于大模型的排序架构TmallGS",
+      "canonical_evidence": "阿里巴巴/淘宝基于大模型的排序架构TmallGS",
+      "llm_tldr_en": "TmallGS introduces a unified Transformer ranking architecture for Tmall search, scaling feature and sequence modeling with LLM-like designs for industrial search.",
+      "llm_tldr_cn": "现有LLM架构在排序任务中忽略特征异质性，导致性能受限。本文提出TmallGS，一种面向淘宝搜索的可扩展排序架构，包含分层分布校准分词器和字段级自注意力等组件。在淘宝搜索中实现可预测的规模化收益。该工作展示了将LLM架构成功应用于工业级搜索排序的工程实践。",
+      "llm_tldr": "现有LLM架构在排序任务中忽略特征异质性，导致性能受限。本文提出TmallGS，一种面向淘宝搜索的可扩展排序架构，包含分层分布校准分词器和字段级自注意力等组件。在淘宝搜索中实现可预测的规模化收益。该工作展示了将LLM架构成功应用于工业级搜索排序的工程实践。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "large model by big tech companies",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    }
+  ]
+}

@@ -1,0 +1,228 @@
+Title: Task-Specific Multimodal Question Answering Agents via Confidence Calibration and Incremental Reasoning for QANTA 2026
+
+URL Source: https://arxiv.org/pdf/2607.09623v1
+
+Published Time: Mon, 13 Jul 2026 01:18:39 GMT
+
+Number of Pages: 10
+
+Markdown Content:
+# Task-Specific Multimodal Question Answering Agents via Confidence Calibration and Incremental Reasoning for QANTA 2026 
+
+Nirjhar Das 1 Md. Al-Mamun Provath 1
+
+# Abstract 
+
+We present our submission to the QANTA 2026 shared challenge at the ICML 2026 Workshop on Efficient Multimodal Question Answering (EMM-QA). Quanta evaluates multimodal quizbowl sys-tems that answer pyramid-style questions from incrementally revealed text and accompanying images while operating under realistic efficiency constraints. The challenge consists of two dis-tinct tasks: Tossup questions, which require decid-ing when to answer under uncertainty, and Bonus questions, which emphasize accurate answer se-lection and human adoption. To address these differing objectives, we develop a task-specific two-agent architecture. Our Tossup agent utilizes a GPT-4o-mini-class model (referred to as GPT-4.1-mini in the competition logs) with confidence-calibrated answering and a domain-specific nu-meric reasoning policy that reduces overconfident predictions from isolated quantitative clues. Our Bonus agent uses GPT-4o-class model (referred to as GPT-4.1) with leadin-aware reasoning, struc-tured relational reasoning, and multimodal evi-dence integration to improve exact answer selec-tion. Rather than relying on a retrieval pipeline or model ensembles, our approach emphasizes efficient reasoning policies and confidence cali-bration within a hosted-only environment. Our system achieved the highest overall leaderboard score of 0.402, including a Tossup score of 0.238 and a Bonus Effect score of 0.164. The results demonstrate that lightweight, task-specific rea-soning strategies can provide strong performance on resource-constrained multimodal question an-swering benchmarks. 
+
+> 1
+
+Department of Computer Science and Engineering, Chittagong University of Engineering & Technology, Chattogram, Bangladesh. Correspondence to: Nirjhar Das <nirjhardasami@gmail.com >.
+
+Accepted at EMM-QA 2026 Workshop, ICML 2026 (Non-Archival; Published on Workshop Website) 
+
+# 1. Introduction 
+
+The QANTA 2026 shared challenge studies efficient multi-modal question answering in the quizbowl setting, where systems answer pyramid-style questions from incremen-tally revealed text and accompanying images. Multimodal question answering has been extensively studied in visual question answering and multimodal reasoning settings (An-tol et al., 2015). However, quizbowl-style question an-swering presents a unique challenge because systems must continuously update their beliefs and decide when suffi-cient evidence exists to commit to an answer (Boyd-Graber et al., 2012; Wallace et al., 2019). Unlike conventional question answering benchmarks that provide complete con-text, quizbowl requires systems to reason under uncertainty and determine when sufficient evidence exists to commit to an answer. This setting makes confidence calibration and efficient reasoning as important as answer accuracy. QANTA consists of two complementary tasks. Tossup ques-tions require systems to decide when to answer as clues are revealed, balancing the benefit of early correct answers against penalties for incorrect predictions. Bonus questions provide complete context and emphasize accurate answer selection, calibration, and usefulness to human teammates. The inclusion of multimodal evidence further requires sys-tems to integrate textual and visual information while re-maining computationally efficient. The distinct objectives of the two tasks motivate a task-specific design. We develop a two-agent architecture con-sisting of a GPT-4.1-mini-based Tossup agent and a GPT-4.1- based Bonus agent. The Tossup agent focuses on confidence-calibrated answering and robust quantitative rea-soning, while the Bonus agent emphasizes leadin-aware reasoning, structured answer selection, and multimodal evi-dence integration. Our system achieved the highest overall leaderboard score of 0.402, including a Tossup score of 0.238 and a Bonus Effect score of 0.164. The primary contribution of this work is not a novel model architecture but a collection of task-specific reasoning and calibration strategies that improve performance under the efficiency constraints of QANTA 2026. Specifically, we make the following contributions: 1arXiv:2607.09623v1 [cs.CL] 10 Jul 2026 QANTA 2026 System Description 
+
+• A task-specific two-agent architecture for efficient mul-timodal question answering • Confidence-calibrated reasoning policies for incremen-tal answering and quantitative reasoning. • An empirical analysis of multimodal reasoning and calibration in the QANTA 2026 shared challenge. Unlike model-centric approaches that improve the underly-ing language model, our contribution lies in task-specific reasoning and calibration strategies that improve decision quality under competition constraints. 
+
+# 2. Task Overview 
+
+QANTA 2026 is a shared challenge organized as part of the ICML 2026 Workshop on Efficient Multimodal Question Answering (EMM-QA). The competition evaluates systems on quizbowl-style question answering, a setting that com-bines incremental reasoning, confidence calibration, and multimodal evidence integration under realistic efficiency constraints. Questions span a wide range of domains, includ-ing literature, history, science, fine arts, and current events. Unlike conventional question answering benchmarks that provide complete context before inference, QANTA requires systems to operate on partially revealed information and make decisions under uncertainty. 
+
+2.1. Tossup Task 
+
+Tossups are pyramidal questions revealed incrementally from early, highly distinctive clues to later, more accessible clues. Systems may answer at any point during the clue stream by issuing a buzz. This creates a trade-off between speed and accuracy: answering earlier can increase reward, while incorrect answers incur penalties. Consequently, suc-cessful systems must balance answer quality with calibrated decision-making. Some tossups additionally contain images, requiring sys-tems to integrate visual evidence with incrementally re-vealed textual clues. Images may include artworks, pho-tographs, maps, diagrams, scientific figures, or OCR-readable text. The central challenge is therefore not only identifying the correct answer, but also determining when sufficient evidence exists to answer confidently. 
+
+2.2. Bonus Task 
+
+Bonuses are multi-part questions that evaluate depth of knowledge and structured reasoning. Each bonus begins with a leadin that defines a shared theme, category, or re-lationship across constituent parts. Unlike tossups, bonus questions provide complete context before answering and emphasize precise answer selection rather than timing. Bonus questions may also include images that provide com-plementary evidence for one or more parts. In the human-AI collaboration setting, AI outputs serve as recommendations to a human captain who makes the final submission decision. As a result, answer accuracy, confidence calibration, and interpretability are all important factors influencing down-stream utility. 
+
+2.3. Evaluation Metrics 
+
+Evaluation reflects the decision-making requirements of competitive quizbowl. For tossups, primary metrics include expected score, buzz precision, and average buzz position. These metrics jointly measure answer correctness, calibra-tion, and the ability to answer early without excessive risk. We evaluate our system using the following metrics as de-fined by the competition protocol. • Win Rate: The percentage of questions where our system’s score exceeds the average score of all other participants. • Adoption: The rate at which the human captain ac-cepted the AI’s recommendation. • Buzz Position: The normalized point in the clue stream where the buzz occurred. • Bonus Effect: A composite measure of bonus accuracy and human–AI utility. • Calibration: The alignment between the model’s pre-dicted confidence and its empirical accuracy. For bonuses, evaluation emphasizes effect, part-level ac-curacy, question-level accuracy, calibration, and adoption. In addition, systems are assessed under practical efficiency considerations including inference cost, latency, and token usage, aligning with the workshop’s focus on efficient mul-timodal question answering. The differing objectives of tossup and bonus questions moti-vate distinct reasoning and decision-making strategies. This observation guided the design of our task-specific architec-ture, described in the following section. 
+
+# 3. System Architecture 
+
+The QANTA 2026 competition presents two distinct question-answering tasks with substantially different ob-jectives. Tossup questions require rapid decision-making under uncertainty, where systems must determine not only the correct answer but also the optimal time to answer. In contrast, Bonus questions prioritize answer accuracy, struc-tured reasoning, and usefulness in a human-AI collaboration 2QANTA 2026 System Description 
+
+setting. We therefore adopt a task-specific architecture con-sisting of two specialized agents rather than a single unified model. Figure 1 provides an overview of the proposed system. In-coming multimodal inputs, consisting of textual clues and optional images, are routed according to task type. Tossup questions are processed by a GPT-4.1-mini-based agent opti-mized for low-latency incremental reasoning and calibrated buzzing decisions. Bonus questions are processed by a GPT-4.1 based agent optimized for precise answer selection, relational reasoning, and human adoption. Both agents were accessed via the hosted API during the official evaluation window. 
+
+3.1. Design Philosophy 
+
+Our design is guided by three principles: task specialization, confidence calibration, and efficient multimodal reasoning. First, we treat tossups and bonuses as fundamentally differ-ent decision-making problems. A single prompting strategy, that performs well on one task may not be optimal for the other. Second, we emphasize calibrated confidence esti-mates because both competition tracks depend on reliable strategies that leverage visual information when useful while avoiding unnecessary computational overhead. 
+
+3.2. Overall Architecture 
+
+The Tossup agent receives incrementally revealed clues and produces an answer prediction along with an associated verbalized confidence estimate P (correct ). This estimate is obtained by prompting the model to provide a numeric certainty score as part of its output stream. These outputs are passed through a confidence-based decision policy that determines whether sufficient evidence exists to issue a buzz. To improve robustness, the system employs a calibration pol-icy that discourages overconfident predictions based solely on isolated numbers, equations, or measurements. The Bonus agent operates on complete question context and receives the leadin, question text, and any accompanying images. The agent performs leadin-aware reasoning to iden-tify shared themes, categories, or relationships across bonus parts before generating final answers. In addition to answer prediction, the agent produces concise evidence-based ex-planations intended to facilitate rapid human verification and adoption. 
+
+3.3. Multimodal Reasoning Strategy 
+
+Rather than treating text and images as equally important at all times, our system adopts an evidence-routing strategy. Textual clues are used to generate the initial hypotheses set, while images serve primarily as supporting or disambiguat-ing evidence. Visual information is therefore incorporated selectively when it provides information not already avail-able in the text. This process is implemented through a late-fusion strategy with cross-checking between modalities. Candidate answers generated from textual evidence are evaluated against avail-able visual evidence before confidence is increased. This approach aims to reduce unnecessary multimodal processing while maintaining the ability to exploit informative images when present. The resulting architecture aims to provide an effective bal-ance between accuracy, calibration, and computational effi-ciency, allowing the system to adapt its reasoning strategy to the differing requirements of tossup and bonus question answering. 
+
+# 4. Tossup Agent 
+
+The Tossup task requires systems to answer pyramid-style questions under uncertainty while simultaneously deciding when sufficient evidence exists to commit to an answer. Because incorrect buzzes incur penalties, successful per-formance depends not only on answer accuracy but also on calibrated confidence estimation. To address these re-quirements, we employ a GPT-4.1-mini-based Tossup agent optimized for efficient incremental reasoning, confidence calibration, and low-latency inference. 
+
+4.1. Agent Design 
+
+We selected GPT-4.1-mini as the primary Tossup model due to its favorable balance between accuracy, latency, and inference cost. Unlike bonus questions, tossups require re-peated evaluation of incrementally revealed clues, making computational efficiency an important consideration. The agent is instructed to behave as an expert quizbowl player, continuously updating its hypotheses as new evidence be-comes available while avoiding overcommitment based on generic or weak clues. The Tossup agent produces two outputs: an answer pre-diction and an associated confidence estimate. Images are treated as supporting evidence rather than primary informa-tion sources. Textual clues drive initial hypotheses gener-ation, while visual evidence is used selectively for disam-biguation when it provides unique information not already present in the text. 
+
+4.2. Confidence-Calibrated Buzzing 
+
+A key design decision is the separation of answer generation from buzz decisions. Rather than directly trusting model confidence, the system employs a calibrated confidence gate that determines whether answering is beneficial under the competition scoring rules. Recent work has shown that 3QANTA 2026 System Description  
+
+> Figure 1. Overview of the proposed QANTA 2026 system. The Tossup agent combines evidence routing, confidence calibration, a Numeric Firewall, and expected-value-based buzzing, while the Bonus agent performs leadin-aware multimodal reasoning and evidence fusion.
+
+language model confidence estimates can provide useful signals for uncertainty-aware decision making (Kadavath et al., 2022). The buzzing policy is governed by an Expected Value (EV) maximization strategy, defined as EV = P (correct )−0.5×
+
+P (incorrect ). This formula reflects the competition scoring where correct answers are rewarded and incorrect buzzes incur a penalty weighted at 0.5 of the reward. The buzzing decision can be viewed as a form of selective prediction, where the system chooses whether sufficient confidence exists to commit to an answer (Geifman & El-Yaniv, 2017). To ensure a robust margin of safety, we apply a decision gate where a buzz is issued only if the model’s verbalized confidence P (correct ) ≥ 0.90 . This conservative thresh-old was selected based on development results Section 7.1 where values below 0.90 frequently corresponded to unsta-ble hypotheses. 
+
+4.3. Numeric Reasoning Guardrails 
+
+A recurring failure mode involved quantitative and scientific questions. The model frequently produced overconfident predictions when exposed to isolated numbers, equations, or measurements without sufficient contextual evidence. These errors often resulted in premature buzzes and unnecessary penalties. To mitigate this behavior, we introduced a Numeric Firewall, a domain-specific calibration policy designed for mathe-matics and science questions. The Numeric Firewall is a prompt-level reasoning guardrail that enforces a conditional confidence update. The mechanism prevents the model from increasing P (correct ) above a ’safe’ baseline when the evidence is limited to isolated numbers or measurements. Confidence is only permitted to exceed the baseline if the numerical data is corroborated by at least one of three spe-cific ’contextual anchors’: (1) a named entity, (2) an explicit formulaic context, or (3) multiple independent and consis-tent clues. Numeric answers remain valid when explicitly requested by the question or when several independent clues converge on the same conclusion. 4QANTA 2026 System Description 
+
+This guardrail significantly reduced science-related nega-tions and improved overall calibration, particularly in quan-titative domains where numerical patterns alone are often insufficient for reliable identification. 
+
+4.4. Development and Error Analysis 
+
+The final Tossup system emerged through three major iter-ations. First, the optimization objective was shifted from raw answer accuracy to expected-value maximization, im-proving the trade-off between reward and risk. Second, the Numeric Firewall was introduced to address quantitative reasoning failures. Third, confidence calibration was refined through position-aware thresholding and adoption of a more conservative decision threshold. Common failure mode included over-buzzing on generic clue fragments, confusion between closely related entities, and excessive confidence on isolated numerical evidence. These issues were mitigated through calibrated confidence gating, stronger emphasis on distinctive clues, and the intro-duction of domain-specific reasoning guardrails. The resulting system achieved a Tossup score of 0.238 and contributed substantially to the highest overall leaderboard score obtained during the competition. 
+
+# 5. Bonus Agent 
+
+Unlike tossups, bonus questions prioritize answer accuracy, structured reasoning, and usefulness in a human-AI collab-oration setting. Bonus questions provide complete context before answering and often requires reasoning over shared themes, categories, or relationships introduced through a leadin. To address these requirements, we employ a ded-icated GPT-4.1 based Bonus agent optimized for leadin-aware reasoning, multimodal evidence integration, and hu-man adoption. 
+
+5.1. Agent Design 
+
+We selected the GPT-4.1 model for bonus question answer-ing due to its stronger reasoning, calibration, and disam-biguation capabilities. While GPT-4.1-mini provided a fa-vorable efficiency profile for tossups, bonus questions place greater emphasis on answer quality and structured reasoning than on low-latency decision making. In practice, the full model exhibited more reliable behavior on ambiguous ques-tions, relational reasoning tasks, and multimodal examples. The Bonus agent is prompted as an answer retrieval and disambiguation system rather than an open-ended reason-ing assistant. Outputs are intentionally short, structured, and confidence-calibrated. For each question, the model produces an answer, a confidence estimate, and a concise evidence-based explanation intended to support rapid hu-man verification. 
+
+5.2. Leadin-Aware Reasoning 
+
+A central component of the Bonus agent is leadin-aware reasoning. Bonus questions frequently contain a leadin that establishes a shared theme, category, or relationship across multiple parts. Ignoring this context can lead to inconsistent answer selection or failures in relation reasoning. The Bonus agent therefore processes the leadin before eval-uating individual parts. The leadin is used to constrain the candidate answer space and guide subsequent reason-ing. This design encourages consistency across bonus parts while improving answer precision in cases where multiple plausible entities remain under consideration. 
+
+5.3. Multimodal Evidence Integration 
+
+The Bonus agent adopts an evidence-routing strategy for multimodal reasoning. Textual clues are used to generate the initial hypotheses set, while visual information is incor-porated only when it contributes unique evidence. Images are therefore treated as evidence rather than decoration and may provide OCR text, diagrams, maps, scientific structure, artistic styles, or other identifying signals. The multimodal reasoning pipeline follows a sequential late-fusion process: (1) Hypotheses Generation: The agent uses textual clues to generate a set of candidate answers. (2) Visual Cross-Checking: The agent evaluates the image (seeking OCR text, diagrams, or artistic styles) against the text-based candidates. (3) Confidence Adjustment: If the im-age supports or refines a candidate, confidence is increased; if the image contradicts the text-derived hypotheses, the candidate is discarded or confidence is lowered. This approach reduces premature multimodal anchoring while preserving the ability to exploit highly informative visual evidence when available. 
+
+5.4. Human Adoption Optimization 
+
+In the human-AI competition setting, answer quality alone is insufficient. Prior work has shown that effective human-AI collaboration depends not only on predictive performance but also on the interpretability and trustworthiness of model recommendations (Bansal et al., 2021). Human captains must be able to quickly evaluate and trust the system’s recommendations. Consequently, the Bonus agent was ex-plicitly optimized for adoption. During development, we observed that verbose explanations and hedged responses reduced human willingness to use the model’s suggestion. To address this issue, outputs were con-strained to concise answer-centered formats with calibrated confidence estimates and short supporting rationales. Confi-5QANTA 2026 System Description 
+
+dence scores serve as a lightweight uncertainty signal, while explanations provide sufficient evidence for rapid auditing without overwhelming the user. 
+
+5.5. Development and Error Analysis 
+
+The final Bonus agent emerged through a series of iterative refinements. Early versions often produced overly verbose explanations that negatively affected adoption. Subsequent revisions emphasized concise answer retrieval, confidence calibration, and structured outputs. Additional improve-ments focused on reducing entity confusion by prioritizing distinctive clues and delaying commitment when multiple closely related candidates remained plausible. A second class of failures involved multimodal reasoning and quantitative questions. These issues were addressed through evidence routing, cross-modal verification, and the incorporation of domain-specific reasoning policies inher-ited from the overall system design. The resulting agent achieved a Bonus Effect score of 0.164 and contributed sub-stantially to the highest overall leaderboard score obtained during the competition. 
+
+# 6. Experiments and Results 
+
+6.1. Experimental Setup 
+
+Experiments were conducted within the official QANTA 2026 shared challenge hosted as part of the ICML 2026 Workshop on Efficient Multimodal Question Answering (EMM-QA). The competition evaluates hosted multimodal question-answering systems on both Tossup and Bonus tasks. Systems receive streaming textual clues and, for selected questions, accompanying images. Performance is evaluated using task-specific metrics that jointly cap-ture answer quality, confidence calibration, buzzing be-havior, and human-AI collaboration effectiveness. The results reported in this paper correspond to the official challenge submissions QANTA41Mini V1 for Tossup and 
+
+QANTA41 Bonus V1 for Bonus. 
+
+6.2. Tossup Results 
+
+Table 1 summarizes the performance of the proposed Tossup agent. The system achieved a Tossup score of 0.238, the highest score on the leaderboard at evaluation time. The agent maintained a Buzz precision of 72.5% while buzzing on 94.2% of questions and achieved a Win Rate of 71.1%. Despite operating under hosted-agent constraints, the system achieved competitive buzzing behavior at an inference cost of only $0.14. The reported cost corresponds to the total API expenditure incurred during the official Tossup evaluation set, demonstrating the extreme efficiency of the GPT-4.1-mini backbone for incremental processing.  
+
+> Table 1. Final Tossup Results.
+
+Metric Value E[Score] 0.238 Buzz Precision 72.5% Buzz Frequency 94.2% Buzz Position 60.558 Win Rate 71.1% Total Evaluation Cost (USD) $0.14 
+
+6.3. Bonus Results 
+
+Table 2 presents the performance of the Bonus agent. The system achieved a Bonus Effect of 0.164 together with 89.1% Part Accuracy and 72.7% Question Accuracy.  
+
+> Table 2. Final Bonus Results.
+
+Metric Value Bonus Effect 0.164 Part Accuracy 89.1% Question Accuracy 72.7% Calibration 88.2% Adoption 33.8% The agent additionally achieved strong Calibration (88.2%) and Adoption (33.8%), indicating that its responses were both reliable and useful in the human-AI collaboration set-ting. Adoption measures the frequency with which human participants accepted the AI recommendation under the offi-cial evaluation protocol. 
+
+6.4. Overall Leaderboard Performance 
+
+Table 3 summarizes the final leaderboard performance. Combining the Tossup and Bonus agents yielded an Overall Score of 0.402, corresponding to the top-ranked position on the competition leaderboard at evaluation time. The clos-est competing system obtained an Overall Score of 0.370, resulting in a margin of 0.032.  
+
+> Table 3. Overall Leaderboard Performance.
+
+Metric Value Overall Rank 1Overall Score 0.402 Tossup E[Score] 0.238 Bonus Effect 0.164 Bonus Part Accuracy 89.1% Bonus Adoption 33.8% These results suggest that task-specific reasoning policies, confidence calibration, and efficient multimodal evidence 6QANTA 2026 System Description 
+
+integration can provide a substantial advantage in resource-constrained multimodal question answering. 
+
+# 7. Error Analysis and Discussion 
+
+Although the proposed system achieved the highest over-all leaderboard score, several recurring failure modes were observed during development and evaluation. Analyzing these failures proved critical for improving expected score, confidence calibration, and multimodal reasoning perfor-mance. This section discusses the primary sources of error, the design modifications introduced to address them, and the broader lessons learned from developing efficient hosted multimodal question-answering agents for QANTA 2026. 
+
+7.1. Confidence Calibration 
+
+Confidence calibration emerged as one of the most impor-tant factors affecting Tossup performance. Confidence cali-bration has been widely recognized as an important compo-nent of reliable machine learning systems, particularly when predictions are used to drive downstream decisions under uncertainty (Guo et al., 2017). In the QANTA setting, incor-rect buzzes incur explicit penalties, making overconfident predictions substantially more costly than delayed but cor-rect answers. Consequently, the objective is not simply to maximize answer accuracy, but rather to maximize expected score through calibrated decision-making. During early development, the system employed more ag-gressive buzzing thresholds. While these configurations occasionally produced earlier correct answers, they also re-sulted in frequent incorrect commitments to semantically re-lated entities. Representative examples included confusion between Frodo and Bilbo , Nick Carraway and Jay Gatsby ,and Mormonism and Catholicism . In these cases, the model successfully identified the correct semantic neighborhood but lacked sufficient evidence to distinguish among nearby candidates. Table 4 summarizes the impact of confidence threshold selection during development using a small set of play-ground Tossup questions. Although these experiments do not reflect the official leaderboard evaluation, they were useful for understanding the trade-off between buzzing ag-gressiveness and precision. Lower thresholds increased buzzing frequency but substantially reduced precision and expected score due to incorrect early commitments. In con-trast, more conservative thresholds reduced catastrophic errors and improved expected value, motivating the final confidence-gating strategy used in the submitted system. A key observation was that confidence estimates gener-ated by GPT-4.1-mini were not uniformly reliable across all ranges. Confidence values 0.80-0.85 frequently corre-sponded to plausible but unstable hypotheses that were later  
+
+> Table 4. Effect of confidence threshold on a qualitative develop-ment set of playground Tossup questions.
+
+Threshold Precision Buzz Position Expected Score 0.75 25% 25 -0.2 0.85 75% 39 0.0 0.90 100% 48 +0.5 revised as additional clues became available. By contrast, confidence values above 0.90 were significantly more likely to correspond to the final correct answer. This observa-tion motivated the final confidence threshold used in the submitted system. The final submitted system achieved a Buzz Precision of 72.5% on the official Tossup leaderboard, indicating that the trends observed during development largely transferred to the full competition setting. Overall, these experiments demonstrate that confidence calibration is a critical compo-nent of incremental question answering systems. Accurate answer generation alone is insufficient; systems must also determine when available evidence is strong enough to jus-tify an irreversible buzzing decision. 
+
+7.2. Related-Entity Confusion 
+
+A recurring challenge in incremental question answering is distinguishing between closely related entities that share substantial contextual overlap. In quizbowl, early clues are intentionally obscure and often describe a broader narrative, historical period, scientific domain, or thematic category before revealing uniquely identifying information. As a result, multiple plausible candidates may remain consistent with the available evidence for a significant portion of the question. This behavior was particularly evident in literary, historical, and religious questions. For example, clues describing a fic-tional narrative may initially support several characters from the same work, while clues about a religious movement may remain compatible with multiple denominations until a dis-tinctive identifier appears. In such cases, the model often identified the correct answer family early but lacked suffi-cient evidence to confidently distinguish among neighboring entities. We found that generic clues were substantially less infor-mative than distinctive clues. Early commitment based on thematic similarity frequently produced unstable hypothe-ses, whereas rare names, unique events, specific quotations, and highly distinctive attributes were much stronger pre-dictors of the final answer. This observation motivated the final prompting strategy, which emphasized distinctive ev-idence and encouraged uncertainty when multiple related candidates remained plausible. 7QANTA 2026 System Description 
+
+These findings suggest that a significant portion of quizbowl difficulty arises not from knowledge gaps but from fine-grained entity disambiguation under incomplete informa-tion. Improving robustness to related-entity confusion re-mains an important direction for future multimodal question-answering systems. 
+
+7.3. Lessons Learned 
+
+Several practical lessons emerged during system develop-ment. First, confidence calibration proved more important than raw answer accuracy in the Tossup task because in-correct buzzes incur explicit penalties. Second, simpler prompting strategies consistently outperformed heavily en-gineered reasoning protocols for both Tossup and Bonus agents. Third, multimodal evidence was most effective when used selectively for disambiguation rather than as a primary source of information. Finally, domain-specific guardrails, such as the Numeric Firewall used for quantita-tive questions, improved robustness by preventing overcon-fidence from limited numerical evidence. These observations suggest that efficient multimodal ques-tion answering benefits from task-specific reasoning poli-cies, calibrated decision-making, and lightweight evidence integration strategies rather than increasingly complex prompting pipelines. 
+
+# 8. Conclusion 
+
+This paper presented a task-specific multimodal question-answering system for the QANTA 2026 shared challenge. Rather than relying on a single unified strategy, the pro-posed approach employed separate agents for the Tossup and Bonus tasks, allowing each component to optimize for its respective objective. The Tossup agent combined GPT-4.1-mini with confidence calibration, expected-value-based buzzing, and domain-specific reasoning guardrails, while the Bonus agent utilized GPT-4.1 with leadin-aware reason-ing and multimodal evidence routing. Experimental results demonstrated that these design choices were effective under hosted-agent resource constraints. The final system achieved a Tossup E[Score] of 0.238, a Bonus Effect of 0.164, and an Overall Score of 0.402, securing first place on the competition leaderboard at the time of submission. Error analysis further highlighted the impor-tance of confidence calibration, selective multimodal fusion, and robust entity disambiguation for incremental question answering. Overall, our findings suggest that efficient multimodal question answering benefits more from calibrated decision-making, task-specific reasoning policies, and targeted evi-dence integration than from increasingly complex prompt-ing pipelines. Future work may explore improved entity disambiguation, stronger quantitative reasoning capabilities, and adaptive confidence estimation methods for incremental multimodal question answering. 
+
+# References 
+
+Antol, S., Agrawal, A., Lu, J., Mitchell, M., Batra, D., Zitnick, C. L., and Parikh, D. Vqa: Visual question answering. In Proceedings of the IEEE International Conference on Computer Vision , pp. 2425–2433, 2015. Bansal, G., Wu, T., Zhou, J., Fok, R., Nushi, B., Kamar, E., Ribeiro, M. T., and Weld, D. Does the whole exceed its parts? the effect of ai explanations on complemen-tary team performance. In Proceedings of the 2021 CHI Conference on Human Factors in Computing Systems ,2021. Boyd-Graber, J. et al. Besting the quiz master: Crowdsourc-ing incremental classification games. In Proceedings of the 2012 Conference on Empirical Methods in Natural Language Processing , 2012. Geifman, Y. and El-Yaniv, R. Selective classification for deep neural networks. In Advances in Neural Information Processing Systems Workshops , 2017. Guo, C., Pleiss, G., Sun, Y., and Weinberger, K. Q. On calibration of modern neural networks. In Proceedings of the 34th International Conference on Machine Learning ,2017. Kadavath, S. et al. Language models (mostly) know what they know. arXiv preprint arXiv:2207.05221 , 2022. Wallace, E. et al. Trick me if you can: Human-in-the-loop generation of adversarial question answering examples. In Proceedings of the 57th Annual Meeting of the Associ-ation for Computational Linguistics , 2019. 8QANTA 2026 System Description 
+
+# A. System Design and Reproducibility Details 
+
+This appendix consolidates implementation and design de-tails referenced throughout the paper to improve trans-parency, reproducibility, and understanding of the proposed system. It summarizes the model backbones, agent respon-sibilities, reasoning policies, evaluation conditions, and ad-ditional competition statistics referenced throughout the manuscript. 
+
+A.1. Model Backbones 
+
+The proposed system employs two specialized language-model agents. • GPT-4.1-mini serves as the backbone for the Tossup task due to its favorable latency, efficiency, and ability to process incrementally revealed clues in real time. • GPT-4.1 serves as the backbone for the Bonus task, providing stronger reasoning capabilities for multi-part questions, evidence integration, and multimodal analy-sis. Both agents operated within the official hosted QANTA 2026 evaluation environment. 
+
+A.2. Agent Roles 
+
+The system consists of two task-specific agents designed for complementary responsibilities. Glint and Guild denote the official Tossup and Bonus agents used in the competition submissions, respectively. 
+
+Glint (Tossup Agent). Glint is responsible for incremen-tal clue processing, answer prediction, confidence estima-tion, and buzzing decisions. As new clues become available, the agent continuously updates candidate hypotheses and issues a buzz only when the confidence threshold is satisfied. 
+
+Guild (Bonus Agent). Guild is responsible for bonus-question answering, evidence aggregation, multimodal rea-soning, and answer refinement. The agent generates con-cise answer-centered responses intended to support human decision-making during the Bonus phase. 
+
+A.3. Prompting Principles 
+
+Prompt design was guided by three primary principles: • Distinctive Clue Prioritization : Encourage reasoning based on highly discriminative evidence rather than generic associations. • Concise Answer-Centered Outputs : Reduce unnec-essary generation while improving readability and us-ability for human participants. • Leadin-Aware Reasoning : Utilize question lead-ins to establish the expected semantic domain before eval-uating candidate answers. 
+
+A.4. Confidence Policy 
+
+The Tossup agent produces both an answer prediction and a verbalized confidence estimate, denoted as P (correct ).Buzzing decisions are governed by a confidence threshold of 0.90. This threshold was adopted to prioritize precision and reduce incorrect commitments during incremental clue revelation. Confidence estimates are treated as decision-support signals rather than formally calibrated probabilities. 
+
+A.5. Numeric Firewall 
+
+To mitigate overconfidence on mathematics and science questions, the system employs a Numeric Firewall .The Numeric Firewall functions as a prompt-level reasoning guardrail. Confidence is not permitted to increase substan-tially based solely on isolated numerical values. Numerical evidence must be supported by at least one contextual an-chor: • Named entities, • Explicit formulaic context, • Multiple independent and consistent clues. This policy reduces premature commitment to superficially plausible numerical answers and improves confidence cali-bration in quantitative domains. 
+
+A.6. Multimodal Reasoning Policy 
+
+The system employs a late-fusion multimodal reasoning strategy. Textual clues are first used to generate candidate hypothe-ses. Visual evidence is subsequently used as a secondary verification mechanism. Images may contribute OCR text, diagrams, artistic styles, or contextual cues that support, refine, or contradict text-derived hypotheses. Final predictions are determined through cross-checking between textual and visual evidence streams. 
+
+A.7. Evaluation Environment 
+
+All experiments were conducted within the official hosted-only QANTA 2026 evaluation environment. The Tossup task utilized incrementally revealed textual clues. The Bonus task incorporated textual evidence and, when available, visual information supplied by the competi-tion platform. 9QANTA 2026 System Description 
+
+All reported leaderboard results correspond to the official evaluation framework provided by the organizers. 
+
+A.8. Competition Statistics 
+
+Table 5 summarizes additional statistics reported during the official QANTA 2026 evaluation.  
+
+> Table 5. Additional competition statistics for the proposed system.
+
+Agent Metric Value 
+
+Glint (Tossup) Tossup Wins 37 Glint (Tossup) Tossup Accuracy 78.4% Guild (Bonus) Bonus Accuracy 71.2% These statistics provide additional insight into the comple-mentary strengths of the two agents. Glint achieved the highest number of Tossup wins among participating sys-tems, while Guild maintained strong Bonus performance through evidence aggregation and multimodal reasoning. Together, the agents contributed to the system achieving the highest overall leaderboard score in the QANTA 2026 Human–AI Hybrid Quiz Bowl Challenge. 10

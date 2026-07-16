@@ -1,0 +1,405 @@
+Title: SPARK: Susceptibility-Guided Profiling and Steering of Latent Reasoning States in Large Language Models
+
+URL Source: https://arxiv.org/pdf/2607.10296v1
+
+Published Time: Tue, 14 Jul 2026 00:45:03 GMT
+
+Number of Pages: 14
+
+Markdown Content:
+# SPARK: Susceptibility-Guided Profiling and Steering of Latent Reasoning States in Large Language Models 
+
+Dongxu Zhang 1 Yiding Sun 1 Zihao Guo 1 Xiangyang Yang 1 Kai Tang 2
+
+Lin Chen 1 Cheng Tan 3 Jihua Zhu 1
+
+> 1
+
+Xi’an Jiaotong University 2Peking University 3Tencent 
+
+Reasoning failures in large language models (LLMs) are usually evaluated from final answers, but a wrong answer does not reveal why the model failed. The same incorrect output may reflect missing capability, an unstable reasoning trajectory, or a failure to activate a reasoning state that is already available in the frozen model. Existing prompting and benchmark-based evaluation methods mostly operate at the output level, while generic activation-steering meth-ods typically apply global directions without diagnosing which examples require intervention. In this paper, we introduce SPARK, which uses hidden-state response to diagnose whether a model internally enters an effective reasoning state and to guide lightweight test-time steer-ing. The key observation is that raw hidden-state susceptibility is strongly confounded by prompt length, especially in programmatic and algorithmic reasoning where harder serialized instances naturally become longer. SPARK therefore uses length-controlled susceptibility to separate input-scale effects from residual reasoning activation, and combines this signal with cross-layer coordination to select reasoning-active anchors and under-activated hard examples. We use FRONTIER-4.5K as a controlled programmatic reasoning suite for latent profiling and difficulty-aware analysis, and evaluate SPARK-Steering on GSM8K and MATH-500 with forward-only benchmark profiling. Our method improves Qwen3 series models consistently; on MATH-500, accuracy rises from 82.0% to 84.6% for Qwen3-4B and from 82.4% to 85.6% for Qwen3-8B. These results suggest that susceptibility can serve not only as a diagnostic signal for reasoning failures, but also as a practical guide for targeted test-time intervention. 
+
+Keywords: Large Language Models, Chain-of-Thought, Latent Reasoning States 
+
+Contact: Dongxu Zhang, zhangdongxu@stu.xjtu.edu.cn 
+
+# 1 Introduction 
+
+Large language models (LLMs) have made rapid progress on mathematical, symbolic, and algorithmic reasoning tasks [ 33 , 34 , 12 ], yet their reasoning failures remain difficult to interpret from final answers alone [ 40 ]. A model may solve easy instances reliably, become unstable on moderately difficult inputs, and fail sharply as problem structure grows [ 26 , 27 , 9]. Benchmark accuracy captures this behavioral pattern only at the output level [ 24 , 16 ]. It tells us when performance drops, but not what internal condition has changed. This matters because two incorrect answers may correspond to different internal states. In one case, the model may not possess the required capability [ 10 ]. In another, it may have partial capability but fail to activate the latent computation needed for the current input [ 31 ]. Moreover, hard reasoning problems often become longer and more structurally dense [ 43 ], so weak 1arXiv:2607.10296v1 [cs.AI] 11 Jul 2026 SPARK: Susceptibility-Guided Profiling and Steering of Latent Reasoning States in Large Language Models Easy  Hard 
+
+Why Benchmark Accuracy is Not Enough?     
+
+> Benchmark Evaluation (Scoreboard)
+> SPARK Opens the Latent Workspace
+> Problems
+> Correct
+> Wrong
+> Observe
+> only
+> What remains hidden?
+> ⚫Reasoning activated?
+> ⚫Length effect?
+> ⚫How to intervene?
+> Diagnose
+> Profile latent
+> response
+> Select
+> Active anchors
+> Hard targets
+> Steer
+> Steer latent state
+> toward active
+> Hidden state response
+
+Figure 1: Motivation and overview of SPARK. Benchmark evaluation observes correct and wrong answers and summarizes performance with accuracy curves, but leaves the latent reasoning state hidden. SPARK complements this output-level view with latent profiling and test-time steering. It diagnoses hidden-state response, selects reasoning-active anchors and under-activated hard targets, and evaluates whether steering improves harder examples while preserving easier cases. hidden-state response may reflect input scale rather than a true collapse of reasoning. Current evaluation practice creates a gap between observing failure and deciding how to intervene. Accuracy curves can locate a behavioral capability boundary, but they do not specify what should be changed when a hard example fails. Prompting treats the model largely as a black box [ 32 , 13 ], while fine-tuning changes parameters and obscures whether the frozen model already contains a usable reasoning state [ 11 , 30 , 25 ]. A useful reasoning diagnostic should therefore be measurable during a forward pass, require no parameter updates, and provide an actionable signal for targeted test-time intervention. We address this problem through hidden-state susceptibility. Inspired by susceptibility as response to a small perturbation [ 6, 21 ], we measure how strongly transformer hidden states react when small noise is applied to the input embeddings. This yields a lightweight response signal for each problem, with the initial intuition that examples near a behavioral boundary may show amplified or unstable internal responses. Our experiments show that this intuition must be refined. In programmatic reasoning, raw susceptibility is strongly affected by prompt length [ 22 , 18 ], especially in algorithmic tasks where harder graph-structured instances naturally become longer after serialization. As difficulty increases, raw hidden-state response can decrease largely because the input is longer; without length control, a metric that appears to describe reasoning may instead describe input scale. This observation motivates a length-controlled view of susceptibility. Instead of asking whether a problem has high or low raw response, we compare its response with what is expected among inputs of similar length. The resulting residual signal better reflects reasoning activation after removing a major input scale confound. A positive residual suggests stronger internal activation than length alone would predict, while a negative residual suggests under activation. This distinction is especially important for hard failures, where weak raw response could otherwise be mistaken for a trivial consequence of long prompts. We present SPARK for susceptibility guided profiling and steering of latent reasoning states. Following the pipeline in Figure 1, the framework first estimates the behavioral boundary from the accuracy curve over difficulty. It then profiles latent states [ 4, 20 ] using length controlled susceptibility and cross-layer coordination, separating reasoning-active examples from hard examples that remain under activated after length correction. This partition is based on corrected internal evidence rather than prompt length or raw response, and turns latent profiling into a selection 2SPARK: Susceptibility-Guided Profiling and Steering of Latent Reasoning States in Large Language Models 
+
+mechanism for intervention [1, 5]. This diagnosis further enables SPARK-Steering, a targeted test-time intervention for frozen models [ 23 ]. Instead of applying a generic activation direction, SPARK extracts a reasoning direction from active anchors, representing the latent shift from a baseline state toward an active reasoning state. During inference, the direction is injected into selected layers [ 28 , 45 ] for under-activated hard targets. This makes steering diagnosis-guided and selective, it aims to repair hard failures while preserving easier cases, without updating model parameters. We evaluate SPARK on FRONTIER-4.5K, a 4,500-instance programmatic reasoning suite covering symbolic composition, logical inference, and algorithmic reasoning. These tasks allow us to compare behavioral accuracy with internal response as difficulty changes. Algorithmic reasoning is the primary diagnostic setting because it exhibits both a clear capability boundary and a strong length confound. In this paper, our contributions are as follows: • We construct FRONTIER-4.5K, a reasoning benchmark with executable supervision and contin-uous difficulty annotations for joint behavioral and latent-state analysis. • We identify length as a critical confound in hidden-state susceptibility analysis, showing that raw response signals can reflect input-scale attenuation rather than reasoning activation, especially in algorithmic reasoning. • To the best of our knowledge, we present the first susceptibility-guided steering framework for implicit reasoning states. SPARK extracts reasoning directions from active anchors and selectively injects them into under-activated hard examples at test time. • Extensive experiments show that SPARK improves GSM8K, MATH-500, and FRONTIER, with stronger gains on harder reasoning cases and the importance of susceptibility-guided direction and layer selection. 
+
+# 2 Related Work 
+
+## 2.1 Reasoning in Large Language Models. 
+
+LLMs have shown strong performance on mathematical, symbolic, and commonsense reasoning benchmarks, while their success often changes sharply with model scale, prompt design, and task complexity [ 42 , 10 , 2 ]. A large body of work improves reasoning by eliciting intermediate computations in the output space. Chain-of-thought (CoT) prompting encourages models to generate step-by-step rationales [ 32 ], zero-shot variants show that such behavior can be triggered by simple natural-language instructions [ 13 ], and self-consistency improves robustness by marginalizing over multiple sampled reasoning paths [ 41 ]. Subsequent prompting methods further decompose hard problems into simpler subproblems or search over intermediate reasoning states, such as least-to-most prompting, Tree of Thoughts, and ReAct-style reasoning with actions [ 44 , 38 , 37 ]. Other work studies verifier-guided reasoning and process supervision, emphasizing that correct final answers may depend on the stability of intermediate reasoning trajectories [ 39 , 17 ]. These methods primarily operate through prompts, demonstrations, decoding, or supervision over generated rationales. In contrast, SPARK does not primarily aim to elicit longer or more explicit reasoning traces; it diagnoses whether the model internally enters a reasoning-active state. 
+
+## 2.2 Activation Steering and Test-Time Control. 
+
+Another line of work controls language models at inference time without updating their parame-ters. Early approaches guide generation through external discriminators, gradients, or future-token 3SPARK: Susceptibility-Guided Profiling and Steering of Latent Reasoning States in Large Language Models 
+
+scoring [ 36 , 14 , 3]. More recent activation-level methods directly modify internal states using di-rections derived from contrastive prompts or representation analyses [ 15 , 23 ]. Activation addition, representation engineering, inference-time intervention, and contrastive activation addition show that adding a vector to selected hidden layers can steer attributes such as sentiment, honesty, toxicity, or refusal behavior without full fine-tuning [ 28 , 45 ]. These results suggest that some model behaviors are organized along manipulable directions in activation space. SPARK-Steering applies this idea to reasoning, but differs in two ways. First, the steering direction is not chosen from a generic semantic contrast; it is extracted from reasoning-active anchors selected by length-controlled susceptibility and cross-layer coordination Φ. Second, the target of intervention is not a global style or safety attribute, but a specific failure mode: high-difficulty examples whose hidden-states are under-activated relative to same-length inputs. This connects latent diagnosis with a causal test-time intervention for reasoning. 
+
+# 3 Reasoning Benchmark 
+
+Our analysis requires a benchmark that exposes more than final answers. To study behavioral boundaries together with latent activation, each instance should provide verified supervision, a controlled difficulty coordinate, and metadata about its generated structure. We construct FRONTIER-4.5K, a programmatic reasoning benchmark with 4,500 generated instances for evaluating both output accuracy and hidden-state response. FRONTIER-4.5K contains three domains with 1,500 instances each. Symbolic Composition requires multi-step transformations over symbols and variable bindings; Logical Inference requires multi-hop rule chaining with distractor facts; and Algorithmic Reasoning requires graph- and procedure-based queries such as connectivity, path existence, and shortest-path problems [ 29 , 19 ]. All answers are produced by deterministic solvers, avoiding model-based judging. Each instance includes a problem text x, verified answer y, domain label, generation parameters, token length T, and normalized difficulty d ∈ [0, 1 ]. Difficulty is derived from domain-specific generation factors and normalized within each domain to ensure comparable ordering: composition depth and variable interactions for symbolic tasks, rule-chain length and distractors for logical tasks, and graph size, edge density, and query complexity for algorithmic tasks. 
+
+# 4 Method 
+
+## 4.1 Problem Setup 
+
+Let D = {(xi, yi, di)}Ni=1 be a domain-specific split from one downstream benchmark. Each input xi
+
+has a verified answer yi and a normalized difficulty score di ∈ [0, 1 ], where larger values indicate harder instances. We use this set to estimate behavioral boundaries, fit length-control models, and select reasoning-active anchors. A frozen language model fθ produces an answer ˆyi, and correctness is denoted by: 
+
+ci = 1[ ˆyi = yi]. (1) The token length of xi is denoted by Ti. Throughout this section, model parameters θ are fixed. All profiling signals are computed from forward passes only. The method has two stages. First, SPARK P ROFILING estimates the behavioral boundary and diagnoses latent reasoning states using hidden-state response. Second, SPARK-S TEERING uses the diagnosed active states to construct a test-time steering direction for hard under activated examples. 4SPARK: Susceptibility-Guided Profiling and Steering of Latent Reasoning States in Large Language Models Stage1: Task Preparation  Stage2: 
+
+SPARK  Profiling  Stage3: 
+
+Test -Time Steering 
+
+1. Task Domain   
+
+> Symbolic Logical Algorithmic
+
+2. Difficulty Coordinate 
+
+3. Token Length T 
+
+Frozen LLM+ 
+
+SPARK  Profiler     
+
+> forward -only no parameter update
+> A. Behavioral Boundary B. Latent Response
+> Embedding
+> perturbation
+> Hidden response
+> Length control
+> Under -
+> activated
+> Reasoning -
+> activate
+> Latent state map
+> Anchors
+> Correct
+> High 𝜒 𝐿𝐶
+> High 𝑆𝑃𝐾 𝐿𝐶
+> Targets
+> Low 𝜒 𝐿𝐶
+> Hard
+> Wrong
+
+SPARK  -Steering                     
+
+> test -time activation intervention
+> 1.Critical Reasoning Direction
+> SPARK -guided
+> layers
+> ℎ𝑙 (𝑏𝑎𝑠𝑒 )ℎ𝑙 (𝑎𝑐𝑡𝑖𝑣𝑒 )
+> Critical Reasoning Direction 𝑣 𝑙
+> 𝑣 𝑙 =𝐸 ℎ𝑙 𝑎𝑐𝑡𝑖𝑣𝑒 −ℎ𝑙 (𝑏𝑎𝑠𝑒 )
+> 2.Activation Steering
+> ℎ𝑙
+> ′=ℎ𝑙 +𝛼 𝑣 𝑙
+> No training,
+> Test -time only
+> 3.Evaluation
+> Hard -bin
+> Accuracy
+> Easy -bin
+> preserved
+> 𝜒 𝐿𝐶 shift
+> toward active
+> Difficulty d +
+> correctness
+> Accuracy
+> curve
+> Boundary
+> 𝑑 ∗
+> Cross -layer
+> coordination
+> Sets latent
+> activation
+> high
+> 𝑆𝑃𝐾 𝐿𝐶
+> low
+> 𝑆𝑃𝐾 𝐿𝐶
+> activation
+> threshold
+> below 𝑑 ∗above 𝑑 ∗
+> 𝑑 =𝑑 ∗
+> Latent activation
+> C. Coordinate
+> construction and
+> state selection
+> Boundary fit
+> difficulty d 𝑦 𝑖 ∈0,1
+> Difficulty samples
+
+Figure 2: Overview of SPARK. Given tasks organized by domain, difficulty, and token length, SPARK first profiles a frozen LLM to identify the behavioral boundary and latent activation patterns associated with successful reasoning. It then selects active anchors and under-activated hard examples to estimate critical reasoning directions, which are injected at test-time through activation steering. The resulting intervention is applied only at inference time. 
+
+## 4.2 Behavioral Capability Boundary 
+
+The behavioral boundary is estimated from the relation between difficulty and correctness. We fit an accuracy curve: ˆp(d) ≈ P(c = 1 | d), (2) using held out calibration examples. The capability boundary d⋆ is defined as the difficulty level where the fitted pass rate drops to 50 percent, d⋆ = inf {d ∈ [0, 1 ] | ˆp(d) ≤ 0.5 }. This boundary is a behavioral quantity. It is estimated from correctness, not from hidden-state metrics. 
+
+## 4.3 Latent Susceptibility 
+
+For an input x, let E(x) be its input embedding sequence. For layer l, let rl (x) be the representation used for latent analysis, rl (x) is a pooled hidden-state from layer l, such as the final prompt token representation or a mean pooled representation over selected prompt positions. The same pooling rule is used for all methods and controls. To measure hidden-state response, we add small Gaussian perturbations [6] to the input embeddings. For perturbation index k, define: 
+
+eEk(x) = E(x) + ϵη k, ηk ∼ N (0, I), (3) where ϵ controls perturbation scale. Let rl (x; eEk) denote the same pooled layer representation when the model is run with the perturbed embedding sequence eEk(x). The layerwise susceptibility is defined as: 
+
+χl (x) = 1
+
+K
+
+K
+
+# ∑
+
+k=1
+
+∥rl (x; eEk) − rl (x)∥2
+
+ϵ(∥rl (x)∥2 + τ)
+
+!2
+
+, (4) where K is the number of perturbations and τ is a small numerical constant. We aggregate the layerwise responses over a selected layer set Lχ to obtain a sample-level susceptibility: 
+
+χ(x) = 1
+
+|L χ| ∑
+
+l∈L χ
+
+χl (x). (5) This quantity measures response intensity. It should be interpreted as a response-intensity measure rather than a difficulty score or a direct predictor of correctness. 5SPARK: Susceptibility-Guided Profiling and Steering of Latent Reasoning States in Large Language Models 
+
+## 4.4 Length Controlled Susceptibility 
+
+Raw susceptibility can be affected by prompt length. To separate length effects from reasoning state effects, we fit a length response model on the calibration split within each domain: log (χ(x) + τ) = a + b log T(x) + ξx, (6) where T(x) is token length, a and b are fitted coefficients, and ξx is the residual term. The length controlled susceptibility for each example is defined as: 
+
+χLC (x) = log (χ(x) + τ) − a − b log T(x). (7) A positive χLC means that x elicits stronger response than expected for inputs of similar length. A negative value indicates residual under activation after accounting for length. 
+
+## 4.5 Cross-Layer Coordination 
+
+Susceptibility measures response strength, but strong response alone does not guarantee coherent reasoning. We therefore measure whether hidden-state changes are directionally coordinated across layers. For a coordination layer set LΦ = {l1, . . . , lm}, define the normalized layer update: 
+
+ul (x) = rl (x) − rl−1(x)
+
+∥rl (x) − rl−1(x)∥2 + τ . (8) Cross-layer coordination [4] is the average pairwise cosine similarity among these updates: 
+
+Φ(x) = 2
+
+m(m − 1) ∑
+
+> 1≤i<j≤m
+
+uli (x)⊤ulj (x). (9) High Φ indicates that multiple layers move in consistent directions, which is expected when the model enters a more stable and internally coherent reasoning state. 
+
+## 4.6 SPK Index and State Profiling 
+
+The final profiling score combines length controlled response with coordination. Let z(·) denote standardization within the calibration split of the same domain. The length controlled SPK score is defined as: SPK LC (x) = z(χLC (x)) + λz(Φ(x)) , (10) where λ controls the contribution of cross-layer coordination. This score is used to construct two sets. Reasoning-active anchors A are examples that are solved correctly, lie near or below the behavioral boundary, and have high χLC and high SPK LC . Under-activated target candidates U are hard examples near or above the behavioral boundary with low χLC . Baseline correctness is used to construct reasoning-active anchors and diagnostic plots, but not to select test-time target examples. Quantile thresholds are chosen on the calibration split and kept fixed for evaluation. 
+
+## 4.7 Critical Reasoning Direction 
+
+For each anchor a ∈ A , we construct two inputs. The base input x0 
+
+> a
+
+contains only the target problem. The active input x+ 
+
+> a
+
+contains SPK selected demonstrations followed by the same target problem. Let 
+
+rl (x0 
+
+> a
+
+) and rl (x+ 
+
+> a
+
+) be their layer representations. The unnormalized direction at layer l is: ¯vl = 1
+
+|A| ∑
+
+> a∈A
+
+
+
+rl (x+ 
+
+> a
+
+) − rl (x0 
+
+> a
+
+)
+
+
+
+. (11) 6SPARK: Susceptibility-Guided Profiling and Steering of Latent Reasoning States in Large Language Models                                                                                                                                      
+
+> Model Method GSM8K MATH-500 FRONTIER-4.5K
+> Alpha Accuracy Tokens Alpha Accuracy Tokens Alpha Sym. Log. Alg. Qwen3-0.6B Original 055.8% 184 052.0% 656 055.5% 48.2% 12.5% Steering 0.25 56.3 %184 0.25 52.6% 662 0.25 56.2% 48.6% 14.0% Steering 0.5 56.0% 187 0.5 52.8% 645 0.5 59.2 %49.1% 16.8% Steering 1.0 55.6% 186 1.0 53.4 %640 1.0 58.5% 49.8 %17.2 %Qwen3-4B Original 089.7% 176 082.0% 817 088.1% 75.8% 19.8% Steering 0.25 89.9% 178 0.25 82.6% 812 0.25 88.4% 76.1% 22.0% Steering 0.5 90.2% 178 0.5 83.4% 842 0.5 92.3 %76.5% 24.4% Steering 1.0 90.5 %177 1.0 84.0 %843 1.0 91.6% 76.8 %25.7 %Qwen3-8B Original 092.1% 213 082.4% 896 088.8% 76.4% 20.1% Steering 0.25 92.4% 215 0.25 83.6% 885 0.25 89.2% 76.9% 23.2% Steering 0.5 92.6% 213 0.5 84.2 %873 0.5 93.1 %77.3% 25.6% Steering 1.0 93.2 %210 1.0 84.0% 902 1.0 92.3% 77.6 %26.4 %
+
+Table 1: Main results of SPARK-Steering on GSM8K, MATH-500, and FRONTIER-4.5K with Qwen3 series models. Shaded rows denote the original baseline without steering. For GSM8K and MATH-500, we report the steering strength α, exact-match accuracy, and average generated tokens. For FRONTIER-4.5K, we report accuracy on symbolic (Sym.), logical (Log.), and algorithmic (Alg.) reasoning subsets. Bold numbers mark the best accuracy within each model and benchmark. The injected direction is normalized as: 
+
+vl = ¯vl
+
+∥ ¯vl ∥2 + τ . (12) This direction represents the average latent shift from a base state toward a reasoning-active state. A stricter control replaces x0 
+
+> a
+
+with a length matched random demonstration input, which tests whether the direction is caused by reasoning-active content rather than added context length. 
+
+# 5 Experiments 
+
+We evaluate SPARK-Steering from three perspectives: standard benchmark performance, sensitivity to steering strength and model family, and agreement between the observed gains and the proposed latent under-activation mechanism. 
+
+## 5.1 Experimental Setup 
+
+Benchmarks and models. We use GSM8K and MATH-500 as reasoning benchmarks [ 2 , 10 , 17 ]. GSM8K mainly contains arithmetic problems, while MATH-500 contains more challenging problems. We also evaluate on the held-out split of our reasoning suite FRONTIER-4.5K. The main experiments use Qwen3 series models [ 35 ]. Experiments further test Llama-3.1-8B [ 7] and DeepSeek-R1-Distill-Qwen-7B [8], abbreviated as DeepSeek-R1 in the following for readability. 
+
+Steering protocol and metrics. SPARK is train-free in the sense that no model parameters are updated and no task-specific predictor is trained. It is nevertheless data-calibrated: before evaluation, we run the frozen model on training/calibration questions to estimate length-response baselines, susceptibility distributions, reasoning-active anchor pools, and benchmark-matched steering layers. Calibration labels are used to determine correctness for anchor selection and threshold calibration, while the reported accuracies are computed on held-out evaluation questions. The Original setting runs the frozen model without intervention. Steering injects a SPARK direction extracted from reasoning-active anchors selected by length-controlled susceptibility and cross-layer coordination. We report a 7SPARK: Susceptibility-Guided Profiling and Steering of Latent Reasoning States in Large Language Models                             
+
+> Model Method MATH-500
+> Alpha Accuracy Tokens Llama-3.1-8B Original 045.6% 757 Steering 0.25 46.8% 760 Steering 0.5 48.4 %847 Steering 1.0 47.6% 870 DeepSeek-R1 Original 085.4% 4138 Steering 0.25 86.4 %4257 Steering 0.5 86.2% 4373 Steering 1.0 32.0% 7519
+
+Table 2: Evaluation on MATH-500. The table reports original and steered performance (%) for Llama-3.1-8B and DeepSeek-R1 under different steering strengths, including exact-match accuracy and average generated tokens. sweep over steering strength α rather than optimizing model parameters, and measure exact-match accuracy together with average generated tokens. 
+
+## 5.2 Main Results 
+
+Table 1 reports the low-alpha sweep on GSM8K, MATH-500, and FRONTIER-4.5K. Across Qwen3 model sizes, moderate steering improves accuracy without noticeably increasing generation length. On GSM8K, where larger models are close to saturation, the gains are modest but stable. Qwen3-0.6B improves from 55.8% to 56.3%, Qwen3-4B from 89.7% to 90.5%, and Qwen3-8B from 92.1% to 93.2%. The gains are larger on MATH-500, where examples require more sustained multi-step reasoning. Qwen3-0.6B improves from 52.0% to 53.4%, Qwen3-4B from 82.0% to 84.0%, and Qwen3-8B from 82.4% to 84.2%. FRONTIER-4.5K shows the same trend in a controlled programmatic setting. Steering consistently improves symbolic, logical, and algorithmic reasoning across model sizes, with the largest gains on the algorithmic subset. Qwen3-0.6B improves from 12.5% to 17.2%, Qwen3-4B from 19.8% to 25.7%, and Qwen3-8B from 20.1% to 26.4%. Together, these results suggest that SPARK-Steering is most useful when the model has partial reasoning ability but the original forward pass does not enter a sufficiently active latent state. The average token counts remain in the same range, indicating that the improvement is not simply a consequence of longer generations. 
+
+## 5.3 Analysis 
+
+Alpha sensitivity. Table 3 extends the MATH-500 sweep to larger steering strengths. The response is clearly non-monotonic, which is important for interpreting SPARK as a targeted latent intervention rather than arbitrary activation amplification. Qwen3-0.6B reaches its best score at α = 1.0 or 1.5, improving from 52.0% to 53.4%. Qwen3-4B improves from 82.0% to 84.6%, with the best results at 
+
+α = 2.5 and 3.0. Qwen3-8B obtains the largest gain, improving from 82.4% to 85.6% at α = 2.0 and 
+
+α = 3.0. This dose-response pattern suggests that moderate steering can move the hidden trajectory toward a more useful reasoning state, while overly strong steering can interfere with the model’s native computation. The preferred steering strength also changes with model scale: larger Qwen3 models tolerate stronger intervention and obtain larger MATH-500 gains. 
+
+Cross-Family Generalization Table 2 tests whether the steering effect transfers beyond Qwen3. On Llama-3.1-8B, moderate steering improves MATH-500 accuracy from 45.6% to 48.4% at α = 0.5, with only a moderate increase in generated tokens, which indicates that the learned direction is not tied to a single Qwen3 model size or architecture. DeepSeek-R1 exhibits a different sensitivity profile. 8SPARK: Susceptibility-Guided Profiling and Steering of Latent Reasoning States in Large Language Models                                                  
+
+> Model Method MATH-500
+> Alpha Accuracy Tokens Qwen3-0.6B Steering 1.5 53.4 %668 Steering 2.0 52.8% 651 Steering 2.5 52.6% 644 Steering 3.0 52.2% 631 Steering 4.0 52.4% 640 Qwen3-4B Steering 1.5 83.8% 895 Steering 2.0 84.0% 830 Steering 2.5 84.6 %806 Steering 3.0 84.6 %820 Steering 4.0 84.2% 834 Qwen3-8B Steering 1.5 84.4% 857 Steering 2.0 85.6% 872 Steering 2.5 85.4% 901 Steering 3.0 85.6 %854 Steering 4.0 85.0% 893
+
+Table 3: Large-alpha sweep on MATH-500 for Qwen3 models. Each row reports the steering strength 
+
+α, exact-match accuracy (%), and average generated tokens for a single model. Small steering strengths still improve accuracy, from 85.4% to 86.4% at α = 0.25 and 86.2% at α = 0.5. However, increasing α to 1.0 sharply reduces accuracy to 32.0% while increasing average generation length from 4138 to 7519 tokens. We attribute this collapse to over-steering: DeepSeek-R1 already follows long native reasoning trajectories, and a large activation shift can disrupt these trajectories, making generation overly verbose and unstable. 
+
+Layer Susceptibility and Single-Layer Steering. We next examine whether the layers selected by SPARK correspond to meaningful susceptibility structure. Figure 3 shows the layerwise susceptibility spectrum χl and the resulting MATH-500 accuracy under single-layer steering at the selected layer L⋆.Across Qwen3 model sizes, the selected steering layer consistently aligns with a dominant susceptibility peak. For Qwen3-0.6B and Qwen3-4B, L⋆ lies near the final layer, matching the sharp late-layer rise of 
+
+χl . For Qwen3-8B, L⋆ shifts to an earlier layer, suggesting that the most sensitive reasoning-related layer can move with scale. The downstream accuracy curves remain smooth and bounded as α varies, supporting the view that SPARK selects a controlled intervention site rather than injecting an arbitrary perturbation. 
+
+## 5.4 Case Study 
+
+Figure 4 shows a representative algebra example where the base model reaches the correct setup but fails at a local transformation. Given a real root of x2 − 3x + 1 = 0, the task is to compute 
+
+x6 + x−6. Both the original and steered responses correctly derive x + x−1 = 3 and x3 + x−3 = 18. The original response then incorrectly sets x6 + x−6 = ( x3 + x−3)2 = 324, omitting the cross term in (x3 + x−3)2 = x6 + 2 + x−6. With SPARK-Steering at α = 3.0, the model preserves the setup but applies the corrected identity, producing 18 2 − 2 = 322. The extracted final answer changes from 324 to the gold answer 322, and the example is scored after final-answer extraction. 9SPARK: Susceptibility-Guided Profiling and Steering of Latent Reasoning States in Large Language Models 0.0 0.2 0.4 0.6 0.8 1.0                             
+
+> Normalized depth
+> 10 1
+> 10 2
+> Layer susceptibility
+> Qwen30.6B
+> L= 28 ,|h| = 41.9
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> Normalized depth
+> 10 2
+> Qwen34B
+> L= 36 ,|h| = 64.3
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> Normalized depth
+> 10 2
+> 10 3
+> Qwen38B
+> L= 7 ,|h| = 6.0
+> 01234
+> Steering strength
+> 50
+> 60
+> 70
+> 80
+> Accuracy (%)
+> MATH500
+> Mean Steering layer peak Qwen30.6B Qwen34B Qwen38B
+
+Figure 3: Layer susceptibility and single-layer steering dynamics. The first three plots report the layerwise susceptibility spectrum χl on the MATH-500 benchmark inputs. The x-axis is normalized layer depth, the y-axis is mean χl on a log scale, and shaded regions denote SEM. Red dashed lines mark the selected steering layer L⋆, while circles mark susceptibility peaks. The last plot reports held-out MATH-500 accuracy as steering strength α varies when injecting h ← h + αv at L⋆. The selected layers align with dominant susceptibility peaks, and the downstream accuracy changes remain bounded. 
+
+Ablation Setting Accuracy ∆
+
+Baseline Original 82.4% 0.0 Direction Random direction 82.6% +0.2 Easy correct anchors 83.2% +0.8 High raw-χ anchors 83.8% +1.4 High χLC anchors 84.8% +2.4 High SPK LC anchors 85.6 % +3.2 
+
+Layer Early layer 84.2% +1.8 Middle layer 84.6% +2.2 Late layer 85.0% +2.6 
+
+χl peak layer 85.4% +3.0 SPARK-selected layer 85.6 % +3.2 
+
+Table 4: Ablation study on MATH-500 with Qwen3-8B. ∆ denotes the accuracy change over the original model. Direction ablations test how the steering vector is constructed, while layer ablations test where the vector is injected. 
+
+## 5.5 Ablation Studies 
+
+Table 4 compares different direction-construction and layer-selection choices. Random directions give only a small gain, indicating that arbitrary activation noise does not explain the improvement. Easy correct anchors and high raw-χ anchors improve over the baseline, but remain weaker than length-controlled directions. This supports the central role of length control: raw susceptibility captures useful response information, but it is still confounded by prompt length. The best direction is obtained from high SPK LC anchors, which combine length-controlled response with cross-layer coordination. Layer ablations show the same pattern. Fixed early, middle, or late layers provide partial gains, but susceptibility-guided layer selection performs best. 10 SPARK: Susceptibility-Guided Profiling and Steering of Latent Reasoning States in Large Language Models 
+
+Figure 4: Qualitative case study. The base model reaches the correct setup but makes a local algebraic error when converting (x3 + x−3)2 into x6 + x−6. SPARK-Steering preserves the setup and repairs this local transformation, changing the extracted answer from 324 to the gold answer 322. The example is scored by exact match after final-answer extraction. 
+
+# 6 Conclusion 
+
+This work studies reasoning failures in LLMs through the lens of latent state activation. Final-answer accuracy reveals where a model succeeds or fails, but it does not distinguish missing capability from a failure to activate an available reasoning state. We show that hidden-state susceptibility offers a useful internal response signal for this distinction, while also revealing an important caveat. Raw susceptibility is strongly affected by prompt length, especially in algorithmic reasoning. Length-controlled susceptibility addresses this confound and provides a cleaner view of residual reasoning activation in hard examples. Building on this diagnosis, SPARK connects latent profiling with test-time intervention. It identifies reasoning-active anchors, detects under-activated hard targets, and uses the diagnosed active direction to steer hidden states while keeping model parameters frozen. Experiments on standard benchmarks show that SPARK improves reasoning performance, with stronger gains on harder examples and limited disruption to easier ones. These findings suggest that reasoning evaluation should not stop at measuring whether a model answers correctly. A more informative evaluation also asks whether the internal computation needed for reasoning is activated, how this activation is shaped by input scale, and whether it can be guided during inference. 11 SPARK: Susceptibility-Guided Profiling and Steering of Latent Reasoning States in Large Language Models 
+
+# References 
+
+[1] Nora Belrose, Igor Ostrovsky, Lev McKinney, Zach Furman, Logan Smith, Danny Halawi, Stella Biderman, and Jacob Steinhardt. Eliciting latent predictions from transformers with the tuned lens. arXiv preprint arXiv:2303.08112 , 2023. [2] Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz Kaiser, Matthias Plappert, Jerry Tworek, Jacob Hilton, Reiichiro Nakano, et al. Training verifiers to solve math word problems. 
+
+arXiv preprint arXiv:2110.14168 , 2021. [3] Sumanth Dathathri, Andrea Madotto, Janice Lan, Jane Hung, Eric Frank, Piero Molino, Jason Yosinski, and Rosanne Liu. Plug and play language models: A simple approach to controlled text generation. arXiv preprint arXiv:1912.02164 , 2019. [4] Mor Geva, Roei Schuster, Jonathan Berant, and Omer Levy. Transformer feed-forward layers are key-value memories. In Proceedings of the 2021 Conference on Empirical Methods in Natural Language Processing , pages 5484–5495, 2021. [5] Asma Ghandeharioun, Avi Caciularu, Adam Pearce, Lucas Dixon, and Mor Geva. Patchscopes: A unifying framework for inspecting hidden representations of language models. arXiv preprint arXiv:2401.06102 , 2024. [6] Ian J Goodfellow, Jonathon Shlens, and Christian Szegedy. Explaining and harnessing adversarial examples. 
+
+arXiv preprint arXiv:1412.6572 , 2014. [7] Aaron Grattafiori, Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey, Abhishek Kadian, Ahmad Al-Dahle, Aiesha Letman, Akhil Mathur, Alan Schelten, Alex Vaughan, et al. The llama 3 herd of models. arXiv preprint arXiv:2407.21783 , 2024. [8] Daya Guo, Dejian Yang, Haowei Zhang, Junxiao Song, Peiyi Wang, Qihao Zhu, Runxin Xu, Ruoyu Zhang, Shirong Ma, Xiao Bi, et al. Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning. 
+
+arXiv preprint arXiv:2501.12948 , 2025. [9] Yichen Guo, Kai Tang, Fenglai Lin, Yiding Sun, Dongxu Zhang, Wenya Wang, Lin William Cong, and Shanghang Zhang. Fade: Mitigating hallucinations by reducing language-prior dominance in large vision-language models, 2026. URL https://arxiv.org/abs/2606.29431 .[10] Dan Hendrycks, Collin Burns, Saurav Kadavath, Akul Arora, Steven Basart, Eric Tang, Dawn Song, and Jacob Steinhardt. Measuring mathematical problem solving with the math dataset. arXiv preprint arXiv:2103.03874 ,2021. [11] Edward J Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Liang Wang, Weizhu Chen, et al. Lora: Low-rank adaptation of large language models. Iclr , 1(2):3, 2022. [12] Qixian Huang, Hongqiang Lin, Tong Fu, Yingsen Wang, Zhenghui Fu, Qirui Wang, Yiding Sun, and Dongxu Zhang. Cfms: A coarse-to-fine multimodal synthesis framework for enhanced tabular reasoning. arXiv preprint arXiv:2604.10973 , 2026. [13] Takeshi Kojima, Shixiang Shane Gu, Machel Reid, Yutaka Matsuo, and Yusuke Iwasawa. Large language models are zero-shot reasoners. Advances in neural information processing systems , 35:22199–22213, 2022. [14] Ben Krause, Akhilesh Deepak Gotmare, Bryan McCann, Nitish Shirish Keskar, Shafiq Joty, Richard Socher, and Nazneen Fatema Rajani. Gedi: Generative discriminator guided sequence generation. In Findings of the Association for Computational Linguistics: EMNLP 2021 , pages 4929–4952, 2021. [15] Kenneth Li, Oam Patel, Fernanda Vi ´egas, Hanspeter Pfister, and Martin Wattenberg. Inference-time interven-tion: Eliciting truthful answers from a language model. Advances in Neural Information Processing Systems , 36: 41451–41530, 2023. [16] Percy Liang, Rishi Bommasani, Tony Lee, Dimitris Tsipras, Dilara Soylu, Michihiro Yasunaga, Yian Zhang, Deepak Narayanan, Yuhuai Wu, Ananya Kumar, et al. Holistic evaluation of language models. arXiv preprint arXiv:2211.09110 , 2022. 
+
+12 SPARK: Susceptibility-Guided Profiling and Steering of Latent Reasoning States in Large Language Models 
+
+[17] Hunter Lightman, Vineet Kosaraju, Yuri Burda, Harrison Edwards, Bowen Baker, Teddy Lee, Jan Leike, John Schulman, Ilya Sutskever, and Karl Cobbe. Let’s verify step by step. In International Conference on Learning Representations , volume 2024, pages 39578–39601, 2024. [18] Nelson F Liu, Kevin Lin, John Hewitt, Ashwin Paranjape, Michele Bevilacqua, Fabio Petroni, and Percy Liang. Lost in the middle: How language models use long contexts. Transactions of the association for computational linguistics , 12:157–173, 2024. [19] Larisa Markeeva, Sean McLeish, Borja Ibarz, Wilfried Bounsi, Olga Kozlova, Alex Vitvitskyi, Charles Blundell, Tom Goldstein, Avi Schwarzschild, and Petar Veli ˇckovi ´c. The clrs-text algorithmic reasoning language benchmark. arXiv preprint arXiv:2406.04229 , 2024. [20] Kevin Meng, David Bau, Alex Andonian, and Yonatan Belinkov. Locating and editing factual associations in gpt. Advances in neural information processing systems , 35:17359–17372, 2022. [21] Roman Novak, Yasaman Bahri, Daniel A Abolafia, Jeffrey Pennington, and Jascha Sohl-Dickstein. Sensitivity and generalization in neural networks: an empirical study. arXiv preprint arXiv:1802.08760 , 2018. [22] Ofir Press, Noah A Smith, and Mike Lewis. Train short, test long: Attention with linear biases enables input length extrapolation. arXiv preprint arXiv:2108.12409 , 2021. [23] Nina Rimsky, Nick Gabrieli, Julian Schulz, Meg Tong, Evan Hubinger, and Alexander Turner. Steering llama 2 via contrastive activation addition. In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 15504–15522, 2024. [24] Aarohi Srivastava, Abhinav Rastogi, Abhishek Rao, Abu Awal Md Shoeb, Abubakar Abid, Adam Fisch, Adam R Brown, Adam Santoro, Aditya Gupta, Adri `a Garriga-Alonso, et al. Beyond the imitation game: Quantifying and extrapolating the capabilities of language models. Transactions on machine learning research ,2023. [25] Yiding Sun, Dongxu Zhang, Jihua Zhu, Haozhe Cheng, Zhengqiao Li, Pengcheng Li, Chaowei Fang, Yonghao Dong, and Lin Chen. Tri-efficient transfer learning for point cloud videos. arXiv preprint arXiv:2606.24175 ,2026. [26] Kai Tang, Jinhao You, Yichen Guo, Yiding Sun, Dongxu Zhang, Wenya Wang, Hanze Li, Tao Luo, Renyuan Li, Xiande Huang, and Shanghang Zhang. Mitigating hallucinations via inter-layer consistency aggregation in large vision-language models, 2026. URL https://arxiv.org/abs/2505.12343 .[27] Kai Tang, Jinhao You, Bohua Zhang, Yichen Guo, Yiding Sun, Dongxu Zhang, Chenxi Li, Xiande Huang, and Shanghang Zhang. Seeme: Mitigating hallucinations in large vision-language models through effective visual token engineering, 2026. URL https://arxiv.org/abs/2607.04163 .[28] Alexander Matt Turner, Lisa Thiergart, Gavin Leech, David Udell, Juan J Vazquez, Ulisse Mini, and Monte MacDiarmid. Steering language models with activation engineering. arXiv preprint arXiv:2308.10248 , 2023. [29] Petar Veli ˇckovi ´c, Adri `a Puigdom `enech Badia, David Budden, Razvan Pascanu, Andrea Banino, Misha Dashevskiy, Raia Hadsell, and Charles Blundell. The clrs algorithmic reasoning benchmark. In International Conference on Machine Learning , pages 22084–22102. PMLR, 2022. [30] Yankai Wang, Yiding Sun, Qirui Wang, Pengbo Li, Chaoyi Lu, and Dongxu Zhang. Pointrft: Explicit reinforcement fine-tuning for point cloud few-shot learning. arXiv preprint arXiv:2603.23957 , 2026. [31] Jason Wei, Yi Tay, Rishi Bommasani, Colin Raffel, Barret Zoph, Sebastian Borgeaud, Dani Yogatama, Maarten Bosma, Denny Zhou, Donald Metzler, et al. Emergent abilities of large language models. arXiv preprint arXiv:2206.07682 , 2022. [32] Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Fei Xia, Ed Chi, Quoc V Le, Denny Zhou, et al. Chain-of-thought prompting elicits reasoning in large language models. Advances in neural information processing systems , 35:24824–24837, 2022. [33] Yujun Wu, Dongxu Zhang, Xinchen Li, Jinhang Xu, Yiling Duan, Yumou Liu, Jiabao Pan, Qiyuan Zhu, Xuanhe Zhou, Jingxuan Wei, et al. Intern-atlas: A methodological evolution graph as research infrastructure for ai scientists. arXiv preprint arXiv:2604.28158 , 2026. 
+
+13 SPARK: Susceptibility-Guided Profiling and Steering of Latent Reasoning States in Large Language Models 
+
+[34] Jinhang Xu, Qiyuan Zhu, Yujun Wu, Zirui Wang, Dongxu Zhang, Jianxin Tang, Marcia Tian, Yiling Duan, Siyuan Li, Jingxuan Wei, et al. Nanoresearch: Co-evolving skills, memory, and policy for personalized research automation. arXiv preprint arXiv:2605.10813 , 2026. [35] An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao, Chengen Huang, Chenxu Lv, et al. Qwen3 technical report. arXiv preprint arXiv:2505.09388 , 2025. [36] Kevin Yang and Dan Klein. Fudge: Controlled text generation with future discriminators. In Proceedings of the 2021 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies , pages 3511–3535, 2021. [37] Shunyu Yao, Jeffrey Zhao, Dian Yu, Nan Du, Izhak Shafran, Karthik Narasimhan, and Yuan Cao. React: Synergizing reasoning and acting in language models. arXiv preprint arXiv:2210.03629 , 2022. [38] Shunyu Yao, Dian Yu, Jeffrey Zhao, Izhak Shafran, Tom Griffiths, Yuan Cao, and Karthik Narasimhan. Tree of thoughts: Deliberate problem solving with large language models. Advances in neural information processing systems , 36:11809–11822, 2023. [39] Eric Zelikman, Yuhuai Wu, Jesse Mu, and Noah Goodman. Star: Bootstrapping reasoning with reasoning. 
+
+Advances in Neural Information Processing Systems , 35:15476–15488, 2022. [40] Dongxu Zhang, Ning Yang, Jihua Zhu, Jinnan Yang, Miao Xin, and Baoliang Tian. Ascot: An adaptive self-correction chain-of-thought method for late-stage fragility in llms. arXiv preprint arXiv:2508.05282 , 2025. [41] Dongxu Zhang, Hongqiang Lin, Yiding Sun, Pengyu Wang, Qirui Wang, Ning Yang, and Jihua Zhu. Not all queries need deep thought: Coficot for adaptive coarse-to-fine stateful refinement. arXiv preprint arXiv:2603.08251 , 2026. [42] Dongxu Zhang, Yiding Sun, Pengcheng Li, Yumou Liu, Hongqiang Lin, Haoran Xu, Xiaoxuan Mu, Liang Lin, Wenbiao Yan, Ning Yang, et al. Pointcot: A multi-modal benchmark for explicit 3d geometric reasoning. 
+
+arXiv preprint arXiv:2602.23945 , 2026. [43] Dongxu Zhang, Yiding Sun, Cheng Tan, Wenbiao Yan, Ning Yang, Jihua Zhu, and Haijun Zhang. Chain-of-thought compression should not be blind: V-skip for efficient multimodal reasoning via dual-path anchoring. 
+
+arXiv preprint arXiv:2601.13879 , 2026. [44] Denny Zhou, Nathanael Sch ¨arli, Le Hou, Jason Wei, Nathan Scales, Xuezhi Wang, Dale Schuurmans, Claire Cui, Olivier Bousquet, Quoc Le, et al. Least-to-most prompting enables complex reasoning in large language models. arXiv preprint arXiv:2205.10625 , 2022. [45] Andy Zou, Long Phan, Sarah Chen, James Campbell, Phillip Guo, Richard Ren, Alexander Pan, Xuwang Yin, Mantas Mazeika, Ann-Kathrin Dombrowski, et al. Representation engineering: A top-down approach to ai transparency. arXiv preprint arXiv:2310.01405 , 2023. 
+
+14
