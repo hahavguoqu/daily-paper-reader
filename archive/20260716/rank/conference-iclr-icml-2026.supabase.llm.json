@@ -1,0 +1,993 @@
+{
+  "top_k": 200,
+  "generated_at": "2026-07-16T08:32:29.184338+00:00",
+  "papers": [
+    {
+      "id": "openreview-iclr-2026-e0qfhma53j",
+      "source": "ICLR-2026-Accepted",
+      "title": "Scalable Chain of Thoughts via Elastic Reasoning",
+      "abstract": "Large reasoning models (LRMs) have achieved remarkable progress on complex tasks by generating extended chains of thought (CoT). However, their uncontrolled output lengths pose significant challenges for real-world deployment, where inference-time budgets on tokens, latency, or compute are strictly constrained. We propose Elastic Reasoning, a novel framework for scalable chain of thoughts that explicitly separates reasoning into two phases—thinking and solution—with independently allocated budgets. At test time, Elastic Reasoning prioritizes the completeness of solution segments, significantly improving reliability under tight resource constraints. To train models that are robust to truncated thinking, we introduce a lightweight budget-constrained rollout strategy, integrated into GRPO, which teaches the model to reason adaptively when the thinking process is cut short and generalizes effectively to unseen budget constraints without additional training. Empirical results on mathematical (AIME, MATH500) and programming (LiveCodeBench, Codeforces) benchmarks demonstrate that Elastic Reasoning performs robustly under strict budget constraints, while incurring significantly lower training cost than baseline methods. Remarkably, our approach also produces more concise and efficient reasoning even in unconstrained settings. Elastic Reasoning offers a principled and practical solution to the pressing challenge of controllable reasoning at scale. Code is available in the supplementary material.",
+      "authors": [
+        "Yuhui Xu",
+        "Hanze Dong",
+        "Lei Wang",
+        "Doyen Sahoo",
+        "Junnan Li",
+        "Caiming Xiong"
+      ],
+      "primary_category": "Test time scaling",
+      "categories": [
+        "Test time scaling",
+        "Large language models",
+        "Length control Abstract:"
+      ],
+      "published": "2026-01-26T14:03:27.92+00:00",
+      "link": "https://openreview.net/forum?id=E0Qfhma53J",
+      "pdf_url": null,
+      "tags": [
+        "keyword:vlm-cot"
+      ]
+    },
+    {
+      "id": "openreview-iclr-2026-2kkxbsrhyi",
+      "source": "ICLR-2026-Accepted",
+      "title": "Long Chain-of-Thought Reasoning Across Languages",
+      "abstract": "While large reasoning models have shown remarkable ability to generate long chains-of-thought (CoTs) in English, we still lack understanding of how these long-form reasoning abilities transfer to the vast majority of the world’s languages. In this work, we systematically investigate four key stages of model development–scaling, pretraining, post-training, and inference–to understand how long CoT capabilities extend beyond English. We compare two reasoning settings across nine non-English target languages: En-CoT, where models process target-language inputs, but reason in English; and Target-CoT, where models both process inputs and generate long CoTs in the target language. We find that scaling reasoning model size improves multilingual task performance in En-CoT, but Target-CoT performance lags behind. This gap widens for tasks requiring long, multi-step CoTs such as mathematical reasoning. Shifting to pretraining, we find that adding a specialized reasoning stage enhances En-CoT performance but degrades Target-CoT, whereas broad multilingual pretraining improves both modes simultaneously. Given the scarcity of high-quality reasoning traces in languages other than English, we explore synthetic data curation approaches for post-training. We demonstrate that fine-tuning on reasoning traces\nautomatically translated from gold English traces outperforms fine-tuning on target-language traces distilled from large reasoning models. Finally, we report disparities in inference efficiency between languages and uncover language-specific failure modes\nin CoTs. We release models, datasets, and code to foster further research.",
+      "authors": [
+        "Josh Barua",
+        "Seun Eisape",
+        "Kayo Yin",
+        "Alane Suhr"
+      ],
+      "primary_category": "Multilingual",
+      "categories": [
+        "Multilingual",
+        "Reasoning",
+        "Long Chain-of-Thought"
+      ],
+      "published": "2026-01-26T14:10:46.995+00:00",
+      "link": "https://openreview.net/forum?id=2kKXbsRhYI",
+      "pdf_url": null,
+      "tags": [
+        "keyword:vlm-cot"
+      ]
+    },
+    {
+      "id": "openreview-iclr-2026-ck1gqb6ceb",
+      "source": "ICLR-2026-Public",
+      "title": "Protocode: Prototype-Driven Interpretability for Code Generation in LLMs",
+      "abstract": "Since the introduction of Large Language Models (LLMs), they have been widely adopted for various tasks such as text summarization, question answering, speech-to-text translation, and more. In recent times, the use of LLMs for code generation has gained significant attention, with tools such as Cursor and Windsurf demonstrating the ability to analyze massive code repositories and recommend relevant changes. Big tech companies have also acknowledged the growing reliance on LLMs for code generation within their codebases. Although these advances significantly improve developer productivity, increasing reliance on automated code generation can proportionally increase the risk of suboptimal solutions and insecure code. Our work focuses on automatically sampling In-Context Learning (ICL) demonstrations which can improve model performance and enhance the interpretability of the generated code. Using AST-based analysis on outputs from the MBPP test set, we identify regions of code most influenced by the chosen demonstrations. In our experiments, we show that high-quality ICL demonstrations not only make outputs easier to interpret but also yield a positive performance improvement on the pass@10 metric. Conversely, poorly chosen ICL demonstrations affected the LLM performance on the  pass@10 metric negatively compared to the base model. Overall, our approach highlights the importance of efficient sampling strategies for ICL, which can affect the performance of the model on any given task.",
+      "authors": [
+        "bodla Krishna Vamshi",
+        "Haizhao Yang"
+      ],
+      "primary_category": "Code generation in LLMS",
+      "categories": [
+        "Code generation in LLMS",
+        "Interpretability",
+        "prototype",
+        "In-context learning"
+      ],
+      "published": "2025-09-01T15:57:13.336+00:00",
+      "link": "https://openreview.net/forum?id=Ck1Gqb6ceb",
+      "pdf_url": null,
+      "tags": [
+        "query:vlm-cot"
+      ]
+    },
+    {
+      "id": "openreview-iclr-2026-tmgonf7crm",
+      "source": "ICLR-2026-Rejected-Public",
+      "title": "THINK-Bench: Evaluating Thinking Efficiency and Chain-of-Thought Quality of Large Reasoning Models",
+      "abstract": "Large reasoning models (LRMs) have achieved impressive performance in complex tasks, often outperforming conventional large language models (LLMs). However, the prevalent issue of overthinking severely limits their computational efficiency. Overthinking occurs when models generate excessive and redundant tokens that contribute little to accurate outcomes, especially in simple tasks, resulting in a significant waste of computational resources. To systematically investigate this issue, we introduce Think-Bench, a benchmark designed to evaluate the reasoning efficiency of LRMs. We also propose novel efficiency metrics and conduct a comprehensive evaluation of various LRMs across multiple dimensions, including the reasoning process, outcome quality, and chain-of-thought (CoT) characteristics. Our analysis reveals that most LRMs exhibit overthinking in handling easy questions, generating unnecessarily lengthy reasoning chains. While many LRMs demonstrate high CoT quality, several suffer from low efficiency. We hope that Think-Bench can serve as a robust foundation for advancing research into LRMs.",
+      "authors": [
+        "Zhiyuan Li",
+        "Yi Chang",
+        "Yuan Wu"
+      ],
+      "primary_category": "Benchmark",
+      "categories": [
+        "Benchmark",
+        "Large Reasoning Model",
+        "Thinking Efficiency",
+        "Chain-of-thought"
+      ],
+      "published": "2025-09-16T01:23:34.287+00:00",
+      "link": "https://openreview.net/forum?id=TMgONf7crm",
+      "pdf_url": null,
+      "tags": [
+        "keyword:vlm-cot"
+      ]
+    },
+    {
+      "id": "openreview-iclr-2026-woif5mgjxb",
+      "source": "ICLR-2026-Rejected-Public",
+      "title": "Efficient Inference with Large Reasoning Models",
+      "abstract": "Large reasoning models (LRMs) achieve state-of-the-art performance by generating long chains-of-thought, but often waste computation on redundant reasoning after the correct answer has already been reached. We introduce Early-Stopping for Token-Aware Reasoning (ESTAR) that detects and reduces such reasoning redundancy to improve efficiency without sacrificing accuracy. Our method combines (i) a trajectory-based classifier that identifies when reasoning can be safely stopped, (ii) supervised fine-tuning to teach LRMs to propose self-generated <stop> signals, and (iii) <stop>-aware reinforcement learning that truncates rollouts at self-generated stop points with compute-aware rewards. Experiments on four reasoning datasets show that ESTAR reduces reasoning length by about x3.7 (from 4799 to 1290) while preserving accuracy (74.9% vs. 74.2%), with strong cross-domain generalization. These results highlight early stopping as a simple yet powerful mechanism for improving reasoning efficiency in LRMs",
+      "authors": [
+        "Junda Wang",
+        "Zhichao Yang",
+        "Dongxu Zhang",
+        "Robert E. Tillman",
+        "Sanjit Singh Batra"
+      ],
+      "primary_category": "Thinking Efficiency",
+      "categories": [
+        "Thinking Efficiency"
+      ],
+      "published": "2025-09-20T02:49:48.527+00:00",
+      "link": "https://openreview.net/forum?id=WOIf5MGJXB",
+      "pdf_url": null,
+      "tags": [
+        "keyword:vlm-cot"
+      ]
+    },
+    {
+      "id": "openreview-iclr-2026-jbsye8m3fq",
+      "source": "ICLR-2026-Rejected-Public",
+      "title": "Encode, Think, Decode: Scaling test-time reasoning with recursive latent thoughts",
+      "abstract": "Most efforts to improve the reasoning capabilities of large language models (LLMs) involve either scaling the number of parameters and the size of training data, or scaling inference computation by letting models generate complex chains of thought. Motivated by interpretability studies showing that the crucial computation required for reasoning tasks is concentrated in a limited range of layers, we introduce Encode–Think–Decode (ETD), a method that enhances the reasoning capabilities of a base model by training it to iterate over a small subset of reasoning-relevant layers during the mid-training stage. ETD amplifies latent reasoning while preserving the original architecture, parameter count, hyperparameters, and training data composition. When iterating on the selected layers at inference time, ETD models yield substantial gains on 17 reasoning benchmarks, including +28.4% relative accuracy improvement on GSM8K and +36% on MATH with the OLMo-2 1B Base model. We also explore an adaptive depth strategy that adjusts the computation per input token. Our results show that recursive latent reasoning offers a simple and effective path to stronger LLM reasoning.",
+      "authors": [
+        "Yeskendir Koishekenov",
+        "Aldo Lipani",
+        "Nicola Cancedda"
+      ],
+      "primary_category": "Latent Reasoning",
+      "categories": [
+        "Latent Reasoning",
+        "recursive-depth models"
+      ],
+      "published": "2025-09-19T10:29:06.301+00:00",
+      "link": "https://openreview.net/forum?id=jBSye8M3FQ",
+      "pdf_url": null,
+      "tags": [
+        "keyword:vlm-cot"
+      ]
+    },
+    {
+      "id": "openreview-iclr-2026-z9humon2br",
+      "source": "ICLR-2026-Public",
+      "title": "Beyond Fast and Slow: Cognitive-Inspired Elastic Reasoning for Large Language Models",
+      "abstract": "Large language models (LLMs) have demonstrated impressive performance across various language tasks. However, existing LLM reasoning strategies mainly rely on the LLM itself with fast or slow mode (like o1 thinking) and thus struggle to balance reasoning efficiency and accuracy across queries of varying difficulties. In this paper, we propose Cognitive-Inspired Elastic Reasoning (CogER), a framework inspired by human hierarchical reasoning that dynamically selects the most suitable reasoning strategy for each query. Specifically, CogER first assesses the complexity of incoming queries and assigns them to one of several predefined levels, each corresponding to a tailored processing strategy, thereby addressing the challenge of unobservable query difficulty. To achieve automatic strategy selection, we model the process as a Markov Decision Process and train a CogER-Agent using reinforcement learning. The agent is guided by a reward function that balances solution quality and computational cost, ensuring resource-efficient reasoning. Moreover, for queries requiring external tools, we introduce Cognitive Tool-Assisted Reasoning, which enables the LLM to autonomously invoke external tools within its chain-of-thought. Extensive experiments demonstrate that CogER outperforms state‑of‑the‑art Test‑Time scaling methods, achieving at least a 13% relative improvement in average exact match on In‑Domain tasks and an 8% relative gain on Out‑of‑Domain tasks.",
+      "authors": [
+        "Jinwu Hu",
+        "Dongjin Yang",
+        "LangYu Bian",
+        "Zhiquan Wen",
+        "Yufeng Wang",
+        "Yaofo Chen",
+        "Bin Xiao",
+        "Yuanqing Li",
+        "Mingkui Tan"
+      ],
+      "primary_category": "Large language models; Reinforcement Learning; Markov decision process",
+      "categories": [
+        "Large language models; Reinforcement Learning; Markov decision process"
+      ],
+      "published": "2025-09-02T00:57:30.324+00:00",
+      "link": "https://openreview.net/forum?id=z9HUMon2Br",
+      "pdf_url": null,
+      "tags": [
+        "keyword:vlm-cot"
+      ]
+    },
+    {
+      "id": "openreview-iclr-2026-jinw28iilm",
+      "source": "ICLR-2026-Rejected-Public",
+      "title": "FAST THINKING FOR LARGE LANGUAGE MODELS",
+      "abstract": "Reasoning-oriented Large Language Models (LLMs) often rely on generating explicit tokens step by step, and their effectiveness typically hinges on large-scale supervised fine-tuning or reinforcement learning. \nWhile Chain-of-Thought (CoT) techniques substantially enhance performance on complex reasoning tasks, they remain inefficient, requiring long reasoning traces that increase latency and token usage. \nIn this work, we introduce \\emph{Latent Codebooks for Fast Thinking}, a framework that uses concise CoT sketches only during training to learn a codebook of discrete strategy priors. \nAt inference, the model conditions on a handful of continuous thinking vectors distilled from the codebook in a single pass, enabling strategy-level guidance without producing explicit reasoning tokens. \nTo complement this design, we propose GainRouter, a lightweight routing mechanism that adaptively switches between fast codebook-guided inference and slow explicit reasoning, thereby suppressing overthinking and reducing unnecessary token generation. \nExperiments across multiple reasoning benchmarks show that our approach achieves competitive or superior accuracy while substantially lowering inference cost, offering a practical path toward efficient and controllable reasoning in large language models.",
+      "authors": [
+        "Haoyu Zheng",
+        "Zhuonan Wang",
+        "Yuqian Yuan",
+        "Wenqiao Zhang",
+        "Zheqi Lv",
+        "Hongyang He",
+        "Juncheng Li",
+        "Siliang Tang",
+        "Yueting Zhuang"
+      ],
+      "primary_category": "Large Language Models",
+      "categories": [
+        "Large Language Models",
+        "Efficient Reasoning",
+        "Adaptive Routing"
+      ],
+      "published": "2025-09-18T03:11:32.013+00:00",
+      "link": "https://openreview.net/forum?id=jINW28iIlM",
+      "pdf_url": null,
+      "tags": [
+        "keyword:vlm-cot"
+      ]
+    },
+    {
+      "id": "openreview-icml-2026-rhlcygxb2x",
+      "source": "ICML-2026-Accepted",
+      "title": "DTS: Enhancing Large Reasoning Models via Decoding Tree Sketching",
+      "abstract": "Large Reasoning Models (LRMs) achieve remarkable inference-time improvements through parallel thinking. However, existing methods rely on redundant sampling of reasoning trajectories, failing to effectively explore the reasoning space to uncover high-quality solutions. To address these limitations, we propose **D**ecoding **T**ree **S**ketching (DTS), a plug-and-play decoding framework for structural multi-trajectory exploration and reasoning selection. For reasoning exploration, DTS sketches a backbone tree of the reasoning space by selectively branching at decision tokens. For reasoning selection, guided by length-accuracy anti-correlation, DTS designs an early termination to prioritize short and reliable trajectories during decoding. Experimental results across four LRMs and datasets demonstrate that DTS significantly enhances accuracy by **14\\%** and reduces repetitive generation by **8\\%** on average. Notably, DTS enables smaller models to outperform larger models with 10$\\times$ the size, highlighting its potential to strengthen reasoning capabilities.",
+      "authors": [
+        "Zicheng Xu",
+        "Xiuyi Lou",
+        "Guanchu Wang",
+        "Yu-Neng Chuang",
+        "Feng Luo",
+        "Guangyao Zheng",
+        "Alex Szalay",
+        "Zirui Liu",
+        "Vladimir Braverman"
+      ],
+      "primary_category": "Large Language Models",
+      "categories": [
+        "Large Language Models",
+        "LLM Reasoning",
+        "LLM Parallel Thinking"
+      ],
+      "published": "2026-04-30T19:13:37.45+00:00",
+      "link": "https://openreview.net/forum?id=rHlcYGxb2x",
+      "pdf_url": "https://openreview.net/pdf/f285b6be3e64fc10793bf26a138b2ba52356fb74.pdf",
+      "tags": [
+        "keyword:vlm-cot"
+      ]
+    },
+    {
+      "id": "openreview-icml-2026-hwj2sztvij",
+      "source": "ICML-2026-Accepted",
+      "title": "Towards Efficient Large Language Reasoning Models via Extreme-Ratio Chain-of-Thought Compression",
+      "abstract": "Chain-of-Thought (CoT) reasoning successfully enhances the reasoning capabilities of Large Language Models (LLMs), yet it incurs substantial computational overhead for inference. Existing CoT compression methods often suffer from a critical loss of logical fidelity at high compression ratios, resulting in significant performance degradation. To achieve high-fidelity, fast reasoning, we propose a novel EXTreme-RAtio Chain-of-Thought Compression framework, termed Extra-CoT, which aggressively reduces the token budget while preserving answer accuracy. To generate reliable, high-fidelity supervision, we first train a dedicated semantically-preserved compressor on mathematical CoT data with fine-grained annotations. An LLM is then fine-tuned on these compressed pairs via a mixed-ratio supervised fine-tuning (SFT), teaching it to follow a spectrum of compression budgets and providing a stable initialization for reinforcement learning (RL). We further propose Constrained and Hierarchical Ratio Policy Optimization (CHRPO) to explicitly incentivize question-solving ability under lower budgets by a hierarchical reward. Experiments on three mathematical reasoning benchmarks show the superiority of Extra-CoT. For example, on MATH-500 using Qwen3-1.7B, Extra-CoT achieves over 73\\% token reduction with an accuracy improvement of 0.6\\%, significantly outperforming state-of-the-art (SOTA) methods. Our source codes are released in the Supplementaries.",
+      "authors": [
+        "Yuntian Tang",
+        "Bohan Jia",
+        "Wenxuan Huang",
+        "Lianyue Zhang",
+        "Jiao Xie",
+        "Wenxi Li",
+        "Wei Li",
+        "Jie Hu",
+        "Xinghao Chen",
+        "Rongrong Ji",
+        "Shaohui Lin"
+      ],
+      "primary_category": "Reasoning efficiency",
+      "categories": [
+        "Reasoning efficiency",
+        "Chain-of-Thought compression",
+        "Controllable generation"
+      ],
+      "published": "2026-04-30T19:12:21.06+00:00",
+      "link": "https://openreview.net/forum?id=hwJ2SZtVij",
+      "pdf_url": "https://openreview.net/pdf/1a842038dcd0a89371fc6c4ac4f7d6247b3cccd6.pdf",
+      "tags": [
+        "keyword:vlm-cot"
+      ]
+    },
+    {
+      "id": "openreview-iclr-2026-waf8eiysae",
+      "source": "ICLR-2026-Rejected-Public",
+      "title": "Efficient Thinking via Meta Chain-of-Thought Evaluation",
+      "abstract": "Large Language Models (LLMs) have shown remarkable capabilities in handling complex tasks. Recent breakthroughs in Large Reasoning Models (LRMs)—such as OpenAI’s o1 and DeepSeek-R1—have pushed performance even further in System-2 reasoning domains like mathematics and programming. By leveraging supervised fine-tuning (SFT) and reinforcement learning (RL), these models enhance Chain-of-Thought (CoT) reasoning. However, while longer CoT sequences boost accuracy, they also lead to increased computational costs due to verbose and redundant outputs, a challenge termed the \"overthinking phenomenon\". In this paper, we design a novel and efficient framework called Dynamic Verify Stopping in Long Reasoning (DVS-LR) to resolve the issue of overthinking. An early-stop verifier is trained to evaluate the Meta-CoT from multiple dimensions, like completeness, correctness, and self-validation. DVS-LR receives the generating CoT stream and activates the verifier at adaptive checkpoints. If the score received from the verifier reaches a threshold, the current CoT generation is terminated, and the LRMs directly output the final answer without further thinking. Experiments on various math tasks benchmark show that our proposed method achieves 30\\% cut ratio while maintaining original accuracy. Based on the observation of the average length of after-cut length, we propose the ``Budget Forcing Early Stop Majority Voting'' method when the token budget is fixed. Experiments show that this method can improve the accuracy on various benchmarks compared with the original one-chain generation.",
+      "authors": [
+        "Zilong Wang",
+        "Shuai Li"
+      ],
+      "primary_category": "LLM reasoning",
+      "categories": [
+        "LLM reasoning",
+        "meta chain-of-thought"
+      ],
+      "published": "2025-09-18T14:05:12.409+00:00",
+      "link": "https://openreview.net/forum?id=WAF8eIYsae",
+      "pdf_url": null,
+      "tags": [
+        "keyword:vlm-cot"
+      ]
+    },
+    {
+      "id": "openreview-icml-2026-um6ifyc63p",
+      "source": "ICML-2026-Accepted",
+      "title": "ImgCoT: Compressing Long Chain of Thought into Compact Visual Tokens for Efficient Reasoning of Large Language Model",
+      "abstract": "Compressing long chains of thought (CoT) into compact latent tokens is crucial for efficient reasoning with large language models (LLMs). Recent studies employ autoencoders to achieve this by reconstructing textual CoT from latent tokens, thus encoding CoT semantics. However, treating textual CoT as the reconstruction target forces latent tokens to preserve surface-level linguistic features (e.g., word choice and syntax), introducing a strong linguistic inductive bias that prioritizes linguistic form over reasoning structure and limits logical abstraction. Thus, we propose ImgCoT that replaces the reconstruction target from textual CoT to the visual CoT obtained by rendering CoT into images. This substitutes linguistic bias with spatial inductive bias, i.e., a tendency to model spatial layouts of the reasoning steps in visual CoT, enabling latent tokens to better capture global reasoning structure. Moreover, although visual latent tokens encode abstract reasoning structure, they may blur reasoning details. We thus propose a loose ImgCoT, a hybrid reasoning that augments visual latent tokens with a few key textual reasoning steps, selected based on low token log-likelihood. This design allows LLMs to retain both global reasoning structure and fine-grained reasoning details with fewer tokens than the complete CoT. Extensive experiments across multiple datasets and LLMs demonstrate the effectiveness of the two versions of ImgCoT.",
+      "authors": [
+        "Xiaoshu Chen",
+        "Sihang Zhou",
+        "KE LIANG",
+        "Taichun Zhou",
+        "Yaohua Wang",
+        "Yang Gao",
+        "Xinwang Liu"
+      ],
+      "primary_category": "Chain-of-Thought",
+      "categories": [
+        "Chain-of-Thought",
+        "Latent reasoning",
+        "Efficient Reasoning"
+      ],
+      "published": "2026-04-30T19:09:41.295+00:00",
+      "link": "https://openreview.net/forum?id=UM6ifyC63p",
+      "pdf_url": "https://openreview.net/pdf/0fe3671647332e1e1294c26629f9e17b6be89787.pdf",
+      "tags": [
+        "keyword:vlm-cot"
+      ]
+    },
+    {
+      "id": "openreview-iclr-2026-q4ijxp47ct",
+      "source": "ICLR-2026-Accepted",
+      "title": "Training Large Reasoning Models Efficiently via Progressive Thought Encoding",
+      "abstract": "Large reasoning models (LRMs) excel on complex problems but face a critical barrier to efficiency: reinforcement learning (RL) training requires long rollouts for outcome-based rewards, where autoregressive decoding dominates time and memory usage. While sliding-window cache strategies can bound memory, they disrupt long-context reasoning and degrade performance. We introduce Progressive Thought Encoding, a parameter-efficient fine-tuning method that enables LRMs to reason effectively under fixed-size caches. By progressively encoding intermediate reasoning into compact representations, our approach eliminates the need to backpropagate through full-cache rollouts, thereby reducing training-time memory usage, while maintaining constant memory during inference. Experiments on three models, including Qwen2.5-3B-Instruct, Qwen2.5-7B-Instruct, and DeepSeek-R1-Distill-Llama-8B, across six widely used challenging mathematical benchmarks show consistent gains: our method achieves +19.3\\% improvement over LoRA and +29.9\\% over the baseline on average, with up to +23.4 absolute gains on AIME2024/2025 under tight cache budgets. These results demonstrate that Progressive Thought Encoding not only improves reasoning accuracy but also makes RL training of LRMs substantially more efficient and scalable under real-world memory constraints.",
+      "authors": [
+        "Zeliang Zhang",
+        "Xiaodong Liu",
+        "Hao Cheng",
+        "Hao Sun",
+        "Chenliang Xu",
+        "Jianfeng Gao"
+      ],
+      "primary_category": "efficient reasoning LLM",
+      "categories": [
+        "efficient reasoning LLM",
+        "KV cache",
+        "test-time learning"
+      ],
+      "published": "2026-01-26T13:56:12.592+00:00",
+      "link": "https://openreview.net/forum?id=q4iJxp47CT",
+      "pdf_url": null,
+      "tags": [
+        "keyword:vlm-cot"
+      ]
+    },
+    {
+      "id": "openreview-iclr-2026-jcfzagxnoy",
+      "source": "ICLR-2026-Rejected-Public",
+      "title": "Beyond Context Limits: Subconscious Threads for Long-Horizon Reasoning",
+      "abstract": "To break the context limits of large language models (LLMs) that bottleneck reasoning accuracy and efficiency, we propose the Thread Inference Model (TIM), a family of LLMs trained for recursive and decompositional problem solving, and the corresponding context pruning mechanism, a rule-based context management strategy enabling long-horizon structured reasoning beyond context limits. With this structure-aware context pruning, TIM supports virtually unlimited working memory and multi-hop tool calls within a single language model inference, overcoming output limits, positional-embedding constraints, and GPU-memory bottlenecks. Performance is achieved by modeling natural language as reasoning trees measured by both length and depth instead of linear sequences. The reasoning trees consist of tasks with thoughts, recursive subtasks, and conclusions based on the concept proposed in Schroeder et al, 2025. During generation, we maintain a working memory that retains only the key-value states of the most relevant context tokens, selected by a rule-based subtask-pruning mechanism, enabling reuse of positional embeddings and GPU memory pages throughout reasoning. Experimental results show that our system sustains high inference throughput, even when manipulating up to 90% of the KV cache in GPU memory. It also delivers accurate reasoning on mathematical tasks and handles information retrieval challenges that require long-horizon reasoning and multi-hop tool use.",
+      "authors": [
+        "Hongyin Luo",
+        "Nathaniel W. Morgan",
+        "Tina Li",
+        "Derek Zhao",
+        "Ai Vy Ngo",
+        "Philip Schroeder",
+        "Lijie Yang",
+        "Assaf Ben-Kish",
+        "Jack O'Brien",
+        "James R. Glass"
+      ],
+      "primary_category": "reasoning",
+      "categories": [
+        "reasoning",
+        "inference",
+        "system",
+        "reinforcement learning"
+      ],
+      "published": "2025-09-19T14:36:21.32+00:00",
+      "link": "https://openreview.net/forum?id=jCFzagXnoy",
+      "pdf_url": null,
+      "tags": [
+        "keyword:vlm-cot"
+      ]
+    },
+    {
+      "id": "openreview-icml-2026-pz9xukurig",
+      "source": "ICML-2026-Accepted",
+      "title": "Causal Dependency-Aware Unsupervised Routing for Large Reasoning Models",
+      "abstract": "As Large Language Model (LLM) ecosystems grow, routing queries to the most suitable model in a diverse pool has become a critical strategy for building efficient and high-performing AI systems.  \nA common approach is to train a supervised router; however, this requires vast, expensive human-annotated preference data and creates models that are notoriously brittle, failing to generalize when faced with inevitable distribution shifts in user queries. Consequently, developing robust, unsupervised routing methods that adapt without retraining is a crucial research frontier. \nThis challenge is severely amplified by Large Reasoning Models (LRMs), which introduce a dual problem for any label-free method: their outputs have a causal thinking $\\to$ answer structure that must be modeled, and a structural imbalance where long reasoning text can dominate the final answer signal. We introduce ReasoningRouter, a novel framework that resolves these issues with a length-balanced embedding strategy and a probabilistic model capturing the thinking-to-answer dependency. \nThe proposed Causal Triangulation Property enables the label-free estimation of component qualities and their causal link. \nBeyond competitive routing accuracy, ReasoningRouter offers unprecedented insights into model behavior, enabling separate quality assessment of reasoning and answer components while maintaining computational efficiency.",
+      "authors": [
+        "Jiacheng Liu",
+        "Hao Liu",
+        "Xiaofeng Hou",
+        "Wei Xue",
+        "Yike Guo"
+      ],
+      "primary_category": "Large Reasoning Model",
+      "categories": [
+        "Large Reasoning Model",
+        "Model Routing"
+      ],
+      "published": "2026-04-30T19:22:40.764+00:00",
+      "link": "https://openreview.net/forum?id=PZ9XUkURiG",
+      "pdf_url": "https://openreview.net/pdf/0c3f9a46eeae4176e0365367b4a0513c029564be.pdf",
+      "tags": [
+        "keyword:vlm-cot"
+      ]
+    },
+    {
+      "id": "openreview-iclr-2026-quzpam7bue",
+      "source": "ICLR-2026-Public",
+      "title": "Towards a Progress Bar for Reasoning: Progress Prediction in Large Reasoning Models",
+      "abstract": "Reasoning models that produce long, hidden chains of thought, have emerged as powerful tools for reasoning-intensive and agentic tasks. However, as the time horizons at which these models can operate grow exponentially, it becomes increasingly difficult to know how much progress the model is making on a task, making it challenging for users to set appropriate expectations about completion time. By probing the internal representations of Large Language Models (LLMs), we find evidence that their reasoning progress can be quantified, with simple linear probes achieving 30\\% accuracy over 10 progress classes and Mean Absolute Error (MAE) of 1.75. Rooted in this insight, we propose a two-stage fine-tuning method that trains existing reasoning models to explicitly generate progress estimates (0-100\\%) during their reasoning process. We find that the predictions of our best fine-tuned language model for sequences below 16K tokens are on average 10\\% from the true label.",
+      "authors": [
+        "Hans Peter Lyngsøe Raaschou-jensen",
+        "Constanza Fierro",
+        "Anders Søgaard"
+      ],
+      "primary_category": "Large Language Models (LLMs)",
+      "categories": [
+        "Large Language Models (LLMs)",
+        "Reasoning models",
+        "Progress prediction",
+        "Test-time inference"
+      ],
+      "published": "2025-09-19T12:11:07.54+00:00",
+      "link": "https://openreview.net/forum?id=qUzpAM7bue",
+      "pdf_url": null,
+      "tags": [
+        "keyword:vlm-cot"
+      ]
+    }
+  ],
+  "queries": [
+    {
+      "type": "intent_query",
+      "tag": "vlm-cot",
+      "paper_tag": "query:vlm-cot",
+      "query_text": "large model by big tech companies",
+      "sim_scores": {
+        "openreview-iclr-2026-ck1gqb6ceb": {
+          "score": 0.01639344262295082,
+          "rank": 1
+        }
+      },
+      "ranked": [
+        {
+          "paper_id": "openreview-iclr-2026-ck1gqb6ceb",
+          "score": 1.0,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "openreview-iclr-2026-waf8eiysae",
+          "score": 0.8798076923076922,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "openreview-iclr-2026-jbsye8m3fq",
+          "score": 0.8798076923076922,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "openreview-iclr-2026-jinw28iilm",
+          "score": 0.8422090729783037,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "openreview-iclr-2026-z9humon2br",
+          "score": 0.8057498057498057,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "openreview-icml-2026-rhlcygxb2x",
+          "score": 0.7703788748564866,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "openreview-iclr-2026-woif5mgjxb",
+          "score": 0.73604826546003,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "openreview-icml-2026-pz9xukurig",
+          "score": 0.702712746191007,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "openreview-iclr-2026-2kkxbsrhyi",
+          "score": 0.6703296703296702,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "openreview-iclr-2026-e0qfhma53j",
+          "score": 0.6388587937883712,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "openreview-iclr-2026-jcfzagxnoy",
+          "score": 0.608262108262108,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "openreview-iclr-2026-q4ijxp47ct",
+          "score": 0.608262108262108,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "openreview-icml-2026-um6ifyc63p",
+          "score": 0.578503688092729,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "openreview-iclr-2026-tmgonf7crm",
+          "score": 0.5495495495495496,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "openreview-icml-2026-hwj2sztvij",
+          "score": 0.5495495495495496,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "openreview-iclr-2026-quzpam7bue",
+          "score": 0.5213675213675214,
+          "star_rating": 4
+        }
+      ]
+    },
+    {
+      "type": "keyword",
+      "tag": "vlm-cot",
+      "paper_tag": "keyword:vlm-cot",
+      "query_text": "chain of thought reasoning",
+      "sim_scores": {
+        "openreview-iclr-2026-e0qfhma53j": {
+          "score": 0.010869565217391304,
+          "rank": 32
+        },
+        "openreview-iclr-2026-2kkxbsrhyi": {
+          "score": 0.010101010101010102,
+          "rank": 39
+        }
+      }
+    },
+    {
+      "type": "keyword",
+      "tag": "vlm-cot",
+      "paper_tag": "keyword:vlm-cot",
+      "query_text": "chain of thought reasoning large model",
+      "sim_scores": {
+        "openreview-iclr-2026-tmgonf7crm": {
+          "score": 0.016129032258064516,
+          "rank": 2
+        },
+        "openreview-iclr-2026-woif5mgjxb": {
+          "score": 0.015625,
+          "rank": 4
+        },
+        "openreview-iclr-2026-jbsye8m3fq": {
+          "score": 0.014285714285714285,
+          "rank": 10
+        },
+        "openreview-iclr-2026-z9humon2br": {
+          "score": 0.013888888888888888,
+          "rank": 12
+        },
+        "openreview-iclr-2026-jinw28iilm": {
+          "score": 0.0136986301369863,
+          "rank": 13
+        },
+        "openreview-icml-2026-rhlcygxb2x": {
+          "score": 0.013513513513513514,
+          "rank": 14
+        },
+        "openreview-icml-2026-hwj2sztvij": {
+          "score": 0.012658227848101266,
+          "rank": 19
+        },
+        "openreview-iclr-2026-waf8eiysae": {
+          "score": 0.011764705882352941,
+          "rank": 25
+        },
+        "openreview-icml-2026-um6ifyc63p": {
+          "score": 0.011627906976744186,
+          "rank": 26
+        },
+        "openreview-iclr-2026-q4ijxp47ct": {
+          "score": 0.011494252873563218,
+          "rank": 27
+        },
+        "openreview-iclr-2026-jcfzagxnoy": {
+          "score": 0.011363636363636364,
+          "rank": 28
+        },
+        "openreview-icml-2026-pz9xukurig": {
+          "score": 0.011111111111111112,
+          "rank": 30
+        },
+        "openreview-iclr-2026-quzpam7bue": {
+          "score": 0.010526315789473684,
+          "rank": 35
+        }
+      }
+    }
+  ],
+  "global_candidate_ids": [
+    "openreview-iclr-2026-ck1gqb6ceb",
+    "openreview-iclr-2026-hcuedq6ekd",
+    "openreview-iclr-2026-bp8gt36llh",
+    "openreview-icml-2026-pzqlovjqhd",
+    "openreview-iclr-2026-wy7nysckld",
+    "openreview-iclr-2026-tmgonf7crm",
+    "openreview-iclr-2026-x8tl75yznn",
+    "openreview-iclr-2026-8xsu8oscvg",
+    "openreview-iclr-2026-ickhyyjyjv",
+    "openreview-iclr-2026-ljoelgyisv",
+    "openreview-iclr-2026-tymigntiqo",
+    "openreview-iclr-2026-u9meoc0sau",
+    "openreview-iclr-2026-woif5mgjxb",
+    "openreview-iclr-2026-hswe9acezb",
+    "openreview-iclr-2026-hwygvps4di",
+    "openreview-iclr-2026-xqivtul1tf",
+    "openreview-iclr-2026-ddxqkx9raz",
+    "openreview-icml-2026-d6bqyajwmj",
+    "openreview-icml-2026-o4pweoea13",
+    "openreview-iclr-2026-10gdk6mtwj",
+    "openreview-iclr-2026-ke5c7qk82r",
+    "openreview-iclr-2026-kmz7qhgugz",
+    "openreview-iclr-2026-3n0qtlxz6u",
+    "openreview-iclr-2026-5nevwronjn",
+    "openreview-iclr-2026-emjpkk11oo",
+    "openreview-iclr-2026-hxehr5gjby",
+    "openreview-iclr-2026-zz8ikw4uwg",
+    "openreview-iclr-2026-gxkiksn2ha",
+    "openreview-iclr-2026-jbsye8m3fq",
+    "openreview-iclr-2026-vr36dtbxt9",
+    "openreview-iclr-2026-cg9nia1hhh",
+    "openreview-iclr-2026-g6xnp7sgui",
+    "openreview-iclr-2026-gzdvjee3iw",
+    "openreview-iclr-2026-t4pmt8zczo",
+    "openreview-iclr-2026-z9humon2br",
+    "openreview-iclr-2026-jinw28iilm",
+    "openreview-iclr-2026-viyslqixea",
+    "openreview-icml-2026-jojair1f71",
+    "openreview-iclr-2026-edh0k9ynol",
+    "openreview-iclr-2026-fkhmrv1nvz",
+    "openreview-icml-2026-rhlcygxb2x",
+    "openreview-iclr-2026-chfrimdr4z",
+    "openreview-iclr-2026-py7npetisz",
+    "openreview-icml-2026-sjk6ii8tws",
+    "openreview-iclr-2026-ji8ofkrywx",
+    "openreview-iclr-2026-mslgyx9sz3",
+    "openreview-iclr-2026-vicffjmgvb",
+    "openreview-iclr-2026-cxinicq0rr",
+    "openreview-iclr-2026-nmzfoa3zv2",
+    "openreview-icml-2026-p9dpmdikrl",
+    "openreview-iclr-2026-d9zgxqoymx",
+    "openreview-iclr-2026-jf1uzltad8",
+    "openreview-icml-2026-fz9nvjfnpn",
+    "openreview-iclr-2026-bwbteoba4o",
+    "openreview-iclr-2026-ymz4vun3ir",
+    "openreview-icml-2026-hwj2sztvij",
+    "openreview-iclr-2026-aqzipelfwp",
+    "openreview-iclr-2026-rqsjfzwcq0",
+    "openreview-icml-2026-n44p3zrrgo",
+    "openreview-iclr-2026-7uei91dxeo",
+    "openreview-iclr-2026-c1ud4flfpl",
+    "openreview-iclr-2026-ma9xxwjjyr",
+    "openreview-iclr-2026-6eg9y3zsfa",
+    "openreview-icml-2026-hn81xulaxy",
+    "openreview-icml-2026-lduy9csxqw",
+    "openreview-iclr-2026-bmqxn1kg5i",
+    "openreview-iclr-2026-yhwdilukdr",
+    "openreview-icml-2026-g2yb3lhw4l",
+    "openreview-iclr-2026-8esumogvdj",
+    "openreview-iclr-2026-umguy7laqs",
+    "openreview-icml-2026-cy0pi9whvl",
+    "openreview-iclr-2026-8b1vsfilin",
+    "openreview-iclr-2026-waf8eiysae",
+    "openreview-iclr-2026-ygzdvl454o",
+    "openreview-iclr-2026-nwxupwhpp7",
+    "openreview-iclr-2026-tygfwg6xth",
+    "openreview-icml-2026-um6ifyc63p",
+    "openreview-iclr-2026-hfing4qcfs",
+    "openreview-iclr-2026-l5fkzfdssz",
+    "openreview-iclr-2026-q4ijxp47ct",
+    "openreview-iclr-2026-jcfzagxnoy",
+    "openreview-iclr-2026-q7nhu2fw11",
+    "openreview-iclr-2026-vney32i8y8",
+    "openreview-iclr-2026-9epla1wt4s",
+    "openreview-iclr-2026-mhzadaoyru",
+    "openreview-iclr-2026-x74jlpecgy",
+    "openreview-iclr-2026-igyq4c92e2",
+    "openreview-icml-2026-i1oczc6y0m",
+    "openreview-icml-2026-pz9xukurig",
+    "openreview-iclr-2026-mham5yf1z5",
+    "openreview-iclr-2026-y9sv71g8fp",
+    "openreview-icml-2026-0xuvkzsqxv",
+    "openreview-iclr-2026-e0qfhma53j",
+    "openreview-iclr-2026-heqx9diaqy",
+    "openreview-icml-2026-vcjgjvrir9",
+    "openreview-iclr-2026-fl4v4j1v8e",
+    "openreview-iclr-2026-ln3ykqqzf1",
+    "openreview-iclr-2026-m3cehnzknc",
+    "openreview-iclr-2026-7tlcud2tqi",
+    "openreview-iclr-2026-cglqqfs5wh",
+    "openreview-iclr-2026-tdzzxkmwab",
+    "openreview-iclr-2026-etzjy9yi5j",
+    "openreview-iclr-2026-omf3w00d95",
+    "openreview-iclr-2026-quzpam7bue",
+    "openreview-iclr-2026-k6x4mfwxfz",
+    "openreview-iclr-2026-vddtiq1w8b",
+    "openreview-icml-2026-fbrigbtvid",
+    "openreview-iclr-2026-nmbpwfg7cr",
+    "openreview-iclr-2026-qvqtsihhft",
+    "openreview-icml-2026-ieus1hk3hg",
+    "openreview-iclr-2026-86duny8cy5",
+    "openreview-iclr-2026-eux1cp8gqc",
+    "openreview-icml-2026-9iqpuekogm",
+    "openreview-iclr-2026-2kkxbsrhyi",
+    "openreview-iclr-2026-faecrsdrav",
+    "openreview-icml-2026-1lyagkzogh",
+    "openreview-iclr-2026-bkjkno9s7t",
+    "openreview-iclr-2026-bpmqnmnvp1",
+    "openreview-iclr-2026-opu91paivz",
+    "openreview-iclr-2026-apjcxyorxo"
+  ],
+  "global_pool_lane_top_k": 30,
+  "global_pool_limit": 120,
+  "global_pool_guaranteed_per_lane": 2,
+  "global_pool_effective_size": 120,
+  "reranked_at": "2026-07-16T08:32:41.849242+00:00",
+  "llm_ranked": [
+    {
+      "paper_id": "openreview-iclr-2026-tmgonf7crm",
+      "score": 10.0,
+      "evidence_en": "benchmark specifically for chain-of-thought quality and reasoning efficiency",
+      "evidence_cn": "专门针对思维链质量和推理效率的基准测试",
+      "canonical_evidence": "专门针对思维链质量和推理效率的基准测试",
+      "tldr_en": "THINK-Bench systematically evaluates chain-of-thought quality and reasoning efficiency of large reasoning models, addressing overthinking with novel metrics.",
+      "tldr_cn": "大推理模型在复杂任务中表现出色，但常因过生成冗余标记导致效率低下。THINK-Bench是首个系统评估推理效率和思维链质量的基准，提出新颖的效率指标，并在多种LRM上进行了全面评测。它为理解推理模型的行为和优化提供了重要工具，是该领域的基石工作。",
+      "title_zh": "THINK-Bench：评估大推理模型的思考效率与思维链质量",
+      "motivation_cn": "现有大推理模型存在严重的过度思考问题，浪费计算资源。",
+      "method_cn": "构建THINK-Bench基准，包含效率指标和多维度评测。",
+      "result_cn": "广泛评估了多种LRM的推理效率和思维链质量。",
+      "conclusion_cn": "THINK-Bench为提升推理模型效率提供了评估标准和洞察。",
+      "matched_requirement_id": "req-1",
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model"
+    },
+    {
+      "paper_id": "openreview-iclr-2026-e0qfhma53j",
+      "score": 9.0,
+      "evidence_en": "Directly addresses scalable chain-of-thought for large reasoning models",
+      "evidence_cn": "直接针对大型推理模型的可扩展思维链",
+      "canonical_evidence": "直接针对大型推理模型的可扩展思维链",
+      "tldr_en": "Proposes Elastic Reasoning that separates thinking and solution phases with independent budgets for scalable CoT under inference constraints.",
+      "tldr_cn": "大型推理模型（LRMs）在复杂任务上通过长思维链取得突破，但推理长度不可控导致部署困难。该文提出弹性推理框架，将思维过程划分为思考与解答两个阶段并独立分配预算，在资源受限下优先保证解答完整性。通过轻量级预算约束 rollout 策略训练模型适应被截断的思考过程，显著提升了推理可靠性和可扩展性。",
+      "title_zh": "通过弹性推理实现可扩展的思维链",
+      "motivation_cn": "现有思维链推理长度不可控，在严格推理预算下难以保证可靠性。",
+      "method_cn": "提出了弹性推理框架，将推理分为思考和解答阶段，独立分配预算并使用预算约束 rollout 训练。",
+      "result_cn": "在资源约束下显著提升了推理可靠性，保持了可扩展性。",
+      "conclusion_cn": "弹性推理为实际部署中受预算限制的思维链推理提供了有效方案。",
+      "matched_requirement_id": "req-1",
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model"
+    },
+    {
+      "paper_id": "openreview-iclr-2026-q4ijxp47ct",
+      "score": 9.0,
+      "evidence_en": "Directly improves training efficiency of large reasoning models via progressive thought encoding",
+      "evidence_cn": "通过渐进式思维编码直接提升大型推理模型的训练效率",
+      "canonical_evidence": "通过渐进式思维编码直接提升大型推理模型的训练效率",
+      "tldr_en": "Progressive Thought Encoding enables LRMs to train with fixed-size caches, reducing memory usage without disrupting reasoning.",
+      "tldr_cn": "大型推理模型在强化学习训练中需要长展开，导致显存和速度瓶颈。该文提出渐进式思维编码，通过将中间推理逐步压缩为紧凑表示，使模型在固定尺寸缓存下有效推理。方法消除了全缓存反向传播的需要，训练显存恒定且不损害推理性能。",
+      "title_zh": "通过渐进式思维编码高效训练大型推理模型",
+      "motivation_cn": "LRM的RL训练需要长展开，内存和时间开销巨大。",
+      "method_cn": "提出渐进式思维编码，在固定尺寸缓存下将逐步推理编码为紧凑表示。",
+      "result_cn": "训练显存恒定，速度提升，推理性能不受影响。",
+      "conclusion_cn": "为LRM的高效训练提供了参数高效的微调方法。",
+      "matched_requirement_id": "req-1",
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model"
+    },
+    {
+      "paper_id": "openreview-iclr-2026-2kkxbsrhyi",
+      "score": 9.0,
+      "evidence_en": "Directly studies long chain-of-thought reasoning across languages in large models",
+      "evidence_cn": "直接研究大型模型中的跨语言长思维链推理",
+      "canonical_evidence": "直接研究大型模型中的跨语言长思维链推理",
+      "tldr_en": "Investigates how long CoT capabilities transfer to non-English languages across model development stages.",
+      "tldr_cn": "尽管大型推理模型在英语中生成思维链表现出色，但跨语言迁移机制未知。该文系统研究了缩放、预训练、后训练和推理四个阶段，比较了英语思维链与目标语言思维链在九种语言上的表现。发现增大模型规模提升英语思维链的多语言性能，但目标语言思维链仍存在差距。",
+      "title_zh": "跨语言的长思维链推理",
+      "motivation_cn": "长思维链推理能力向非英语语言的迁移尚不明确。",
+      "method_cn": "系统比较四种模型发展阶段和两种推理设置下的多语言思维链性能。",
+      "result_cn": "增大模型规模提升英语思维链的多语言任务表现，但目标语言思维链仍有不足。",
+      "conclusion_cn": "揭示了长思维链跨语言迁移的机制和局限。",
+      "matched_requirement_id": "req-1",
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model"
+    },
+    {
+      "paper_id": "openreview-icml-2026-um6ifyc63p",
+      "score": 9.0,
+      "evidence_en": "chain-of-thought compression to visual tokens",
+      "evidence_cn": "将链式思维压缩为视觉令牌",
+      "canonical_evidence": "将链式思维压缩为视觉令牌",
+      "tldr_en": "ImgCoT compresses long chain-of-thought into compact visual tokens by rendering CoT as images, avoiding linguistic bias.",
+      "tldr_cn": "现有方法将链式思维压缩为潜在令牌时，以文本重构为目标会导致语言偏向，限制逻辑抽象。ImgCoT通过将CoT渲染为图像，以视觉CoT为重构目标，从而保留推理结构而非语言形式。实验表明这种方法提升了推理效率。",
+      "title_zh": "ImCoT：将长链式思维压缩为紧凑视觉令牌实现高效推理",
+      "motivation_cn": "文本重构目标的CoT压缩引入语言偏向，忽略了推理结构。",
+      "method_cn": "将CoT渲染为图像，以视觉CoT作为压缩重构目标，替代文本。",
+      "result_cn": "视觉CoT压缩提升了逻辑抽象能力，推理更高效。",
+      "conclusion_cn": "ImgCoT避免了语言偏向，为CoT压缩提供了新视角。",
+      "matched_requirement_id": "req-1",
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model"
+    },
+    {
+      "paper_id": "openreview-icml-2026-hwj2sztvij",
+      "score": 9.0,
+      "evidence_en": "extreme ratio chain-of-thought compression",
+      "evidence_cn": "极端压缩比下的链式思维压缩",
+      "canonical_evidence": "极端压缩比下的链式思维压缩",
+      "tldr_en": "Extra-CoT aggressively reduces token budget while preserving answer accuracy via a semantically-preserving compressor.",
+      "tldr_cn": "现有链式思维压缩方法在高压缩比下损失逻辑忠实度。Extra-CoT框架通过训练语义保持压缩器，在数学CoT数据上生成高保真监督信号，然后对LLM进行微调。实验表明Extra-CoT在极端压缩比下仍保持高准确率，实现了快速推理。",
+      "title_zh": "通过极端压缩比链式思维实现高效大语言推理模型",
+      "motivation_cn": "高压缩比下现有CoT压缩方法逻辑保真度严重下降。",
+      "method_cn": "提出Extra-CoT框架，先训练语义保持压缩器，再用高保真监督微调LLM。",
+      "result_cn": "在极端压缩比下仍保持答案准确率，推理速度大幅提升。",
+      "conclusion_cn": "Extra-CoT实现了高压缩比下高保真的CoT压缩，促进高效推理。",
+      "matched_requirement_id": "req-1",
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model"
+    },
+    {
+      "paper_id": "openreview-icml-2026-rhlcygxb2x",
+      "score": 9.0,
+      "evidence_en": "decoding tree framework for multi-trajectory reasoning in LRMs",
+      "evidence_cn": "针对大推理模型的多轨迹推理解码树框架",
+      "canonical_evidence": "针对大推理模型的多轨迹推理解码树框架",
+      "tldr_en": "DTS proposes a decoding tree sketching method for large reasoning models to efficiently explore reasoning trajectories, addressing overthinking and improving reasoning selection.",
+      "tldr_cn": "现有大推理模型在推理时存在过度采样和效率低下的问题。DTS提出解码树草图（Decoding Tree Sketching）框架，通过选择性分叉构建推理空间的骨干树，并利用长度-准确率负相关提前终止以选择短而可靠的轨迹。实验表明DTS能有效提升推理效率和质量，是一种即插即用的推理增强方法。",
+      "title_zh": "DTS：通过解码树草图增强大推理模型",
+      "motivation_cn": "现有大推理模型依赖冗余采样，无法高效探索推理空间以发现高质量解决方案。",
+      "method_cn": "提出解码树草图框架，在决策标记处分叉构建推理树，并基于长度-准确率负相关设计提前终止策略。",
+      "result_cn": "实验证明该方法在多个推理任务上提升了效率和解的质量。",
+      "conclusion_cn": "DTS即插即用的框架可显著增强大推理模型的推理能力，减少计算浪费。",
+      "matched_requirement_id": "req-1",
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model"
+    },
+    {
+      "paper_id": "openreview-iclr-2026-quzpam7bue",
+      "score": 8.0,
+      "evidence_en": "Focuses on progress prediction in large reasoning models with hidden chain-of-thought",
+      "evidence_cn": "聚焦于具有隐藏思维链的大型推理模型的进度预测",
+      "canonical_evidence": "聚焦于具有隐藏思维链的大型推理模型的进度预测",
+      "tldr_en": "Probes LRM internal states to predict reasoning progress, enabling user expectation management.",
+      "tldr_cn": "大型推理模型产生隐藏的长思维链，用户难以估计完成时间。该文通过探针分析LLM内部表示发现可量化推理进度，并提出两阶段微调方法使模型具备进度预测能力。线性探针在10类进度上达到30%准确率，为交互式系统提供了重要能力。",
+      "title_zh": "迈向推理进度条：大型推理模型中的进度预测",
+      "motivation_cn": "LRM的推理时间不可预测，用户无法设定恰当期望。",
+      "method_cn": "通过探针挖掘内部表示量化推理进度，并使用两阶段微调训练模型预测进度。",
+      "result_cn": "线性探针在进度预测上取得30%准确率，验证了可行性。",
+      "conclusion_cn": "进度预测提升了LRM的可用性和用户体验。",
+      "matched_requirement_id": "req-1",
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model"
+    },
+    {
+      "paper_id": "openreview-iclr-2026-woif5mgjxb",
+      "score": 8.0,
+      "evidence_en": "chain-of-thought reasoning efficiency",
+      "evidence_cn": "链式思维推理效率",
+      "canonical_evidence": "链式思维推理效率",
+      "tldr_en": "Introduces ESTAR to reduce redundant reasoning in large reasoning models by early stopping, reducing length by 3.7x.",
+      "tldr_cn": "大型推理模型在生成长链式思维时存在冗余推理，导致计算浪费。ESTAR方法通过轨迹分类器识别安全停止点，并结合监督微调和强化学习，教模型自生成停止信号。在四个推理数据集上，ESTAR将推理长度减少约3.7倍，同时保持准确率。该工作为高效推理提供了新方向。",
+      "title_zh": "大规模推理模型的高效推理",
+      "motivation_cn": "大型推理模型生成长链式思维虽然准确但存在大量冗余，浪费计算资源。",
+      "method_cn": "提出ESTAR框架，结合轨迹分类器、SFT和RL，教模型自生成停止信号以提前终止推理。",
+      "result_cn": "在四个推理数据集上，推理长度减少约3.7倍，准确率无损。",
+      "conclusion_cn": "ESTAR有效降低了推理成本，为高效推理提供了可扩展方法。",
+      "matched_requirement_id": "req-1",
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model"
+    },
+    {
+      "paper_id": "openreview-iclr-2026-waf8eiysae",
+      "score": 8.0,
+      "evidence_en": "meta chain-of-thought evaluation for early stopping",
+      "evidence_cn": "基于元链式思维评估的提前停止",
+      "canonical_evidence": "基于元链式思维评估的提前停止",
+      "tldr_en": "DVS-LR framework uses an early-stop verifier to detect overthinking in large reasoning models, improving efficiency.",
+      "tldr_cn": "大型推理模型存在过度思考现象，即长链式思维中冗余导致计算浪费。DVS-LR框架通过设计早期停止验证器，动态判断推理何时可停止。实验表明该方法在不牺牲准确率的情况下显著减少推理步骤。",
+      "title_zh": "通过元链式思维评估的高效思考",
+      "motivation_cn": "大型推理模型生成过长的链式思维导致计算冗余和效率下降。",
+      "method_cn": "设计动态验证停止框架DVS-LR，利用早期停止验证器识别停止点。",
+      "result_cn": "在推理数据集上显著减少推理长度，同时保持准确率。",
+      "conclusion_cn": "DVS-LR有效缓解过度思考问题，提升推理效率。",
+      "matched_requirement_id": "req-1",
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model"
+    },
+    {
+      "paper_id": "openreview-iclr-2026-jinw28iilm",
+      "score": 8.0,
+      "evidence_en": "latent codebooks for fast thinking using CoT sketches",
+      "evidence_cn": "使用CoT草图学习潜编码本实现快速思考",
+      "canonical_evidence": "使用CoT草图学习潜编码本实现快速思考",
+      "tldr_en": "Uses concise CoT sketches during training to learn a codebook of discrete strategy priors for efficient inference.",
+      "tldr_cn": "基于链式思维的推理虽然强大但效率低。该工作提出潜在码本框架，训练时使用简洁CoT草图学习离散策略先验。推理时模型只需一次前向传播即可获取策略指导，无需显式推理令牌。实验表明该方法在保持推理质量的同时大幅降低延迟。",
+      "title_zh": "大型语言模型的快速思考",
+      "motivation_cn": "现有CoT推理需要生成大量显式令牌，导致高延迟和高令牌消耗。",
+      "method_cn": "训练时用简洁CoT草图学习离散策略码本，推理时蒸馏为连续思维向量一次前向传播。",
+      "result_cn": "无需显式推理令牌，推理速度显著提升，质量保持。",
+      "conclusion_cn": "该框架实现了策略级的高效推理指导，兼顾速度与质量。",
+      "matched_requirement_id": "req-1",
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model"
+    },
+    {
+      "paper_id": "openreview-iclr-2026-z9humon2br",
+      "score": 7.0,
+      "evidence_en": "Proposes cognitive-inspired elastic reasoning for LLMs, addressing CoT-like slow thinking",
+      "evidence_cn": "提出受认知启发的弹性推理框架，处理类似思维链的慢思考",
+      "canonical_evidence": "提出受认知启发的弹性推理框架，处理类似思维链的慢思考",
+      "tldr_en": "CogER dynamically selects reasoning strategies per query difficulty, balancing efficiency and accuracy for LLMs.",
+      "tldr_cn": "现有大语言模型推理策略难以兼顾效率与准确性，尤其对难度不同的查询。该文提出认知启发弹性推理（CogER），通过评估查询复杂度并将其分配到预定义级别的处理策略，模拟人类分层推理。实验表明该方法在查询多样性下有效平衡了推理速度与准确性。",
+      "title_zh": "超越快慢：面向大语言模型的认知启发弹性推理",
+      "motivation_cn": "现有LLM推理策略在查询难度变化时难以平衡效率与准确性。",
+      "method_cn": "提出CogER框架，先评估查询复杂度，再将其分配给不同级别的处理策略。",
+      "result_cn": "在多种查询难度下实现了推理效率与准确性的良好平衡。",
+      "conclusion_cn": "认知启发的弹性推理为LLM自适应推理提供了新思路。",
+      "matched_requirement_id": "req-1",
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model"
+    },
+    {
+      "paper_id": "openreview-icml-2026-pz9xukurig",
+      "score": 7.0,
+      "evidence_en": "Addresses unsupervised routing for large reasoning models with causal thinking structure",
+      "evidence_cn": "针对大型推理模型的因果思考结构提出无监督路由方法",
+      "canonical_evidence": "针对大型推理模型的因果思考结构提出无监督路由方法",
+      "tldr_en": "Proposes causal dependency-aware unsupervised routing for LRMs, handling thinking-to-answer structure without labels.",
+      "tldr_cn": "大型推理模型（LRMs）的输出具有因果思考-回答结构，给无监督路由带来新挑战。该文提出因果依赖感知的无监督路由方法，利用LRM的内部结构进行路由，无需人工标注。方法通过捕捉思考过程的因果依赖关系，在分布变化下保持鲁棒性。",
+      "title_zh": "面向大型推理模型的因果依赖感知无监督路由",
+      "motivation_cn": "现有监督路由需要大量标注数据且泛化性差，LRM的因果结构更增加了难度。",
+      "method_cn": "提出因果依赖感知的无监督路由方法，利用LRM的思考-回答因果结构进行决策。",
+      "result_cn": "在无需标注情况下实现了鲁棒的路由性能，适应分布变化。",
+      "conclusion_cn": "该方法为LRM生态系统中的高效路由提供了可行的无监督方案。",
+      "matched_requirement_id": "req-1",
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model"
+    },
+    {
+      "paper_id": "openreview-iclr-2026-ck1gqb6ceb",
+      "score": 7.0,
+      "evidence_en": "Explicitly mentions big tech companies' reliance on LLMs for code generation",
+      "evidence_cn": "明确提到大型科技公司对LLM代码生成的依赖",
+      "canonical_evidence": "明确提到大型科技公司对LLM代码生成的依赖",
+      "tldr_en": "Protocode uses prototype-driven interpretability to automatically identify suboptimal code generated by LLMs, addressing risks in big tech codebases.",
+      "tldr_cn": "大型科技公司日益依赖LLM进行代码生成，但自动化代码可能引入安全风险。该文提出原型驱动可解释性方法Protocode，自动识别LLM生成代码中的次优模式，提升代码质量。通过分析大规模代码库中的原型，帮助开发者避免潜在缺陷。",
+      "title_zh": "Protocode：LLM代码生成的原型驱动可解释性",
+      "motivation_cn": "LLM代码生成在大型科技公司中广泛应用，但存在次优和不安全代码的风险。",
+      "method_cn": "提出原型驱动方法，自动发现LLM生成代码中的常见次优模式。",
+      "result_cn": "成功识别出多种有缺陷的代码模式，提升了代码安全性。",
+      "conclusion_cn": "为LLM代码生成的可解释性和质量保障提供了新工具。",
+      "matched_requirement_id": "req-2",
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "large model by big tech companies"
+    },
+    {
+      "paper_id": "openreview-iclr-2026-jcfzagxnoy",
+      "score": 6.0,
+      "evidence_en": "Proposes long-horizon reasoning beyond context limits using decompositional methods",
+      "evidence_cn": "提出超越上下文限制的长程推理方法，采用分解式问题求解",
+      "canonical_evidence": "提出超越上下文限制的长程推理方法，采用分解式问题求解",
+      "tldr_en": "Thread Inference Model uses recursive decomposition and context pruning for unlimited reasoning length.",
+      "tldr_cn": "大语言模型因上下文限制制约了推理能力。该文提出线程推理模型（TIM），通过递归分解和结构感知上下文剪枝实现超长推理。TIM支持无限工作记忆和多跳工具调用，将自然语言建模为推理树，克服了输出长度、位置编码和显存瓶颈。",
+      "title_zh": "超越上下文限制：面向长程推理的潜在线程",
+      "motivation_cn": "LLM的上下文限制阻碍了长程推理的准确性和效率。",
+      "method_cn": "提出线程推理模型，通过递归分解和结构感知上下文剪枝实现超长推理。",
+      "result_cn": "支持无限工作记忆和多跳工具调用，克服了多种硬件和模型限制。",
+      "conclusion_cn": "为LLM的超长上下文推理提供了新的架构和方法。",
+      "matched_requirement_id": "req-1",
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model"
+    },
+    {
+      "paper_id": "openreview-iclr-2026-jbsye8m3fq",
+      "score": 6.0,
+      "evidence_en": "Enhances LLM reasoning via recursive latent thoughts, akin to chain-of-thought",
+      "evidence_cn": "通过递归潜在思维增强LLM推理，类似于思维链",
+      "canonical_evidence": "通过递归潜在思维增强LLM推理，类似于思维链",
+      "tldr_en": "ETD amplifies reasoning by iterating over a subset of layers at test time, preserving architecture.",
+      "tldr_cn": "现有方法通过扩大参数或生成复杂思维链来提升推理，但代价高。该文提出编码-思考-解码（ETD），在中间训练阶段让模型在推理相关层反复迭代，增强潜在推理。ETD保持原始架构、参数和训练数据不变，以极低成本提升测试时推理能力。",
+      "title_zh": "编码、思考、解码：通过递归潜在思维扩展测试时推理",
+      "motivation_cn": "扩大参数或显式思维链成本高，且有效性集中在少数层。",
+      "method_cn": "提出ETD方法，训练模型在推理相关层进行递归迭代以增强潜在推理。",
+      "result_cn": "在保持架构不变下显著提升推理能力。",
+      "conclusion_cn": "为低成本增强LLM推理提供了新范式。",
+      "matched_requirement_id": "req-1",
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model"
+    }
+  ],
+  "llm_ranked_at": "2026-07-16T08:33:47.549643+00:00",
+  "display_min_score": 4.0,
+  "pruned_at": "2026-07-16T08:33:47.578857+00:00"
+}
