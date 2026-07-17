@@ -1,0 +1,69 @@
+{
+  "label": "2026-07-17",
+  "date": "2026-07-17",
+  "generated_at": "2026-07-17T19:50:47",
+  "count": 4,
+  "papers": [
+    {
+      "paper_id": "202607/17/2607.13069v1-interventional-grounding-audits-black-box-premise-dependency-tests-for-llm-chain-of-thought-via-predicate-substitution",
+      "section": "deep",
+      "title_en": "Interventional Grounding Audits: Black-Box Premise-Dependency Tests for LLM Chain-of-Thought via Predicate Substitution",
+      "authors": "Hironao Nakamura",
+      "date": "2026-07-11",
+      "pdf": "https://arxiv.org/pdf/2607.13069v1",
+      "score": "9.0",
+      "evidence": "直接研究LLM思维链推理的前提依赖性，采用黑盒干预方法",
+      "tldr": "大型语言模型的链式推理看似逻辑严谨，但可能并未真正依赖其陈述的前提。本文提出干预式接地审计，通过将单一前提的目标谓词替换为新鲜符号并重新运行模型，检测推理步骤是否依赖于该前提。在ProntoQA基准上对GPT-4o的测试表明，该方法在检测证明树依赖上F1=0.806，显著优于自我一致性基线（F1=0.343）。进一步发现66%正确解答的问题至少存在一个与直接证明树依赖无关的对齐步骤，揭示了“正确答案但错误推理”的隐蔽信号，为评估LLM推理可靠性提供了新工具。",
+      "tags": "query:vlm-cot",
+      "abstract_en": "Large language models produce chain-of-thought (CoT) reasoning that appears logically sound yet may not genuinely depend on its stated premises. We introduce interventional grounding audits, a black-box, step-level test of premise dependency: we intervene on a single premise by substituting its target predicate with a fresh symbol, re-run the model, and check whether each reasoning step's normalized conclusion (canonical predicate form) changes. We evaluate on ProntoQA, a synthetic multi-hop deductive reasoning benchmark with gold proof trees, where step-level premise dependencies are known. Applied to 50 ProntoQA problems with GPT-4o, our method achieves F1 = 0.806 on detecting proof-tree dependencies (F1 = 0.885 on predicate-determining dependencies; Recall = 100%), significantly outperforming a self-consistency baseline (F1 = 0.343; 95% bootstrap CIs non-overlapping). We further identify that 66% of correctly-solved problems contain at least one aligned step insensitive to a direct proof-tree dependency under consistent substitution -- all involving entity-introduction premises, a documented blind spot of the consistent-substitution evaluator -- a \"right answer, wrong reasoning\" signal invisible to passive methods. All audit certificates, raw outputs, and reproduction scripts are available in a public GitHub repository, and we discuss scope limits beyond formal, parsable benchmarks.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "paper_id": "202607/17/2607.14552v1-answer-conditioned-chains-of-thought-degrade-verifiable-reasoning-distillation-in-large-language-models",
+      "section": "deep",
+      "title_en": "Answer-Conditioned Chains of Thought Degrade Verifiable-Reasoning Distillation in Large Language Models",
+      "authors": "Jungseob Lee, Seungyoon Lee, Suhyune Son, Dongyub Jude Lee, Sungbin Han, Sugyeong Eo, Heuiseok Lim",
+      "date": "2026-07-16",
+      "pdf": "https://arxiv.org/pdf/2607.14552v1",
+      "score": "9.0",
+      "evidence": "链式推理蒸馏，答案条件导致性能下降",
+      "tldr": "标准思维链蒸馏方法先采样链并过滤正确者，若采样失败则展示正确答案要求生成链。本文发现后一步骤会引入“答案条件”链，其从答案向后合理化而非推导，可测量症状是早期出现最终答案。即使正确性过滤也无法察觉这种损害，且损害随问题难度增加，在竞争问题上可达27个点的准确率下降。该损害是数据本身的属性，可跨模型迁移，因此应始终采用答案无关的链生成。",
+      "tags": "query:vlm-cot",
+      "abstract_en": "A standard recipe for distilling the reasoning ability of large language models (LLMs) is to sample chains of thought from the model, keep those that reach the correct final answer, and fine-tune on the survivors. When sampling fails, a common fix shows the generator the gold answer and asks it to write a chain that reaches that answer. We show that this second step degrades the training data in a way that correctness filtering cannot catch. We run a controlled experiment that fixes the generator, the problem set, and the correctness filter, and varies only whether the chain is generated under answer-conditioning, the gold answer shown with a request to reach it. Training a strong instruction-tuned reasoning model on its own answer-conditioned chains sharply lowers its verifiable-reasoning accuracy. The loss grows with difficulty, reaching as much as about 27 points on the hardest competition problems. The mechanism is legible in the chains themselves, which rationalize backward from the shown answer instead of deriving it, with the early final-answer statement as the measurable symptom. The harm is a property of the data rather than the generator, read off unlabeled generations before any fine-tuning, ordering the penalty across eight thinking models from four families, and transferring across teacher families. A prompt ablation localizes it to the rationalize-toward instruction rather than the answer's bare visibility. The practical takeaway is to generate answer-blind, because no correctness filter can see this damage in the data.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "paper_id": "202607/17/2607.14756v1-ai-vs-human-expert-reasoning-assessing-agreements-in-building-typology-predictions-based-on-street-view-imagery",
+      "section": "deep",
+      "title_en": "AI vs Human Expert Reasoning: Assessing Agreements in Building Typology Predictions based on Street View Imagery",
+      "authors": "Zahratu Shabrina, Muhammad Asa, Jin Rui, Lu Yin, Stephen Law",
+      "date": "2026-07-16",
+      "pdf": "https://arxiv.org/pdf/2607.14756v1",
+      "score": "8.0",
+      "evidence": "使用思维链提示进行VLM推理",
+      "tldr": "建筑类型自动识别是城市分析的关键任务，但传统依赖人工标注成本高。本研究评估GPT-4o、Claude 3.5 Sonnet、Gemini 2.0 Flash等视觉语言模型从谷歌街景图像推断建筑类型的能力，并与人类专家推理对比，采用链式思维提示优化性能。结果显示模型平均准确率约70%，但其推理更依赖视觉特征；人类专家则结合视觉与领域知识。研究揭示了AI与人类推理差异，展示了VLM规模化应用于城市分类的潜力，为人机协作提供依据。",
+      "tags": "query:vlm-cot",
+      "abstract_en": "This research investigates the potential of Vision-Language Models (VLMs) to infer building typologies: Construction, Current Use, and Storeys from Google Street View (GSV) images. Predictions generated by VLMs are compared with inference by human experts (civil engineers and architects) as a source of manually labelled ground-truth data. We evaluate several state-of-the-art VLMs, including GPT-4o, Claude 3.5 Sonnet, and Gemini 2.0 Flash. By applying different scaling strategies and prompting techniques, we found that Chain-of-Thought prompts provide an overall more stable model performance. We also investigate the reasoning behind VLMs' building-typology predictions by examining the probabilities of keywords appearing in AI explanations. This enabled us to analyse patterns in these reasonings and identify key themes driving both agreements and disagreements between VLM and expert labels. We find that AI tends to focus on visual indicators, whereas human experts place greater emphasis on broader contextual cues and domain knowledge, in addition to visual cues. Overall, VLM can approximate experts' capability in building-typology classification at scale, with an average accuracy of approximately 70%. The study demonstrates the VLM's potential for AI automation in tasks that require pattern recognition and object identification in an urban context. AI have the potential to serve as complementary and collaborative tools for urban analysis, leveraging their strengths in understanding visual patterns. This study contributes to the exploration of the efficiency and scalability of AI visual prediction and provides insights into the reasoning processes that could support automation processes in urban analysis and prediction.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "paper_id": "202607/17/2607.10796v1-mixture-of-cognitive-experts-in-large-vision-language-models",
+      "section": "quick",
+      "title_en": "Mixture of Cognitive Experts in Large Vision-Language Models",
+      "authors": "Robert Wijaya, Ngai-Man Cheung",
+      "date": "2026-07-12",
+      "pdf": "https://arxiv.org/pdf/2607.10796v1",
+      "score": "7.0",
+      "evidence": "大视觉语言模型认知推理，与VLM推理相关",
+      "tldr": "大型视觉语言模型需强推理能力，但现有方法对不同认知层次查询采用相同感知-推理路径，导致可解释性差和幻觉。本文提出证据驱动多模态推理框架，利用Bloom启发分类法作为分层协议，通过两阶段认知言语化（字面证据摘要和Bloom言语化）生成结构化推理迹，并用轻量级模块量化分析。集成多个领域专家模型后，感知与推理能力显著提升，追踪模块揭示了不同查询的认知进入水平和证据使用轨迹。该框架提供了可验证、可解释的推理过程，有效减少幻觉，推动LVLM可信任发展。",
+      "tags": "query:vlm-cot",
+      "abstract_en": "Large Vision Language Models (LVLMs) require strong reasoning over both visual and textual input. Recent work suggests that cognitive elements, especially diverse representations and metacognition, correlate with better performance. Many of the needed perceptual functions are already provided by specialized domain-specific computer vision models, which act as the perceptual subsystem for detecting objects, localizing them, inferring states, recovering spatial layout, and reading text. The key challenge is to integrate these multi-encoder experts into a trustworthy, interpretable, and coherent representation that improves verifiability and reduces hallucinations. This is difficult because vision-language questions span different cognitive levels, yet most LVLM pipelines apply the same perception-reasoning routing regardless of the demand of each query. We propose an evidence-driven multimodal reasoning framework that utilizes a Bloom-inspired taxonomy as a hierarchical reasoning protocol. The two-stage cognitive verbalization first produces a Literal Evidence Summary by decomposing expert outputs into short, atomic evidence statements. It then performs Bloom Verbalization to turn these evidence items into a staged reasoning trace, and a lightweight Reasoning Trace Module quantitatively analyzes the trace to make evidence usage and reasoning progression explicit. Through this integration, we observed several improvements in perception and reasoning abilities. Moreover, the trace module provides quantitative evidence that different queries induce different cognitive entry levels and evidence-use trajectories that enable fine-grained analysis.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "errors": []
+}

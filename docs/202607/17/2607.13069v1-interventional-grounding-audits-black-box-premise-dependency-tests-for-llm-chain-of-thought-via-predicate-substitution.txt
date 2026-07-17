@@ -1,0 +1,173 @@
+Title: Interventional Grounding Audits: Black-Box Premise-Dependency Tests for LLM Chain-of-Thought via Predicate Substitution
+
+URL Source: https://arxiv.org/pdf/2607.13069v1
+
+Published Time: Thu, 16 Jul 2026 00:01:24 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+Accepted at the ICLR 2026 Workshop on Logical Reasoning of Large Language Models 
+
+# INTERVENTIONAL GROUNDING AUDITS : B LACK -B OX 
+
+# PREMISE -D EPENDENCY TESTS FOR LLM C HAIN -OF -T HOUGHT VIA PREDICATE SUB -
+
+# STITUTION 
+
+Hironao Nakamura 
+
+Independent Researcher 
+
+# ABSTRACT 
+
+Large language models produce chain-of-thought (CoT) reasoning that appears logically sound yet may not genuinely depend on its stated premises. We in-troduce interventional grounding audits , a black-box, step-level test of premise dependency : we intervene on a single premise by substituting its target pred-icate with a fresh symbol , re-run the model, and check whether each reasoning step’s normalized conclusion (canonical predicate form) changes. We evaluate on ProntoQA , a synthetic multi-hop deductive reasoning benchmark with gold proof trees, where step-level premise dependencies are known. Applied to 50 ProntoQA problems with GPT-4o, our method achieves F1 = 0.806 on detecting proof-tree dependencies (F1 = 0.885 on predicate-determining dependencies; Re-call = 100%), significantly outperforming a self-consistency baseline (F1 = 0.343; 95% bootstrap CIs non-overlapping). We further identify that 66% of correctly-solved problems contain at least one aligned step insensitive to a direct proof-tree dependency under consistent substitution—all involving entity-introduction premises, a documented blind spot of the consistent-substitution evaluator—a “right answer, wrong reasoning” signal invisible to passive methods. All audit certificates, raw outputs, and reproduction scripts are available in a public GitHub repository, and we discuss scope limits beyond formal, parsable benchmarks. 
+
+Version note. This arXiv version corrects two issues in the accepted workshop artifact—a probe-generation issue (sequential predicate substitution could stack fresh-symbol prefixes, breaking chain coherence in some probes) and a CoT-to-proof step-alignment issue in the evaluation harness (model CoT steps are now matched to proof-tree steps by normalized conclusion, not by inte-ger step number)—and re-collects all model outputs with the corrected pipeline (GPT-4o snap-shot gpt-4o-2024-08-06 , temperature 0). The accepted version’s cross-model subject, Claude Sonnet 4 ( claude-sonnet-4-20250514 ), was retired from the API before the rerun, so the cross-model analysis in Appendix B uses the closest available successor, Claude Sonnet 4.5 (claude-sonnet-4-5-20250929 ), chosen to minimize model drift relative to the accepted version. Consequently, numbers differ from the accepted workshop version; all numbers in this version are recomputed on the unchanged 50-problem set and reproduced from the GitHub Release identified in Appendix A. The corrections strengthen rather than weaken the main results: F1 rises from 0.783 to 0.806 on all dependencies and from 0.835 to 0.885 on predicate-determining ones (Recall 97.4% → 100%), and the margin over the self-consistency baseline widens, with 95% boot-strap CIs that remain non-overlapping. The most visible change is the RAWR rate (Section 3), which rises from 28% to 66% of correctly-solved problems under the corrected step alignment and now consists entirely of entity-introduction (structural) dependencies. Two secondary observations from the accepted version do not survive the corrections and are revised accordingly: the previously re-ported degradation of F1 with chain length disappears under corrected alignment (Appendix F), and the cross-model “meta-reasoning” behavior is shown to be an artifact of the probe-generation issue rather than a model-specific strategy (Appendix B). Appendix A records the full correction history. 1arXiv:2607.13069v1 [cs.AI] 11 Jul 2026 Accepted at the ICLR 2026 Workshop on Logical Reasoning of Large Language Models 
+
+# 1 INTRODUCTION 
+
+Chain-of-thought (CoT) reasoning can look logically sound while failing to genuinely depend on the premises it claims to use. CoT prompting enables large language models (LLMs) to solve multi-step reasoning problems by generating intermediate steps (Wei et al., 2022), but whether those steps are premise-dependent is often unclear. Consider an example from our experiments: GPT-4o solves a ProntoQA syllogistic problem correctly (a synthetic multi-hop deductive benchmark with gold proof trees, so each step’s required premises are known), and self-consistency confirms this answer across five samples with 100% agreement. Yet our method reveals an intermediate step that is 
+
+insensitive to one of its proof-tree premises—the model reaches the right answer while an audited step does not respond to intervention on its stated basis. This “right answer, wrong reasoning” (RAWR) signal appears in 66% of correctly-solved problems under the consistent-substitution evaluator (all such cases involve entity-introduction premises; Section 3). Passive methods—self-consistency (Wang et al., 2023), attention analysis—observe outputs but never intervene on inputs. They cannot distinguish genuine logical dependency from correlation. Self-consistency achieves only F1 = 0.343 on our dependency detection benchmark, primarily be-cause it cannot identify which premises each step depends on (Precision = 0.226). We propose interventional grounding audits : systematically substituting predicates in premises and observing whether each step’s normalized conclusion changes. If replacing “tumpus” with an in-vented predicate “glumpus” in premise Pj changes step Si’s conclusion, Si genuinely depends on Pj . This approach draws on a two-layer grounding framework whose operational implemen-tation achieves state-of-the-art on agent safety benchmarks (Nakamura, 2026a;b), extended here from agent safety to reasoning integrity. Our contributions: (1) An interventional protocol detecting premise-level causal dependencies with F1 = 0.806 (0.885 on predicate-determining dependencies), significantly outperforming self-consistency (F1 = 0.343, non-overlapping CIs). (2) Two substitution strategies—consistent and local—with cascade filtering that distinguish direct from transitive dependencies (best F1 = 0.819). (3) A fully artifact-checkable evaluation: every certificate includes original and probed outputs with SHA256 checksums, verified by an automated validator. 
+
+# 2 METHOD 
+
+2.1 PROBLEM SETUP 
+
+Given premises {P1, . . . , P k} and a question, an LLM generates a CoT with steps {S1, . . . , S n}.A proof tree specifies ground-truth dependencies: for each Si, a set deps (Si) ⊆{P1, . . . , P k, S 1, . . . , S i−1} of direct (immediate-parent) dependencies; we do not take the tran-sitive closure. Our task: for each pair (Si, P j ), determine whether Si genuinely depends on Pj .Appendix G discusses how 8% of metric-counted false positives may be correct under a transitive definition. We model this through an observation layer (raw LLM text) and a concept layer (nor-malized propositions), intervening at the former and comparing at the latter. 1
+
+2.2 INTERVENTIONAL PROTOCOL 
+
+Predicate substitution (semantic probe). To test whether Si depends on Pj , we replace the target predicate with an invented one (using a “zq” prefix). Two strategies: consistent substitution replaces the predicate in all premises, preserving chain coherence and detecting predicate-determining de-pendencies; local substitution replaces it only in Pj , breaking the chain and detecting transitive de-pendencies including structural premises. In ProntoQA, each premise introduces a unique predicate pair, so consistent predicate substitution is equivalent to premise-level intervention. In benchmarks with shared predicates across premises, this equivalence breaks down; local substitution addresses this case. 
+
+> 1This instantiates a formal grounding framework (Nakamura, 2025; 2026a); see Appendix E.
+
+2Accepted at the ICLR 2026 Workshop on Logical Reasoning of Large Language Models 
+
+Surface rephrasing (control probe). We rephrase Pj without changing logical content (“All X are Y” → “Every X is a Y”). Output changes under surface rephrasing indicate surface sensitivity, not logical dependency. 
+
+Normalized proposition extraction. Each step’s conclusion is parsed into a canonical form— 
+
+is( e, p ) or subtype( p1, p 2)—absorbing irrelevant variation in phrasing. 
+
+Five-value verdict. For each (Si, P j ), comparing normalized conclusions under original ( ϕorig ), semantic probe ( ϕsem ), and surface probe ( ϕsur ): G ROUNDED (ϕorig ̸ = ϕsem , ϕorig = ϕsur ); I NSEN - 
+
+> SITIVE
+
+(no change); I NPUT -S ENSITIVE (both change); U NSTABLE (only surface changes); U N- 
+
+> PARSEABLE
+
+(parse failure). An I NSENSITIVE step that explicitly cites Pj constitutes a misrepre-sentation .2.3 CASCADE DETECTION AND FILTERING 
+
+Local substitution detects transitive dependencies but introduces cascade false positives: if local substitution on Pj changes Si, all downstream steps also change via propagation. Our cascade filter reclassifies Si as C ASCADE if Si−1 is also G ROUNDED w.r.t. the same Pj , recovering Precision (0.604 → 0.756) while retaining Recall. This filter exploits the linear chain structure of ProntoQA; tree-structured proofs require generalization. 2.4 CONNECTION TO DEPLOYED GUARD ARCHITECTURE 
+
+Our pipeline mirrors a deployed safety guard achieving state-of-the-art on OS-level agent safety (Nakamura, 2026b): both use a two-stage assess → decide pipeline with named decision rules, structured verdict dataclasses, and automated evidence validators. Same architecture, dif-ferent domain. 
+
+# 3 EXPERIMENTS 
+
+3.1 SETUP 
+
+We evaluate on ProntoQA (Saparov & He, 2023), 50 synthetic syllogistic problems (3–5 hops, 4–7 premises, True/False balanced). Target model: GPT-4o (snapshot gpt-4o-2024-08-06 , tem-perature = 0). Dataset: 1,127 audit certificates, of which 1,031 are aligned to proof-tree steps for primary evaluation. Certificate-level parse rates were 95.3% for original outputs, 92.9% for se-mantic probes, 69.2% for local probes, and 90.3% for surface probes. For the combined protocol, 108/1,031 aligned certificates (10.5%) were U NPARSEABLE and excluded from P/R/F1 computa-tion. 17 CoT steps (in 8 problems) were unmatched to proof-tree conclusions—typically premise-restatement or unparseable steps—and excluded from primary metrics. Conversely, 9 proof-tree steps (11 premise dependencies) had no matching CoT step; these are counted as false negatives only in the lower-bound analysis in Section 5. No problem had an ambiguous alignment, so no problem-level exclusions were required. Appendix A reports the alignment policy, and all counts are reported in the released artifact repository. Metrics: P, R, F1 with 95% bootstrap CIs ( B = 10,000, problem-level resampling). Two evaluation modes: F1 full (all proof-tree dependencies) and F1 pred 
+
+(predicate-determining only). 3.2 MAIN RESULTS 
+
+Table 1 presents our main results with three key findings. 
+
+(1) Significant advantage over self-consistency. Our method (F1 = 0.806) significantly out-performs self-consistency (F1 = 0.343), with non-overlapping 95% CIs (F1 gap = 0.463; CI gap = 0.389). The advantage is driven by Precision (0.794 vs. 0.226): self-consistency predicts all 
+
+premises as dependencies for consistent steps, unable to identify which premises matter. 
+
+(2) Perfect recall on predicate-determining dependencies. Recall reaches 100% (0 misses out of 150) on predicate-determining dependencies, yielding F1 pred = 0.885. All 33 false negatives un-der F1 full are structural premises —entity-introduction premises (e.g., “Alex is a wumpus”) whose 3Accepted at the ICLR 2026 Workshop on Logical Reasoning of Large Language Models Table 1: Main results (GPT-4o, ProntoQA 50 problems). Bootstrap CIs confirm significance.                         
+
+> Method PRF1 95% CI Self-Consistency 0.226 0.715 0.343 [0.317, 0.371] String-diff 0.801 0.774 0.787 —A consistent (full) 0.794 0.820 0.806 [0.760, 0.852] A+A ′+cascade (full) 0.756 0.895 0.819 [0.769, 0.871] A consistent (pred) 0.794 1.000 0.885 [0.830, 0.938]
+
+Table 2: Ablation: contribution of each component.                          
+
+> Configuration PRF1 A consistent only 0.794 0.811 0.802 A′local only 0.602 0.898 0.721 A+A ′combined 0.604 0.905 0.724 A+A ′+ cascade filter 0.756 0.895 0.819
+> A+A ′w/o surface ctrl 0.617 0.870 0.722 String-diff baseline 0.801 0.774 0.787
+
+predicate does not determine the step’s conclusion. This is a granularity distinction, not a detection failure. 
+
+(3) Cascade filtering achieves highest F1. Combining consistent and local substitution with cas-cade filtering yields F1 = 0.819. Local substitution raises Recall (+0.075) by detecting transitive dependencies; cascade filtering recovers Precision lost to propagation FPs (0.604 → 0.756). 3.3 ABLATION STUDY 
+
+Table 2 shows that consistent substitution achieves the best Precision among substitution configura-tions (0.794; the string-diff baseline edges it on Precision, 0.801, but trails on Recall). Local substi-tution adds Recall (+0.094 for the combined protocol) but reduces Precision ( −0.190) from cascade FPs; the cascade filter recovers most of this loss. The A-consistent ablation row counts surface-only instabilities as negatives rather than excluding them as Table 1 does, hence the small difference from Table 1 (0.802 vs. 0.806). Surface control shows minimal effect on ProntoQA ( ∆F1 = 0.002): our normalization to canonical is /subtype forms already absorbs the surface variation that rephrasing introduces, leaving little for the control probe to catch. We expect greater impact on natural language benchmarks where normalization is less effective. 3.4 ANALYSIS 
+
+Chain length. With aligned ground truth, F1 varies little with chain length (0.807 at 3 hops, 0.820 at 4, 0.794 at 5) and shows no monotone degradation. Recall remains robust ( ≥0.80) across all lengths (Appendix F). 
+
+False positives. Under the A-consistent semantic-delta analysis, we analyzed 40 non-dependency candidates. Of these, 39 are metric-counted false positives under the Table 1 evaluator: 36 (92%) reflect stochastic output variation (addressable via majority voting), and 3 (8%) reflect propagation effects that are arguably correct under a transitive dependency definition (Appendix G). 
+
+RAWR (Right Answer, Wrong Reasoning). We define a problem as RAWR if: (i) the model’s final answer is correct, and (ii) at least one matched CoT step is rated I NSENSITIVE to a direct proof-tree dependency under the A consistent (full) evaluator. 33/50 correctly-solved problems (66%) satisfy both conditions. All 33 involve only structural entity-introduction dependencies (a documented blind spot of consistent substitution, which the local probe A′ targets), and none includes a predicate-determining dependency. Self-consistency assigns perfect agreement scores to 14 of these cases. Passive methods are blind to RAWR (Appendix C). 4Accepted at the ICLR 2026 Workshop on Logical Reasoning of Large Language Models 
+
+Misrepresentation. 30 cases where a step textually invokes a premise yet is insensitive to it under substitution—stating a premise as one’s basis does not imply logical dependency on it (Appendix D). 
+
+# 4 RELATED WORK 
+
+Lanham et al. (2023) and Turpin et al. (2023) study whether CoT reflects true reasoning; we add a formal, per-step causal test. Wang et al. (2023) checks answer agreement; we show it cannot detect premise-level dependencies (F1 = 0.343). Vig et al. (2020) and Geiger et al. (2021) intervene on 
+
+internal representations; we intervene on inputs (black-box, model-agnostic). Stolfo et al. (2023) apply causal interventions to mathematical reasoning; we extend to formal logical reasoning with a complete audit protocol. Saparov & He (2023) introduce ProntoQA; we add the interventional dimension, testing not just whether answers are correct but whether each step depends on its stated basis .
+
+# 5 DISCUSSION AND LIMITATIONS 
+
+Limitations. ProntoQA is formal and synthetic; natural language benchmarks (FOLIO, ProofWriter) are needed to validate surface control and normalization components. Our results apply to formal logical benchmarks with parsable steps ; generalization to free-form reasoning re-quires adapted normalization. Our dataset of 50 problems is modest, though bootstrap CIs confirm significance. Coverage matters. For the combined protocol, 108/1,031 aligned certificates (10.5%) were U NPARSEABLE . For the A-consistent-only protocol used in the lower-bound coverage analy-sis, 124/1,031 aligned certificates (12.0%) were U NPARSEABLE (plus 11 U NSTABLE ). Treating all A-consistent-only U NPARSEABLE and U NSTABLE cases, unmatched proof-tree dependencies, and any primary-excluded ambiguous-alignment problems as negatives yields a lower-bound F1 = 0.703 (vs. 0.806), still well above the self-consistency baseline. Main results use GPT-4o only; Ap-pendix B shows that on Claude Sonnet 4.5 the audit transfers with perfect Precision on alignable steps (F1 = 0.872; lower-bound F1 = 0.836), with coverage loss confined to exactly one unmatched premise-restatement step per problem—while on such highly regular output a simple string-diff baseline becomes competitive, so the audit’s advantage over baselines is model-dependent. 
+
+Future work. Natural language benchmarks, majority voting ( k = 3) for Precision improvement, and integration with the full formal framework (Nakamura, 2025; 2026a;c). 
+
+Reproducibility. All audit certificates, raw model outputs, source code, and reproduction scripts are available in the public GitHub artifact release accompanying this paper. 2 Every reported number can be recomputed from the released files without an API key. 
+
+# REFERENCES 
+
+Atticus Geiger, Hanson Lu, Thomas Icard, and Christopher Potts. Causal abstractions of neu-ral networks. In Advances in Neural Information Processing Systems , 2021. URL https: //proceedings.neurips.cc/paper/2021/hash/4f5c422f4d49a5a807eda27434231040-Abstract.html. Tamera Lanham, Anna Chen, Ansh Radhakrishnan, Benoit Steiner, Carson Denison, Danny Her-nandez, Dustin Li, Esin Durmus, Evan Hubinger, Jackson Kernion, et al. Measuring faith-fulness in chain-of-thought reasoning. arXiv preprint arXiv:2307.13702 , 2023. URL https: //arxiv.org/abs/2307.13702. Hironao Nakamura. Observation is a topos, not a type: A two-layer topos-HoTT framework for grounding and conceptual representation, 2025. URL https://zenodo.org/records/17894227. Preprint. Hironao Nakamura. Grounded types as cross-layer invariants: Admissible updates and traceable witnesses in two-topos grounding, 2026a. URL https://zenodo.org/records/18253007. Preprint. 
+
+> 2https://github.com/hironao-nakamura/interventional-grounding-audits/releases/tag/arxiv-v1.0
+
+5Accepted at the ICLR 2026 Workshop on Logical Reasoning of Large Language Models Hironao Nakamura. TTGOS Guard: Cross-benchmark safety SOTA. https://hironao-nakamura. github.io/ttgos-evidence/, 2026b. 100% on OS-Harm (NeurIPS 2025 Spotlight), CuP-SOTA on ST-WebAgentBench (ICLR 2026). Hironao Nakamura. Interventional grounding: Identifiability and misrepresentation via counter-factual witnesses in two-topos grounding, 2026c. URL https://zenodo.org/records/18358924. Preprint. Abulhair Saparov and He He. Language models are greedy reasoners: A systematic formal analysis of chain-of-thought. In International Conference on Learning Representations , 2023. URL https: //openreview.net/forum?id=qFVVBzXxR2V. Alessandro Stolfo, Zhijing Jin, Kumar Shridhar, Bernhard Sch¨ olkopf, and Mrinmaya Sachan. Acausal framework to quantify the robustness of mathematical reasoning with language models. In 
+
+Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics , 2023. doi: 10.18653/v1/2023.acl-long.32. URL https://aclanthology.org/2023.acl-long.32/. Miles Turpin, Julian Michael, Ethan Perez, and Samuel R Bowman. Language mod-els don’t always say what they think: Unfaithful explanations in chain-of-thought prompting. Advances in Neural Information Processing Systems , 2023. doi: 10.52202/075280-3275. URL https://proceedings.neurips.cc/paper files/paper/2023/hash/ ed3fea9033a80fea1376299fa7863f4a-Abstract-Conference.html. Jesse Vig, Sebastian Gehrmann, Yonatan Belinkov, Sharon Qian, Daniel Nevo, Yaron Singer, and Stuart Shieber. Investigating gender bias in language models using causal mediation analysis. In 
+
+Advances in Neural Information Processing Systems , 2020. URL https://proceedings.neurips.cc/ paper/2020/hash/92650b2e92217715fe312e6fa7b90d82-Abstract.html. Xuezhi Wang, Jason Wei, Dale Schuurmans, Quoc Le, Ed Chi, Sharan Narang, Aakanksha Chowdh-ery, and Denny Zhou. Self-consistency improves chain of thought reasoning in language models. In International Conference on Learning Representations , 2023. URL https://openreview.net/ forum?id=1PL1NIMMrw. Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Brian Ichter, Fei Xia, Ed Chi, Quoc Le, and Denny Zhou. Chain-of-thought prompting elicits reasoning in large language models. In Advances in Neural Information Processing Systems , 2022. doi: 10.52202/068431-1800. URL https://proceedings.neurips.cc/paper files/paper/2022/hash/ 9d5609613524ecf4f15af0f7b31abca4-Abstract-Conference.html. 
+
+# A EVIDENCE PACK AND VALIDATION 
+
+The evidence pack corresponding to this paper is available as GitHub Release arxiv-v1.0 at https://github.com/hironao-nakamura/interventional-grounding-audits/releases/tag/arxiv-v1.0. The repository’s default branch may receive later corrections and improvements; the versioned release identifies the artifact evaluated in this paper. The release contains 4,539 files organized per-problem: 50 directories per model with original CoT outputs, all probe outputs (semantic, local, surface) including the exact substituted prompts sent to each model, and deterministic audit certificates for each (Si, P j ) pair; self-consistency baseline data with five temperature-sampled runs per problem; and all source code with unit tests. No external dependencies beyond numpy are required for Phase 2 (deterministic verdict computation) verification. Verification consists of: (1) SHA256 integrity checks over the release staging directory; (2) python src/validator.py --root . --models gpt-4o claude-sonnet-4-5 for schema, referential-integrity, prompt, step-alignment, and certificate checks; and (3) python scripts/reproduce all.py to recompute all reported tables and analysis reports from saved certificates, without API calls. The pipeline separates Phase 1 (LLM calls; non-deterministic) from Phase 2 (verdict computation; deterministic); reviewers need only verify Phase 2. 
+
+Correction history. During arXiv artifact preparation we identified two issues in the accepted workshop artifact: sequential predicate substitution could introduce multiple fresh-symbol prefixes in some probes (breaking the chain coherence that consistent substitution is designed to preserve), 6Accepted at the ICLR 2026 Workshop on Logical Reasoning of Large Language Models and the evaluation harness aligned proof-tree steps to model CoT steps by integer step number rather than by normalized conclusion. For this arXiv version, all Phase 1 model outputs were re-collected with the corrected generator; every substituted prompt is stored in the pack and verified free of stacked prefixes, and all certificates and metrics were recomputed with corrected CoT-to-proof alignment. The accepted version’s cross-model subject was retired from the API before the rerun and is replaced by the closest available successor (Appendix B). Unmatched restatement steps and any ambiguous alignments are reported in step alignment summary.json ; ambiguous problems, if any, are excluded from primary metrics and included in lower-bound coverage analyses. 
+
+Effect on reported numbers. Relative to the accepted workshop version, on the unchanged 50-problem set: F1 (full) 0.783 → 0.806; F1 (predicate-determining) 0.835 → 0.885, with Recall 97.4% → 100%; best combined F1 0.790 → 0.819; lower-bound F1 0.677 → 0.703; self-consistency baseline F1 0.346 → 0.343; audit certificates 1,107 → 1,127 (1,031 aligned); RAWR 14/50, i.e. 28% (12 structural + 2 predicate-determining) → 33/50, i.e. 66% (all structural, 0 predicate-determining); misrepresentation cases 12 → 30. The chain-length degradation and the cross-model meta-reasoning observation reported in the accepted version do not survive the corrections (Appendices F and B). 
+
+# B CROSS -M ODEL ANALYSIS : C LAUDE SONNET 4.5 
+
+The accepted workshop version’s cross-model subject, Claude Sonnet 4(claude-sonnet-4-20250514 ), was retired from the API before this rerun; we therefore audit the closest available successor, Claude Sonnet 4.5 ( claude-sonnet-4-5-20250929 )— chosen to minimize model drift relative to the accepted version—under the identical protocol (temperature = 0, no extended thinking). The audit transfers cleanly: F1 = 0.872 with perfect Pre-cision (P = 1.000, R = 0.774; zero semantic-delta false positives across 1,084 aligned certificates), and F1 = 0.994 on predicate-determining dependencies (P = R = 0.994; the single miss involves a negation premise, “Flolpuses are not flulpuses”, in problem p042). Parse coverage is excellent (100% original, 98.9% semantic; only 24/1,084 aligned certificates, 2.2%, U NPARSEABLE under the A-consistent evaluator), and alignment loss is confined to exactly one premise-restatement step per problem (50/238 CoT steps; every proof-tree step is audited). Treating all unscored cases as negatives yields a lower-bound F1 = 0.836. The recall gap is the documented structural blind spot: 49 of the 50 false negatives are entity-introduction premises, which the local probe targets. Two honest caveats: on output this regular, a simple string-diff baseline is competitive (F1 = 0.874), so the audit’s advantage over baselines is model-dependent; and the RAWR rate saturates (49/50), because the uniform restatement-then-chain style makes the structural blind spot fire on essentially every problem. The accepted workshop version reported Claude Sonnet 4 F1 = 0.161 with the base normalizer and 0.320 after a post-hoc normalizer adaptation. Both figures were computed under the misaligned integer-keyed ground truth and from probes affected by the generator issue, and are superseded; they should not be compared with the values above, which measure a different (successor) model with the corrected pipeline. 
+
+Example. In the accepted-version artifact, probes could carry stacked prefixes (e.g., “zqzqzqfum-pus” in one premise vs. “zqfumpus” in another), and Claude Sonnet 4 responded by flagging the genuinely broken chain instead of completing it. Under the corrected generator the same probe is coherent, and Claude Sonnet 4.5 simply follows the renamed chain—problem p038 with P6 substi-tuted: “ Since zqfumpuses are falpuses (premise 1), Yuki is a falpus ”—confirming that the accepted version’s “meta-reasoning” responses were an artifact of the probe-generation issue rather than an architecture-specific strategy. 
+
+# C RAWR C ASE STUDY 
+
+Problem p003: GPT-4o correctly concludes “Rex is a belvus”. The aligned audit flags one matched CoT step as I NSENSITIVE to a direct proof-tree dependency: CoT step S1 (proof step 1, “Since bun-puses are belnuses and Rex is a bunpus, Rex is a belnuse”) is insensitive to the entity-introduction premise P7 (“Rex is a bunpus”, structural). Under consistent substitution the renamed chain still yields is( rex , belnus )—the documented blind spot of consistent substitution on entity-introduction premises—and for this pair the chain-breaking local probe’s output is itself unparseable, so the 7Accepted at the ICLR 2026 Workshop on Logical Reasoning of Large Language Models combined protocol does not recover it either. The step even quotes the premise verbatim in its stated justification, making it simultaneously a misrepresentation case (Appendix D). Self-consistency re-ports 100% agreement on every step of this problem and cannot expose any of this structure; only the interventional audit makes the insensitivity visible. 
+
+# D MISREPRESENTATION EXAMPLES 
+
+Problem p004, Step 1: “ Since bonkuses are bunkuses and Stella is a bonkus, Stella is a bunkus. ”The generated text states the content of P7 (“Stella is a bonkus”) as part of its justification. Under consistent substitution of P7’s predicate (bonkus → zqbonkus), the normalized conclusion remains 
+
+is( stella , bunkus ). The step therefore presents the entity-introduction premise as its stated basis but is insensitive to it under consistent substitution (the chain-breaking local probe does detect this de-pendency; the certificate records the consistent-substitution outcome in verdict consistent ). We detect 30 such cases across 50 problems. 
+
+# E FORMAL FRAMEWORK CONNECTION 
+
+Our two-layer model instantiates a formal framework (Nakamura, 2025; 2026a;c). The observation layer and concept layer are connected by g∗ : Obs → Concept (normalize) and g∗ : Concept → Obs (substitute). A G ROUNDED certificate witnesses dependency via g∗ ⊣ g∗: intervening via g∗ and observing via g∗ reveals a change. An I NSENSITIVE certificate witnesses absence. The complete certificate set provides a coverage witness analogous to the framework’s completeness condition. 
+
+# F CHAIN LENGTH ANALYSIS 
+
+Table 3: F1 by chain length (A consistent, full).             
+
+> Hops PRF1 30.814 0.800 0.807 40.806 0.833 0.820 50.765 0.825 0.794
+
+With aligned ground truth, F1 shows no monotone relationship with chain length; variation across 3–5 hops is within ±0.014 of the overall F1, and Recall stays ≥0.80 at all lengths. 
+
+# G FALSE POSITIVE BREAKDOWN 
+
+We analyzed 40 semantic-delta non-dependency candidates under A consistent. 39 are metric-counted false positives under the Table 1 evaluator. Among these 39, 36 (92%) are stochastic —GPT-4o produces slightly different phrasing across runs even at temperature = 0; majority voting (k = 3) should substantially reduce these. 3 (8%) are chain propagation —upstream substitution causes downstream changes, arguably correct under a transitive dependency definition. The remain-ing candidate is outside the Table 1 metric set because its surface-control probe is U NPARSEABLE ,which the Table 1 evaluator excludes. 
+
+# H USE OF LARGE LANGUAGE MODELS 
+
+GPT-4o and Claude Sonnet 4.5 are used in this work solely as experimental subjects. For manuscript preparation, the author used general-purpose AI writing tools for prose editing, formatting, and consistency checks. All research hypotheses, experimental design, method formulation, code review decisions, and scientific claims are the author’s own. 8
