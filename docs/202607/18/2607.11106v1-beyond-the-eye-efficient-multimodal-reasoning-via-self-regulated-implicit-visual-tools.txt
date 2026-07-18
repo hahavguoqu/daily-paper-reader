@@ -1,0 +1,2388 @@
+Title: Beyond the Eye: Efficient Multimodal Reasoning via Self-Regulated Implicit Visual Tools
+
+URL Source: https://arxiv.org/pdf/2607.11106v1
+
+Published Time: Tue, 14 Jul 2026 01:45:06 GMT
+
+Number of Pages: 46
+
+Markdown Content:
+1
+
+# Beyond the Eye: Efficient Multimodal Reasoning via Self-Regulated Implicit Visual Tools 
+
+## Xiuwei Chen, Quanlin Chen, Wentao Hu, Zisheng Chen, Kun Xiang, Zehua Ma, Mingyang Zhang, Jianhua Han, Hanhui Li, Hang Xu, Xiaodan Liang †
+
+## ✦
+
+Abstract —Recent multimodal large language models (MLLMs) have made remarkable progress on fine-grained perception tasks under the ”Thinking with Images” (TwI) paradigm by iteratively performing various visual tool operations. However, this paradigm relies heavily on frequent external tool calls and repeated image re-encoding, which leads to substantial computational overhead and inference latency. Furthermore, existing models generally lack capability boundary awareness, making it difficult to adaptively determine when to rely on internal parametric knowledge and when to invoke external tools. To address these issues, we propose Beyond the Eye (BEE) , a novel implicit visual tool paradigm centered on self-regulated capability. BEE directly incorporates visual tool invocation behaviors into the training objective and encourages the model to develop a self-regulated invocation mechanism. This design enables the model to adaptively balance internal knowledge and implicit tools, avoiding redundant tool usage while substantially reducing inference latency. Specifically, BEE involves a two-stage training process: (1) Formalized Chain-of-Thought (CoT) Supervised Fine-tuning (SFT). We construct CoT trajectories with structured tool slots and mixed invocation states. This stage activates the model’s implicit tool representations and adaptive switching capability. (2) Self-regulated Reward-Driven Align-ment. To address redundant tool usage caused by ambiguous cognitive boundaries, we first introduce the Net Tool Gain (NTG) metric to quantify this phenomenon. Based on this observation, we further propose a self-regulated reward mechanism. This mechanism penalizes ineffective tool dependency and encourages the model to perform knowledge routing, ensuring that implicit tools are invoked only when the model’s internal knowledge is insufficient. BEE achieves state-of-the-art performance in fine-grained visual perception while remaining competitive in general reasoning tasks and achieving substantial gains in inference efficiency. In particular, under the high-resolution setting of 8192, BEE achieves up to ∼ 86 .2% inference acceleration compared with the DeepEyes method. BEE provides a promising direction for developing implicit tool MLLMs that combine strong cognitive ability with extremely low latency and further advances the development of self-regulated MLLMs. The code is publicly available at https://self-improvement-tool.github.io/bee.github.io/. 
+
+Index Terms —Large Vision and Language Models, Chain-of-Thought, Reinforcement Learning, Implicit Visual Tool, Self-regulated Behavior 
+
+## 1 INTRODUCTION 
+
+• Corresponding author †: Xiaodan Liang. 
+
+• Xiuwei Chen, Quanlin Chen, Zisheng Chen, Kun Xiang, Hanhui Li, Zehua Ma, Mingyang Zhang, Xiaodan Liang are with Sun Yat-sen University, China. E-mail: {chenxw83,chenzsh9,xiangk,mazh58 }@mail2.sysu.edu.cn, 
+
+{lihh77,liangxd9 }@mail.sysu.edu.cn. 
+
+• Wentao Hu is with The Hong Kong Polytechnic University, China. E-mail: wayne-wt.hu@connect.polyu.hk. 
+
+• Jianhua Han, Hang Xu are with Yinwang Intelligent Technology Co., Ltd., China. E-mail: {hanjianhua2012,chromexbjxh }@gmail.com. 
+
+# MUltimodal Large Language Models (MLLMs) [ 1–8] integrate multimodal information into language intelli-gence and have attracted considerable attention for their abil-ity to understand and generate multimodal content. In recent years, extending the Chain-of-Thought (CoT) paradigm [ 9– 16] to multimodal settings enables models to decompose complex problems into multiple reasoning steps, leading to substantial improvements in task performance. However, the conventional “Think about Images” paradigm [ 1, 2, 5] typically relies on a one-time visual encoding, after which reasoning is carried out entirely in the textual space. Due to the substantial gap between the continuous visual world and discrete symbolic semantics, this one-shot feature extraction strategy struggles to capture dynamic visual details, leading to performance bottlenecks on complex visual tasks that require deep and iterative reasoning. This limitation drives the transition from reasoning about images to a new paradigm, namely “Think with Images” (TwI) [ 17–23], where models reason by directly interacting with visual representations. In this paradigm, visual information is no longer treated as a static input but becomes a dynamic cognitive workspace that can be actively manipulated. Models can query, transform, and even gen-erate new visual representations, which serve as important intermediate steps during reasoning and enable a deeper understanding of visual cues. For instance, Thyme [ 19] and DeepEyes [ 21] generate executable code to invoke external visual tools, such as local zooming, and then re-encode the generated images into the reasoning process, thereby supporting fine-grained perception. Nevertheless, this heavy reliance on external tools in-evitably introduces frequent I/O operations and repeated image re-encoding, resulting in considerable computational latency. To alleviate this issue, recent latent reasoning ap-proaches [ 24, 25], such as Monet [ 26] and EVA [ 27], attempt to replace explicit tool invocation with continuous implicit visual representations, significantly improving inference efficiency. Unfortunately, both conventional TwI methods and emerging latent reasoning models generally lack capability boundary awareness. They are unable to adaptively estimate task difficulty or dynamically determine whether to rely on internal parametric knowledge or invoke external tools and implicit visual reasoning. As a result, redundant tool usage and unnecessary computational overhead remain unavoidable. arXiv:2607.11106v1 [cs.CV] 13 Jul 2026 270  72  74  76 66  68  
+
+> BEE (Ours)
+> Closed -Source Models
+> Open -Source Models
+> 62  64
+> Average Accuracy
+> Resolution
+> Time (s/sample)
+> 1 4 12 82 3 16  20
+> Thyme
+> DeepEyes
+> Qwen2.5 -VL -7B
+> 24
+> Speedup 86.2%
+> BEE -7B
+> EVA
+
+Fig. 1: ( Left ) Average scores across multimodal perception benchmarks , including V* Bench, HRBench, MME-RealWorld, MME-RealWorld-Lite. BEE demonstrates superior performance compared with much larger open-source models ( e.g ., Qwen3-VL-235B) and closed-source models ( e.g ., Gemini-2.5-Pro). ( Right ) Inference time comparison (s/sample) across different resolutions . BEE exhibits higher inference efficiency than TwI and latent methods ( e.g ., DeepEyes, Thyme, and EVA) under all resolution settings. To address these limitations, we propose Beyond the Eye (BEE) , a novel implicit visual tool (IvT) paradigm centered on self-regulated capability. Rather than calling external tools, BEE folds visual tool invocation directly into the training objective and learns an explicit capability boundary, so that it adaptively balances internal knowledge against implicit tool use, avoiding redundant invocations and reducing latency. BEE consists of two training stages: 1) formalized CoT supervised fine-tuning and 2) self-regulated reward-driven alignment . The Stage 1 training of formalized CoT supervised fine-tuning aims to activate the model’s implicit tool representations, adaptive switching mechanism, and basic reasoning ability. During this stage, the model predicts both the type and output of tool behaviors required for reasoning and dynamically generates them in the form of CoT trajectories equipped with implicit tool slots. To suppress redundant tool usage and improve inference efficiency, we adopt carefully designed formalized CoT labels as supervi-sion signals. Specifically, the label set contains a mixture of reasoning trajectories with and without implicit tool slots, which explicitly guides the model to learn when to invoke tools and when to rely on internal parametric knowledge. However, supervised fine-tuning alone is often insuffi-cient for establishing a clear cognitive boundary. To quan-titatively evaluate this issue, we introduce the Net Tool Gain ( NTG ) metric, which measures the actual marginal contribution of tool invocation to task success after excluding the intrinsic capability of the base model. The NTG analysis reveals an important observation: although the model opti-mized via the first training stage and a simple DAPO [ 28] algorithm possesses the capability of tool usage, it still suffers from substantial redundant tool invocation, as illustrated in Figure 4. To fundamentally overcome this limitation, we introduce the Second training stage, namely self-regulated reward-driven alignment . This stage aims to mitigate the model’s overfitting to pre-constructed CoT labels and further improve its self-regulated capabilities, thereby enhancing complex reasoning and generalization. Based on this observation, we propose a 
+
+self-regulated reward mechanism. By penalizing ineffective tool dependency, this mechanism encourages the model to perform knowledge routing and ensures that implicit tools are invoked only when the model’s internal knowledge is insufficient. Compared with conventional supervised fine-tuning methods that rely on fixed CoT labels, BEE adap-tively switches tools during CoT generation and establishes a dynamic implicit tool switching mechanism. Moreover, driven by self-regulated rewards, BEE can assess its own cognitive boundaries in a self-regulated manner and actively suppress redundant tool usage whenever internal parametric knowledge is sufficient to solve the problem. We conduct extensive experiments on multiple pub-lic perception tasks, including HRBench [ 29] and MME-RealWorld [ 30], etc . Experimental results show that BEE consistently outperforms existing explicit tool-based methods while substantially reducing inference latency, achieving up to 86.2% latency reduction under the 8K resolution setting (e.g ., Figure 1 (right)). Notably, BEE-8B and BEE-4B even 
+
+surpass the commercial model Kimi-K2.6 [ 31] in average accuracy on perception tasks ( e.g ., Figure 1 (left)). These results demonstrate the effectiveness of the self-regulation-driven visual tool internalization paradigm in improving both reasoning accuracy and inference efficiency of MLLMs. We further conduct extensive ablation studies and in-depth analyses to investigate different implicit tool representations, the effect of decoupling perception and reasoning, and deployment feasibility in real-world scenarios, etc . These analyses not only validate the effectiveness of each core component but also provide insights into how the BEE paradigm improves model performance while preserving reasoning interpretability. To summarize, the main contributions of this paper are:  
+
+> •
+
+We propose BEE , a novel self-regulation-driven implicit visual tool (IvT) paradigm. BEE aims to avoid redundant tool usage and substantially reduce inference latency, enabling adaptive and generalizable reasoning across diverse tasks and complex scenarios.  
+
+> •
+
+We construct formalized CoT labels for supervised fine-3
+
+tuning to effectively activate the model’s implicit tool representations, adaptive switching mechanism, and fundamental multimodal reasoning ability. In addition, we introduce the Net Tool Gain ( NTG ) metric to quantify the actual marginal contribution of tool invocation to task success.  
+
+> •
+
+We propose a Self-regulated reward mechanism. This mechanism enables the model to optimize its reasoning path in a self-regulated manner and fundamentally suppress redundant tool usage.  
+
+> •
+
+Experimental results demonstrate that BEE outperforms existing tool-based methods on multiple perception benchmarks. The proposed method simultaneously improves reasoning ability and reduces inference latency, providing valuable insights for designing efficient and self-regulated visual reasoning paradigms. 
+
+## 2 RELATED WORK 
+
+2.1 Thinking about Images 
+
+Multimodal Large Language Models (MLLMs) [ 1– 8, 32– 37] have witnessed rapid advancements in recent years, leading to significant breakthroughs in visual understanding and cross-modal reasoning within the field of artificial intelligence. The introduction of OpenAI o1 [ 32] establishes the modern paradigm of inference-time scaling, where native long-chain reasoning substantially enhances the reasoning capabilities of MLLMs. Recent advances in multimodal reasoning mainly follow two directions: supervised fine-tuning (SFT) and reinforcement learning (RL). Early SFT-based methods [ 1, 2, 5, 38–40, 13, 41, 42] construct large-scale reasoning data to teach explicit chain-of-thought pro-cesses. For example, LLaVA-CoT [ 38] and AtomThink [ 39] introduces multimodal reasoning annotations, while LLaMA-Berry [ 40] further leverages Collective Monte Carlo Tree Search (CoMCTS) to generate higher-quality reasoning tra-jectories. Inspired by the success of DeepSeek-R1 [ 43], RL has recently emerged as a powerful paradigm [ 14– 16, 44– 49] for multimodal reasoning. Building on this paradigm, open-source reinforcement learning methods such as MMR1 [ 50], Vision-R1 [ 51], R1-VL [ 15], and MM-EUREKA [ 52] further improve self-verification through rule-based reward mech-anisms. Vision-R1 [ 51] adopts GRPO together with hard format rewards and cold-start initialization data to enhance emergent reasoning. R1-VL [ 15] further introduces Step-wise Group Relative Policy Optimization (StepGRPO), an online reinforcement learning framework that uses dense step-wise rewards to improve reasoning performance. MM-EUREKA [ 52] shows that rule-based reinforcement learning can induce emergent reasoning behaviors without supervised fine-tuning, leading to improved data efficiency. Combining the advantages of supervised fine-tuning and reinforcement learning, methods such as R1-OneVision [ 16] and Mimo-VL [ 53] adopt multi-stage post-training to iteratively refine policy models while preserving both strong reasoning abil-ity and general-purpose performance. Despite the rapid progress, existing methods often exhibit a strong preference for textual reasoning while underutilizing visual evidence, leading to spurious correlations and hallucinated reasoning chains. Moreover, this issue tends to worsen as reasoning trajectories become longer. To address this limitation, the Thinking with Images paradigm has recently been proposed to enhance visual grounding by enabling reasoning directly over visual representations. 
+
+2.2 Thinking with Images 
+
+Recent progress in tool-augmented large models [ 54–63] has introduced a complementary direction for improving reasoning by enabling models to interact with external computational environments. Early studies mainly focused on integrating symbolic solvers, code execution engines, and structured verification modules into the reasoning process, enabling models to delegate algebraic manipulation, equation solving, and geometric computation to special-ized tools. Sketchpad [ 23] introduces a latent canvas for intermediate visual reasoning, while DeepEyes [ 21] equips models with cropping operations to inspect local regions. Chain-of-Focus [ 22] formulates multimodal reasoning as an adaptive zooming process through dedicated control tokens, and Pixel-Reasoner [ 64] further incorporates a curiosity-driven exploration strategy. Active-o3 [ 65] extends zooming to a broader active perception setting and trains the policy with GRPO, whereas MGPO [ 66] improves visual grounding through multi-round grounding optimization using only answer-level supervision. Subsequent work has expanded both the scope of interactions and the diversity of tools. SyncLoop [ 67] proposes a self-improving framework that progressively aligns task difficulty with model capability. Thyme [ 19] introduces a Python-based sandbox for flexible tool use, while Mini-o3 [ 20] increases both the number and diversity of interactions. DeepEyes-v2 [ 68] and R1V4 [ 69] further extend the available tools by incorporating external resources such as web search. Despite these advances, existing approaches still rely heavily on external agents and discrete tool invocations, which introduce considerable inference overhead and limit reasoning efficiency. 
+
+2.3 Implicit Visual Tools 
+
+Conventional Chain-of-Thought (CoT) reasoning is typically expressed in human-interpretable language. In contrast, Coconut [ 70] introduces the concept of continuous chains of thought, replacing discrete linguistic forms with latent representations that are argued to contain richer reasoning information. LatentSeek [ 71] further extends this idea to test-time scaling by iteratively refining latent trajectories based on intermediate feedback. Recent studies [ 72, 73 , 27, 26, 74– 89] have brought latent reasoning into multimodal set-tings. AURORA [ 74] introduces dedicated perception to-kens to support deeper visual understanding, while oth-ers [ 90, 80, 75, 82, 78], interleave textual and latent tokens to enable implicit multimodal reasoning. MINT-CoT [ 72] further aligns interleaved visual tokens with intermediate reasoning steps, and LVR [ 73] explores reasoning over latent visual representations to reduce reliance on textual CoT. Beyond architectural designs, several studies [ 84, 88, 89 ] investigate how to optimize latent reasoning. EVA [ 27] proposes D-GSPO to separately optimize discrete textual outputs and continuous latent reasoning states, whereas Monet [ 26] introduces VLPO to address the optimization challenges associated with continuous latent tokens. CapImagine [ 88] further proposes a text-space imagination-based method. 41
+
+BEE -Thinker 
+
+Image & Query 
+
+> +system_pt
+> Input
+> Output
+
+Implicit Tool 
+
+> Decide what to
+> do next
+
+Tool Slot 
+
+> <tool_pad_i >
+
+Toolkit   
+
+> zooming cropping
+> rotation
+> contrast enhancement
+> focus Auxiliary line
+> Args :<tool_ pad >
+> 2
+> 3
+> 4
+> tool
+> picture
+> trigger
+> generate
+> generate
+
+1. Formalized CoT Supervised Fine -Tuning 
+
+## (a) Training Loop of BEE 
+
+2. Self -Regulated Reward -Driven Alignment 
+
+Policy Model 
+
+(𝝅 𝜽 )
+
+Reference Model 
+
+(𝝅 𝒓𝒆𝒇 )      
+
+> Rollout 1:
+> Plan + Implicit Tool +
+> Reasoning + Answer
+> Rollout 2:
+> Plan + Reasoning +
+> Answer
+> Rollout N ……
+> Reward 1
+> Reward 2
+> …
+> Reward N
+> Advantage
+> rollout Online Difficulty Bucketing
+> Data Pool Sampling
+> Diverse ~ 320k
+> sample s
+> Construction & Polishing
+> Qwen3 -VL Tokenizer
+> <think>…</think>
+> <tool>…</tool>
+> <answer>…</answer>
+> <think>…</think>
+> <answer>…</answer>
+> refocus
+> thyme
+> visualcot
+> Base
+> Model
+> SFT
+
+## (b) Training Pipeline  
+
+> Easy Hard
+> Self -regulate dConsistency Format Accuracy
+> Plan
+> Implicit
+> Tool
+> Reasoning
+> Answer
+
+Fig. 2: (a) Overview of BEE . BEE adaptively selects between implicit visual tool behavior and direct reasoning based on the model’s current capability. (b) Two-Stage Training Pipeline . In Stage 1 Formalized CoT Supervised Fine-Tuning , the model is trained using pre-constructed formalized CoT labels to activate the model’s implicit tool representations, adaptive switching capability, and basic reasoning ability. In Stage 2 Self-Regulated Reward-Driven Alignment , a self-regulated reward objective is introduced during training, allowing the model to learn when to rely on its own capability and when to invoke implicit visual tools. Despite their promising efficiency and reasoning perfor-mance, existing latent reasoning methods generally rely on predefined reasoning budgets and lack awareness of their reasoning boundaries. Consequently, they cannot adaptively determine when additional latent tokens are needed, which may lead to unnecessary computation on simpler ones. 
+
+## 3 METHOD 
+
+In this section, we first present an overview of the reasoning pipeline of BEE (Section 3.1). We then describe the two-stage training strategy for the implicit visual tool paradigm (Section 3.2), followed by the self-regulated reward (MC-Reward), which enables the model to achieve self-regulated tool invocation (Section 3.3). 
+
+3.1 Overall Pipeline 
+
+BEE is a multimodal large language model with self-regulated decision-making capabilities. Its core idea is to as-sess task difficulty according to its own capability boundary and to trigger an implicit tool-augmented reasoning process when needed. Given a question Q and an input image 
+
+I ∈ RH×W ×C , the inference procedure of BEE proceeds as follows. The model (parameterized as πθ ) first produces an initial reasoning plan R to decide whether additional visual operations, such as local zooming, viewpoint rotation, or auxiliary line drawing, are necessary to solve the task. This self-regulated decision process can be described using an implicit routing variable g ∈ { 0, 1}. When g = 1 , indicating that the task exceeds the model’s direct reasoning capability and requires implicit tool usage, BEE does not rely on external API-based tool invocation. Instead, it activates an internal mechanism (tool slot) through a control token such as <tool start > and predicts, in an autoregressive manner, image-level semantic feature tokens that correspond to the intended visual operations, denoted as A ∈ RK×d, where K
+
+is the sequence length and d is the hidden feature dimension. These tokens are extracted offline by a pretrained semantic tokenizer and are stored within the model, serving as implicit representations of simulated visual feedback. The model then integrates these implicit tokens into its chain-of-thought reasoning process to support reasoning in complex scenarios. When the model judges that its capability is sufficient, it skips the tool invocation stage and directly produces the final answer. This dynamic routing mechanism reduces latency from external tool calls and reduces cascading errors in simpler cases, achieving a better trade-off between efficiency and accuracy. The overall framework of BEE is illustrated in Fig-ure 2. Specifically, BEE consists of two training stages: 1) Formalized CoT Supervised Fine-Tuning, which constructs formalized CoT labels to train the multimodal large language model. This stage equips the model with implicit tool representations, adaptive tool switching, and fundamental reasoning capabilities, while also laying the foundation for low-latency inference. 2) Self-regulated Reward-Driven Alignment, which focuses on refining the model’s tool usage behavior. We first introduce the Net Tool Gain metric to quantitatively analyze the model obtained after supervised fine-tuning and observe that it tends to overuse tools due to ambiguous cognitive boundaries. To alleviate this issue, we propose a self-regulated reward mechanism that penalizes ineffective tool dependency and encourages the model to perform knowledge routing. Consequently, implicit tools 5Attribute (51.1%) 
+
+> Color (26.6%)
+> Structure Position (20.0%)
+> Object Material (4.5%)
+> Identification (38.1%)
+> OCR (3.6%)
+> Counting (7.2%)
+> Recognition (41.7%)
+> Counting (7.2%)
+> 5000
+> 10000
+> 15000
+> 20000
+> 25000
+> 30000
+> 35000
+> 40000
+> 120000
+> 150000
+> Recognition
+> Counting
+> Attribute
+> Numbers
+
+Fig. 3: Statistics of SFT training data. Top : The distribution of tasks across three main categories. Bottom : The data length statistic. are activated only when the model’s internal knowledge is insufficient, leading to more efficient and adaptive reasoning. 
+
+BEE supports self-regulated optimization of its reasoning process. Compared with conventional explicit tool invocation methods based on external APIs, this implicit framework has three main advantages.  
+
+> •
+
+End-to-end joint optimization , where the generation of implicit tool features and the reasoning process are optimized within a unified framework, reducing the separation between modules in traditional pipelines and easing cascading error accumulation.  
+
+> •
+
+Improved inference efficiency , since the method re-moves system-level latency caused by external interac-tion and repeated image encoding. The model performs tool-augmented reasoning in a single forward pass, improving throughput and reducing time per output token, which leads to more efficient inference.  
+
+> •
+
+Capability-aware adaptive triggering , where the self-regulated mechanism enables the model to activate implicit tools only when the task exceeds its internal capability boundary, while avoiding unnecessary tool usage when the model is already sufficient. This design enables more effective routing and more efficient use of computational resources. 
+
+3.2 Self-Regulation-Driven IvT Framework 
+
+3.2.1 Stage 1: Formalized CoT Supervised Fine-tuning 
+
+The BEE-320K dataset is constructed through the following steps. 1) Source Data Collection . Inspired by the way humans adapt their strategies and flexibly use different skills when solving complex problems, BEE is designed to mimic this cognitive process during data collection. To this end, we integrate heterogeneous data from Refocus [ 91], Thyme [ 19], mini-o3 [ 20], and Visual-CoT [ 92] to build a dataset with diverse task types and image distributions. This design provides broad domain coverage and sufficient sample diversity for training. 2) Trajectory Construction and Polishing . The training data is constructed as follows. We first use the code sandbox environment in Thyme to generate reasoning trajectories with explicit tool invocation. Each trajec-tory consists of an initial plan ( R), code-based tool operations ( T ), subsequent reasoning ( Rt), and the final answer ( A). During execution, we discard samples with non-executable code and use Qwen3-VL-30B to verify whether the outputs of the executed code are consistent with the intended objective reflected in the model’s analysis, such as improving image readability through rotation. Samples that fail this verification are removed. We then transform explicit tool invocation into implicit representations. Using a pretrained tool semantic tokenizer (which is described in APPENDIX A.3 ), we encode the auxiliary images into semantic tokens (Tool pad) and replace the code segment T in the original reasoning trajectory with these tokens A. To maintain textual fluency, we further use Qwen3-VL-30B to rewrite the trajectory while preserving the original reasoning logic, ensuring smooth transitions between the semantic tokens and the surrounding context. The resulting dataset contains implicit tool-based reason-ing chains and covers six visual operations, including zooming, cropping, and rotation, etc . The diversity of tasks allows BEE to learn a broad set of fundamental implicit tool-use skills. In addition, to equip BEE with an initial capability for adaptive tool selection, namely the ability to solve problems without tools when they are unnecessary, we collect additional samples from Thyme that do not require tool intervention and construct a basic training subset. 3) Implicit Token Understanding . Our preliminary experi-ments show that implicit tool-based reasoning chains do not provide substantial improvements over the no-tool baseline on several evaluation metrics. We find that the main reason is the model’s limited ability to distinguish and understand the newly introduced visual tokens. To address this representation bottleneck, we construct an auxiliary dataset to strengthen semantic alignment. In this dataset, implicit tool tokens are provided as input, and the model is trained to predict their corresponding visual descriptions through a caption prediction task. Further details can be found in APPENDIX B.1 .Combining the above components, we construct the final BEE-SFT-320K dataset. It mainly contains three categories of data. The proportion of each category and the distribution of reasoning trajectory lengths are shown in Figure 3. More details of the data are provided in APPENDIX B.1 , and the format of the final SFT dataset is described in APPENDIX B.5 .6Qwen2.5 -VL -7B 
+
+BEE -7B -Static 
+
+Acc: 865/1919 (45.1%) 
+
+Acc: 989/1919 (51.5%)       
+
+> 732 (38.1%)
+> 797 (41.5%)
+> 257 (13.4%)
+> 133 (7.0%)
+> 257 (13.4%)
+> 133 (7.0%)
+
+Fig. 4: Data-driven comparison of performance and tool usage rate. BEE-7B-Static still makes extensive use of tools even within the range of its own capabilities ( e.g ., problems solvable by the base model), leading to unnecessary resource consumption and indicating a lack of capability boundary awareness. 
+
+3.2.2 Net Tool Gain (NTG) Metric 
+
+To understand how the model uses external tools, we first examine the distribution of tool invocations made by the BEE-Static model ( e.g ., trained via SFT combined with a simple DAPO [ 28] algorithm) and the baseline model on correctly and incorrectly predicted samples from the MME-Real-Lite benchmark, as shown in Figure 4. The initial observations suggest that the model tends to over-rely on external tools. To quantify the effectiveness of tool usage, we perform inference twice on the same test set, once without tool access (Base) and once with tool access enabled (BEE-Static). Let D denote the test set. We define Sbase as the set of samples correctly predicted under the base mode, Sbee as the set of samples correctly predicted under the tool-enabled mode, and Ctool as the set of samples for which the model invokes external tools during inference. Based on these definitions, we partition 
+
+Ctool into three mutually exclusive subsets.  
+
+> •
+
+Effective Tool Gains . Effective Tool Gains are defined as 
+
+G = ( Sbee \ Sbase ) ∩ Ctool , which consist of samples that are incorrectly predicted by the base model but become correct after tool invocation.  
+
+> •
+
+Redundant Tool Calls . Redundant Tool Calls are defined as R = ( Sbase ∩ Sbee ) ∩ Ctool , which include samples that can already be answered correctly using the model’s internal knowledge but still trigger unnecessary tool usage.  
+
+> •
+
+Tool-Induced Hallucinations . Tool-Induced Hallucina-tions are defined as L = ( Sbase \ Sbee ) ∩ Ctool , which correspond to samples that are correctly answered by the base model but become incorrect after being misled by external tool outputs. To measure the actual marginal benefit of tool invoca-tion, we introduce the Net Tool Gain ( NTG ) metric ( e.g ., Equation 1). 
+
+N T G = |G| − | L||Ctool | . (1) This metric measures the average net performance gain brought by tool usage. Substituting the empirical results into the above equation, we find that the NTG of BEE-Static is only 6.2% . Together with the distribution shown in Figure 4 and the extremely low NTG value, these results indicate that although the BEE-Static learns to invoke tools, it still lacks a clear understanding of its own capabilities and limitations. As a result, it produces a large number of costly and redundant tool calls. This observation directly motivates the introduction of the self-regulated reward mechanism, MC-Reward, in the next stage to encourage the model to invoke tools only when necessary. 
+
+3.2.3 Stage 2: Self-regulated Reward-driven Alignment 
+
+The policy model π samples G output trajectories, denoted as 
+
+o1, o 2, . . . , o G. To improve both the robustness and reasoning ability of the model, we design a composite reward function that jointly optimizes answer correctness, output format compliance, and the logical consistency of the reasoning process, while regulating tool invocation through the self-regulated reward (MC-Reward). For each trajectory oi, the overall reward is defined as Equation 2. 
+
+R(oi) = racc + rcons + rf mt + rmc . (2)  
+
+> •
+
+Answer Accuracy (racc ). The accuracy reward racc 
+
+evaluates whether the final answer is correct. We adopt a hierarchical evaluation strategy. Rule-based methods, including exact string matching, option matching, and regular expression matching, are first applied for effi-cient verification. A reward of 1 is assigned if a match is found. For complex responses that cannot be reliably verified by these rules, such as long or ambiguous answers, we use a strong vision-language model, such as Qwen3-VL-4B, as the judge model to assess the semantic equivalence between the predicted answer and the reference answer. The reward is set to 1 if the two answers are semantically equivalent and 0 otherwise.  
+
+> •
+
+Reasoning-answer Consistency ( rcons ). The consistency reward rcons measures whether the reasoning process is semantically consistent with the final answer. We also use the judge model, such as Qwen3-VL-4B, to examine the relationship between the generated reason-ing trajectory and the predicted answer. The reward is assigned as 1 when the reasoning process supports the predicted answer and the two are semantically consistent. Otherwise, the reward is set to 0.  
+
+> •
+
+Format Adherence (rfmt ). The format reward rf mt 
+
+ensures that the output trajectory follows a predefined structured template, such as specific tool slot tags. A reward of 1 is assigned when the output satisfies the formatting requirements and 0 otherwise.  
+
+> •
+
+Self-regulated Confidence calibration ( rmc ). The self-regulated reward rmc aims to help the model establish clear cognitive boundaries, and its mathematical formu-lation is presented in Section 3.3. This reward penalizes ineffective reliance on external tools and encourages the model to invoke implicit tools only when its internal parametric knowledge is insufficient to solve the task, thereby reducing redundant computation. 7
+
+The optimization objective of DAPO [28] is defined as 
+
+JDAPO (θ) = E(Q,A )∼D ,{oi}Gi=1 ∼πθold (·| Q)
+
+"
+
+1
+
+PGi=1 |oi|
+
+> G
+
+X
+
+> i=1
+> |oi|
+
+X
+
+> t=1
+
+min 
+
+
+
+ri,t (θ) ˆAi,t ,
+
+clip 
+
+
+
+ri,t (θ), 1 − εlow , 1 + εhigh 
+
+ ˆAi,t 
+
+# (3) 
+
+3.3 MC-Reward: Self-regulated Confidence Calibration 
+
+MC-Reward is designed to discourage ineffective reliance on external tools and encourage the model to make informed decisions about knowledge routing, ensuring that implicit tools are invoked only when the model’s internal parametric knowledge is insufficient to solve the current task. 
+
+3.3.1 When to Use 
+
+A key challenge is how to characterize the model’s current capability boundary. In this work, we use the group average accuracy during the rollout stage as a dynamic signal of the model’s capability. Specifically, given a query x, we compute the average accuracy p over all G sampled trajectories within the same rollout group: 
+
+p = 1
+
+G
+
+> G
+
+X
+
+> k=1
+
+I(correct (y(k), x )) ,
+
+where G denotes the number of sampled trajectories in a rollout group and I(·) is the indicator function. Intuitively, 
+
+p reflects how likely the model is to solve the query using only its internal knowledge. During training, p is updated dynamically at each rollout, allowing BEE to adjust its tool usage behavior according to both its current capability and the difficulty of the query. When p falls below a predefined threshold τ , the query is considered to be beyond the model’s current capability. In this case, MC-Reward encourages the model to invoke implicit tools so that it can obtain fine-grained visual cues. Conversely, when p ≥ τ , the model is expected to solve the task using its internal knowledge alone, and unnecessary tool invocations are penalized. Overall, MC-Reward encourages implicit tools to focus on challenging queries that exceed the model’s current capability. This mechanism not only enables the model to develop an awareness of its own capability boundary, but also improves the efficiency of computational resource usage during inference. 
+
+3.3.2 Propensity Shaping 
+
+The primary motivation for introducing MC-Reward is to enable BEE to decide whether to invoke external tools according to its current capability and the difficulty of the task. To quantify and regulate this behavior, we use the capability indicator obtained in the previous stage, denoted by p ∈ [0 , 1] , where p > τ indicates an easy task and p < τ 
+
+indicates a difficult one. Our goal is to define a tool advantage function ∆A(p):
+
+∆A(p) = Rtool − R notool . (4) This function is expected to satisfy the following bound-ary conditions: 
+
+(
+
+∆A(p) < 0, as p > τ (Easy tasks, discourage ),
+
+∆A(p) ≥ 0, as p ≤ τ (Difficult tasks, encourage ). (5) In our formulation, whether the model invokes a tool, represented by Itool ∈ 0, 1, and whether the prediction is correct, represented by Iacc ∈ 0, 1, jointly define a 2 × 2
+
+action-outcome space. Based on this formulation, we define the gating reward Rgating (t) as 
+
+∆Rmc (t) = Itool · F (p, Iacc ) + (1 − Itool ) · G (p, Iacc ). (6) To avoid training instability caused by discontinuous rewards, we construct the reward using smooth and continu-ous functions. We first define the base reward for both correct and incorrect predictions as a linear function of the capability indicator: Rbase = α + βp . For tool usage, we introduce a cosine-based gating term: Ωbuf f er = r cos πx +u. The reward functions for the tool and no-tool cases are then defined as 
+
+F(p, Iacc ) = Iacc · [Rbase1 + Ω buffer1 (p)] + (1 − Iacc ) · [Rbase2 + Ω buffer2 (p)] . (7) 
+
+G(p, Iacc ) = Iacc · Rbase1 + (1 − Iacc ) · Rbase2 . (8) This smooth design naturally satisfies the desired bound-ary conditions and allows the reward signal to vary contin-uously with model capability, leading to more stable policy updates during training. Detailed visualizations and analyses are provided in Section 5.1. Overall, MC-Reward introduces a difficulty-aware intrinsic reward that discourages unnec-essary tool usage on easy problems while encouraging tool-assisted reasoning on challenging ones. 
+
+## 4 EXPERIMENTS 
+
+4.1 Experimental Settings 
+
+Models . We use Qwen2.5-VL-7B-Instruct [ 1] and Qwen3-VL-4/8B-Instruct [ 2] as base models. All these models first train on BEE -SFT-320K datasets, and then train on 55K RL data with DAPO [28]. 
+
+Evaluation metric . We evaluate on eight benchmarks in real-world understanding, general reasoning and out-of-distribution generalization. (i) Real-world Understanding: 
+
+V* [94], HR-Bench [ 29], MME-RealWorld [ 30]. (ii) Out-of-distribution Generalization: General Reasoning: LogicVista [ 95], Hallucination: POPE [ 96]. V* [94] is a benchmark comprising high-resolution, visually cluttered images designed to evalu-ate the fine-grained visual grounding and reasoning abilities of VLMs in visual search scenarios. HR-Bench [ 29] is an ultra-high-resolution image benchmark designed to evaluate how well VLMs preserve fine visual details across both fine-grained single-instance perception and cross-instance reasoning tasks. MME-RealWorld [30] is a large-scale, high-resolution benchmark spanning five domains and 43 sub-tasks, designed to evaluate models on complex real-world scenarios that demand precise local detail perception and multi-step reasoning. LogicVista [ 95] is a benchmark fea-turing 448 samples across five distinct skills, designed to comprehensively evaluate the logical reasoning capabilities of multimodal LLMs. POPE [ 96] is a benchmark designed to 8
+
+TABLE 1: Performance comparison on various tasks. For all open-source models, the best performance for each metric is bolded , and the second best is underlined. BEE consistently improves over the corresponding Qwen-VL baselines. The result ( †, ‡) is collected from [69] and [2], respectively. Real-World Understanding OOD Generalization Models Param Size RW-Avg V* HR-4K HR-8K MME-Real MME-Real-Lite LogicVista POPE 
+
+Closed-Source Models 
+
+Gemini-2.5-Flash [8] - 66.9 72.3 † 77.5 † 73.7 † 60.9 † 50.2 † 60.0 ‡ -Gemini-2.5-Pro [8] - 74.8 79.1 † 83.9 † 81.5 † 71.3 † 58.3 † 68.7 ‡ -
+
+Open-Source Models 
+
+Qwen3-VL-Instruct [2] 4B 68.3 80.6 77.4 70.4 63.4 49.7 53.2 88.4 Qwen2.5-VL-Instruct [1] 7B 62.6 76.4 68.8 65.3 58.3 44.1 39.8 85.8 Qwen3-VL-Instruct [2] 8B 69.1 85.3 76.1 70.8 64.0 49.3 55.3 87.6 Qwen2.5-VL-Instruct [1] 32B 66.4 81.2 73.4 70.4 61.0 46.2 54.4 86.2 GLM-4.5V [93] 108B 70.5 83.3 81.6 74.9 64.1 48.5 62.4 87.5 Qwen3-VL-Instruct [2] 235B 74.1 80.6 83.0 80.4 69.4 55.0 65.8 88.6 Kimi-K2.5 [54] 1T 70.8 85.9 81.9 75.4 63.8 47.1 63.7 88.7 Kimi-K2.6 [31] 1T 71.2 84.8 79.3 74.8 66.4 50.8 64.8 89.4 
+
+Our Models 
+
+BEE-4B (Qwen3-VL) 4B 74.1 91.6 78.4 77.0 68.3 55.4 53.4 88.6 BEE-7B (Qwen2.5-VL) 7B 70.0 83.8 75.4 73.9 64.4 52.3 43.0 89.3 BEE-8B (Qwen3-VL) 8B 75.3 90.6 80.2 76.8 69.6 59.4 56.3 87.7 TABLE 2: Performance comparison on various tasks. For all open-source models, the best performance for each metric is bolded , and the second best is underlined. Real-World Understanding Models V* HR-4K HR-8K MME-Real-Lite Avg                                                                       
+
+> Base Models
+> Qwen3-VL-4B [2] 80.6 77.4 70.4 49.7 69.5 Qwen2.5-VL-7B [1] 76.4 68.8 65.3 44.1 63.7 Qwen3-VL-8B [2] 85.3 76.1 70.8 49.3 70.4 Qwen2.5-VL-32B [1] 81.2 73.4 70.4 46.2 67.8
+> Agentic Models
+> Pixel Reasoner-7B [64] 84.3 74.0 66.9 --DeepEyes-7B [21] 84.3 74.0 66.9 53.2 69.6 DeepEyesV2-7B [68] 81.8 77.9 73.8 51.6 71.3 Thyme-VL-7B [19] 82.2 77.0 72.0 55.2 71.6 Mini-o3-7B [20] 88.2 77.5 73.3 --
+> Latent Models
+> Monet-7B [26] 83.3 71.0 68.0 55.5 69.5 EVA-7B [27] 80.2 74.0 69.5 49.8 68.4
+> Our Models
+> BEE-4B (Qwen3-VL) 91.6 78.4 77.0 55.4 75.6 BEE-7B (Qwen2.5-VL) 83.8 75.4 73.9 52.3 71.4 BEE-8B (Qwen3-VL) 90.6 80.2 76.8 59.4 76.8
+
+0.5  1.0  1.5  2.0 Speed 
+
+> Benchmark Accuracy
+> 70  72  74  76
+
+2.5 
+
+> 64
+
+# 3
+
+# 3
+
+> 68
+
+Base Models 
+
+Our Models 
+
+Thinking with Images 
+
+Thyme 
+
+DeepEyesV2 
+
+DeepEyes 
+
+Qwen2.5 -VL -7B 
+
+BEE -7B 
+
+Qwen3 -VL -4B 
+
+BEE -4B 
+
+> 62
+
+Qwen3 -VL -8B 
+
+BEE -8B 
+
+Fig. 5: Benchmark accuracy versus inference speed . Our models achieve higher accuracy than the base models and agentic baselines while maintaining the efficiency of single-pass inference. evaluate object hallucination in MLLMs. We set the threshold 
+
+τ to 2/3 in our experiments. 
+
+Baselines . To ensure a comprehensive evaluation, we bench-mark our BEE against five distinct categories of baselines. 
+
+(i) closed-source frontier models , such as Gemini [ 8]. (ii) 
+
+strong open-source models , including Kimi [ 31], GLM [ 93], and Qwen3 [ 2]. (iii) base models , including the Qwen2.5-VL [ 1]/Qwen3-VL [ 2] series. (iv) thinking with images agentic models , including Deepeyes [ 21], DeepeyesV2 [ 68], Mini-o3 [ 20], and Thyme [ 19]. (v) models fine-tuned on open-source datasets , including Pixel-Reasoner [ 64]. (vi) implicit latent reasoning models , such as Monet [ 26 ] and EVA [ 27]. Notably, other training-free methods are excluded from the main comparative results, as these techniques are fundamentally orthogonal and can be directly integrated to further enhance our proposed method. 
+
+Efficiency comparisons setting . All efficiency comparisons are conducted on a single NVIDIA H800 GPU with a consistent NVIDIA driver version. During evaluation, no other processes interfere with the system. All methods are tested using BF16 precision with a batch size of 1, and are executed with VLLM for inference, except for Thyme, 9
+
+TABLE 3: Comparison of training resources, data scale, and training time. Note: Some models used different training resources ( e.g ., 32 GPUs or 8 GPUs). Method Hardware Data Size Time ( ↓)SFT RL SFT RL SFT RL DeepEyes [21] - 4 Nodes - 47K - ∼50h DeepEyesV2 [68] 4 Nodes 4 Nodes 268K 83K ∼28h ∼54h Thyme [19] 1 Node 1 Node 500K 55K ∼25h ∼150h BEE-7B 1 Node 1 Node 320K 55K ∼4h ∼49h 
+
+which is evaluated using the raw PyTorch implementation provided in its official codebase. Detailed environment configurations for the efficiency comparisons are provided in APPENDIX B.4 , and the training hyperparameters are detailed in APPENDIX B.2 .
+
+4.2 Main Results 
+
+Leading performance across various benchmarks . Table 1 compares BEE with other leading multimodal models on perception, reasoning, and general-purpose tasks. On percep-tion benchmarks, BEE outperforms current state-of-the-art open-source models, including GLM-4.5V, Qwen3-VL-235B, and Kimi-k2.5/2.6, whose model sizes range from 108B to 1T parameters. BEE achieves an average accuracy of 75.3, exceeding the strongest baseline by 1.2 points. This result suggests that test-time scaling remains an important factor for improving performance on perception tasks. On out-of-distribution benchmarks such as general reasoning, BEE consistently surpasses its backbone model, Qwen-VL-Base, indicating that the observed improvements are not simply the result of overfitting to specific perception benchmarks. The gains in both perception and reasoning also lead to a substantial reduction in hallucinations, resulting in more reliable model outputs. 
+
+Exceeding ”thinking with image” models . We further compare BEE with agentic models. Table 2 shows that BEE-7B achieves performance that is comparable to or better than other models in the same family, and consistently outperforms them at both the 4B and 8B scales. These results suggest that BEE’s implicit tool execution process can effectively replace explicit tools, eliminating the need for frequent tool invocation and re-encoding. 
+
+Surpassing latent reasoning models . We further compare BEE with latent reasoning models. As shown in Table 2, BEE consistently outperforms latent reasoning models across different model scales on all benchmarks except MME-Lite, improving the average accuracy from 69.5 to 76.8. These results indicate that BEE’s self-regulation tool internalization mechanism is more effective than a purely latent reasoning paradigm. 
+
+Time-efficient training for tool competence . Table 3 com-pares the training data size and training time of BEE with those of other models. BEE requires considerably less training time than DeepEyesV2 and Thyme while maintaining higher efficiency, which substantially reduces the reliance on GPU and storage resources. 
+
+Lower inference latency via internalizing tool-use benefits .Figure 5 presents the performance and inference speed of BEE compared with agentic models across different scales. BEE TABLE 4: System-level metrics . Note: Cost is $1.5/hour node price.                      
+
+> Metrics BEE-7B DeepEyes [21] DeepEyesV2 [68] Memory Usage (GB) 112.02 112.90 120.40 Throughput (sample/s) 1.61 0.07 0.33 Throughput (Token/s) 80.64 186.30 0.90 Avg. Latency (s) 1.37 8.82 3.07 Latency Variance 1.04 18.85 3.75 Cost Per 1K sample ($) 0.72 6.40 1.28
+
+not only achieves higher performance but also runs faster, with BEE-7B improving from 0.07 sample/s to 1.61 sample/s (HRBench4K). Figure 1 further presents a comparison of the BEE model across different resolutions. For example, at 8K resolution, the BEE method achieves a ∼ 86 .2% improvement in inference speed compared to Thyme. 
+
+Cost-effective deployment with performance advantages .We further evaluate the deployment efficiency and cost of different models in practical scenarios ( cf ., Table 4). Due to its autoregressive design, BEE can be deployed as easily as a standard Qwen-VL-Instruct model, without relying on external sandbox interfaces required by DeepEyesV2. Compared with the DeepEyes series, BEE achieves lower average latency, higher throughput, and lower operational cost, reducing the cost from 6.4$ and 1.28$ to 0.72$. 
+
+Additional results . The pseudocode for computing these system metrics is provided in APPENDIX B.6 . The ablation study of τ is in APPENDIX C.3 . More comprehensive experimental results are reported in APPENDIX C.1 , and the training curves of the model are shown in APPENDIX C.6 .Case studies, including both successful and failed examples across real-world scenarios, mathematics, general reasoning, autonomous driving, and medical applications, are presented in APPENDIX E.1 , APPENDIX E.2 .
+
+4.3 Ablation Studies 
+
+Importance of tool slots . To verify the effectiveness of the implicit visual tools, we construct several variants. Specifically, we replace the target image used for implicit tool representation with the original image, substitute the implicit visual tokens with meaningless ⟨unk ⟩ tokens of the same length that are added to the CodeBook, and remove the implicit tools entirely, relying instead on pure text reasoning. The detailed designs of these variants are provided in APPENDIX B.3 . We train all variants using SFT+DAPO with the same amount of training data. Table 5 presents their performance under this controlled setting.  
+
+> •
+
+Replacing the target image with the original image. 
+
+This causes the largest drop on HRBench relative to BEE-7B, particularly at the 8K resolution. This result suggests that the target image, which provides a clearer view of the object, removes distracting background content, and includes auxiliary guidance cues, is important for accurate visual perception.  
+
+> •
+
+Replacing the implicit visual tokens with meaningless 
+
+⟨unk ⟩ tokens. This leads to consistent declines across all evaluation metrics. This finding indicates that the performance gains come from the implicit tool design itself rather than from the additional reasoning time associated with longer output sequences. 10 
+
+TABLE 5: Performance comparison of different tool slot formats. 
+
+For all open-source models, the best performance for each metric is 
+
+bolded , and the second best is underlined. Real-World Understanding Type Size(SFT+RL) HR-4K HR-8K V* Qwen2.5-VL-7B [1] - 68.8 65.3 76.4 replace the original image 320K+55K 71.3 66.8 80.6 replace the unk token 320K+55K 73.5 68.3 79.1 pure text-based reasoning 320K+55K 74.5 72.8 82.7 BEE-7B 320K+55K 75.4 73.8 83.8 4 8 16 36 64  
+
+> Implicit Tokens
+> 74
+> 76
+> 78
+> 80
+> 82
+> 84
+> Accuracy
+> V*
+> HRBench-4K
+
+Fig. 6: Effect of token length .TABLE 6: Performance comparison on the MME-Real-Lite. BEE shows larger improvements on more challenging perception and reasoning tasks, as well as monitoring and autonomous driving tasks, where the baseline performs relatively poorly. Perception Model Monitoring Autonomous Driving OCR Diagram and Table Remote Sensing Overall Qwen2.5-VL-7B [1] 29.1 31.7 90.4 85.0 44.0 49.7 BEE-7B 41.0 39.7 90.0 88.0 52.0 56.5 
+
+Improvement 40.9% 25.2% -0.4% 3.5% 18.2% 13.7% 
+
+Reasoning Model Monitoring Autonomous Driving OCR Diagram and Table Remote Sensing Overall Qwen2.5-VL-7B [1] 28.7 25.2 73.0 67.0 - 37.8 BEE-7B 47.3 33.0 76.0 64.0 - 45.7 
+
+Improvement 64.8% 31.0% 4.1% -4.5% - 20.9% 
+
+TABLE 7: NTG metric comparison. The BEE-7B model achieves the maximum actual marginal benefit of tool invocation. Model Thyme [19] DeepEyes [21] BEE-Static BEE-7B NTG 39.6 2.3 6.2 66.0  
+
+> •
+
+Pure text-based reasoning. When the implicit tools are removed and the model relies solely on text-based reasoning, performance also drops consistently across all metrics. These results show that the implicit tools improve image understanding and, in turn, support more effective reasoning. 
+
+Token length comparison for tool slots . We further compare the effect of different numbers of implicit tool tokens on model performance. As shown in Figure 6, BEE shows only small performance variations across different token lengths, and even with as few as four discrete tokens, it already achieves strong results. 
+
+Delve deep into perception tasks . Taking MME-Real-Lite as an example, it includes a large number of high-resolution perception tasks in real-world scenarios. In Table 6, we present the performance of BEE and the baseline model on various tasks. It can be observed that for tasks on which the baseline model already performs well, such as OCR, Diagram and Table tasks, with accuracies exceeding 65% and in some cases approaching 90%, the improvement provided by BEE is limited ( e.g ., some metrics show a slight decline). However, for more difficult tasks on which the perception ability of Qwen2.5-VL-7B is relatively weak, such as monitoring and autonomous driving, BEE achieves improvements of more than 25% in both perception and reasoning tasks, with a more pronounced gain in reasoning tasks. 
+
+Comparison of NTG metrics . Table 7 presents the NTG comparison among conventional methods, BEE-static, and BEE-7B. The results show that the MC-Reward design substantially improves the true gain from tool use. Moreover, BEE-7B achieves a higher NTG than conventional methods, indicating that it derives greater practical benefit from tool use. 
+
+## 5 DEEPER ANALYSIS 
+
+5.1 Analysis and Visualization of MC-Reward 
+
+As model capabilities improve, some problems that were previously difficult become easier. In this context, the implicit tool should adjust dynamically to changes in the model’s ability. We first describe the tendency analysis and the visualization analysis, with additional derivations provided in APPENDIX A.1 .In the tendency analysis, following the formulation presented in Section 3.3, cases are classified based on whether a tool is used and whether the final answer is correct. These cases are divided into four categories, as shown in Equation 9. 
+
+∆R(t) = 
+
+
+
+α1 + β1p + γ cos( πp ) + μ, if Itool = 1 , Iacc = 1 
+
+α2 + β2p + γ cos( πp ) + μ, if Itool = 1 , Iacc = 0 
+
+α1 + β1p, if Itool = 0 , Iacc = 1 
+
+α2 + β2p, if Itool = 0 , Iacc = 0 
+
+(9) The constraints and derivations are provided in AP-PENDIX A.1 . Based on the tendency analysis, the final 11 
+
+Fig. 7: Visualization of the MC-Reward curve. MC-Reward is defined over two continuous regions. In the easy-problem region, using tools always yields a lower reward than direct reasoning. In the difficult-problem region, using tools consistently yields a higher reward than direct reasoning. 100%  
+
+> 0. 4%0.2%
+> 100%
+> 25%
+> 41%
+
+Fig. 8: Comparison of BEE tool calling rate across tasks during training. During the early stage of SFT training, the model makes many redundant tool calls, with the call rate approaching 100% on both easy and difficult problems. As training progresses, the model quickly adapts its tool-use behavior and gradually reduces unnecessary calls on easy problems, eventually reaching a call rate of around 0.2%. On difficult problems, the tool call rate first decreases to about 25% in the middle stage and then increases as the model continues to explore strategies for solving challenging cases, finally stabilizing at approximately 41%. formulation applied in the main experiments is as follows. 
+
+∆R(t) = 
+
+
+
+0.45 − 0.2p + 0 .3 cos( πp ), if Itool = 1 , Iacc = 1 
+
+−0.35 + 0 .3p + 0 .3 cos( πp ), if Itool = 1 , Iacc = 0 0.3 − 0.2p, if Itool = 0 , Iacc = 1 
+
+−0.5 + 0 .3p, if Itool = 0 , Iacc = 0 
+
+(10) Figure 7 (Left) shows the reward values defined in Equa-tion 10 for easy and difficult problems. For easy problems, correct answers achieved without using external tools receive a higher reward, while using tools and still providing an incorrect answer results in a larger penalty. For difficult problems, correct answers obtained with tool assistance are rewarded more. If the answer remains incorrect, the reward encourages continued use of tools to support further reasoning and problem solving. This design aligns with the objective described in Equation 5. We also provide visualizations for other parameter values in the right Figure. The final model exhibits a similar trend to the one shown in the left Figure. V*  HRBench4K  HRBench8K     
+
+> 76.4 82.7 83.8
+> 68.8
+> 75.0 75.4
+> 65.3
+> 73.9 73. 9
+> Baseline
+> BEE -Static
+> BEE -MC
+> Average Accuracy
+
+Fig. 9: Performance comparison of different components across tasks. The introduction of MC-Reward enables the model to use tools more appropriately and improves its self-regulated ability. 
+
+5.2 Analysis of Implicit Tool Usage 
+
+Fig 8 shows how the tool call rate of the BEE model changes throughout training.  
+
+> •
+
+For easy problems. The initial model obtained from the SFT stage shows limited metacognitive awareness and 12 
+
+TABLE 8: System-level metrics . Note: Cost is $1.5/hour node price. Metrics BEE-7B-Static BEE-7B-MC Memory Usage (GB) 112.03 112.02 Throughput (sample/s) 0.88 1.61 Throughput (Token/s) 181.62 80.64 Avg. Latency (s) 2.53 1.37 Latency Variance 3.1 1.04 Cost Per 1K sample ($) 1.05 0.72 TABLE 9: Performance comparison of replacing different implicit tokens. For all open-source models, the best per-formance for each metric is bolded , and the second best is underlined. Type V* HRBench-4K Attribute Spatial Overall FSP FCP Overall Qwen2.5-VL-7B [1] 78.2 73.6 76.4 85.2 52.2 68.8 BEE-7B 80.3 86.1 83.8 92.5 58.3 75.4             
+
+> Replace-1 80.0 82.8 81.1 86.5 52.7 69.6 Replace-2 79.1 84.5 81.2 86.0 53.2 69.6
+
+often makes unnecessary tool calls on easy problems. As training proceeds, the MC-reward mechanism helps the model develop better metacognitive judgment in these cases, allowing it to solve them using its own capability without relying on external tools. This leads to a steady improvement in accuracy, reflected in an increasing number of easy problems being solved without tool usage.  
+
+> •
+
+For difficult problems. The model adjusts its tool-use behavior in the early stage, and the call rate gradually increases as training continues. The model keeps attempting to solve these challenging cases, and the number of remaining difficult problems gradually decreases, with the tool call rate finally stabilizing at around 41%. It is also observed that some problems exceed the upper bound of the model’s capability, where further tool usage does not lead to correct solutions. For more details on tool calling rates, changes across varying difficulty levels during training, etc., please refer to AP-PENDIX C.6 .
+
+5.3 The Impact of MC-Reward on Performance 
+
+Both BEE-Static and BEE-MC significantly outperform the baseline model, as shown in Figure 9. The introduction of MC-Reward enables the model to use tools more ap-propriately and gradually develop self-regulated ability, which improves reasoning efficiency. It also leads to better results on some metrics compared to BEE-Static, suggesting that enhanced self-regulated ability makes the model more capable. Table 8 demonstrates that introducing MC-reward results in lower latency and optimized costs when compared to BEE-Static. 
+
+5.4 Analysis of Implicit Tokens 
+
+Figure 10 illustrates the effectiveness of implicit tokens using two ablation strategies. Original     
+
+> Masked
+> Attended Masked Replaced
+> ij
+> ij
+> ii
+
+Fig. 10: Behavioral analysis of tool slot during the testing phase. Masked: During inference, the generated tool tokens are masked out, ensuring that the generation of subsequent tokens does not depend on them. Replaced: Different tool tokens are replaced with a single, uniform tool token, making all tool tokens identical ( e.g ., <Tool Pad i > or 
+
+<Tool Pad j >). TABLE 10: Performance comparison of decoupling percep-tion and reasoning.                           
+
+> Method V* HRBench-4K Attribute Spatial Overall FSP FCP Overall Qwen2.5-VL-7B [1] 78.2 73.6 76.4 85.2 52.2 68.8 BEE-7B 80.3 86.1 83.8 92.5 58.3 75.4 BEE-7B-adapter 81.5 86.0 84.2 92.7 59.7 76.2
+> •
+
+Masked. During inference, these implicit tokens are masked so that the model does not rely on them for subsequent generation. We observe that the model tends to repeatedly output these implicit tokens, suggesting that later token generation still depends on their overall content.  
+
+> •
+
+Replaced. We further replace all implicit tokens with a single shared token. Table 9 compares the performance under different implicit token settings, showing a degra-dation of about 2 − 4 points. This indicates that the structure of the generated implicit tokens is important for subsequent token generation. Together with the impact of the <unk > token reported in Table 5, these results suggest that implicit tokens are beneficial for assisting the model in reasoning. 
+
+5.5 Analysis of Decoupled Perception and Reasoning. 
+
+We further decouple the optimization of text and visual tokens by introducing an adapter structure. The optimization of visual tokens is performed within the adapter, while the optimization of text is handled by the MLP in the original attention block. The details is provided in APPENDIX C.5 .We observe that this decoupling leads to a clear separation between text and visual representations, as shown by the t-SNE visualization. Table 10 reports the performance after decoupling, where BEE achieves better results. 
+
+## 6 CONCLUSION 
+
+In this work, we propose BEE, a novel self-regulated reason-ing framework for implicit visual tools that establishes a cog-nitive boundary, allowing the model to adaptively balance internal parametric knowledge and implicit tool invocation. By integrating formalized chain-of-thought supervised fine-tuning and self-regulated reward-driven alignment strategy, 13 
+
+BEE enhances the perception and reasoning capabilities of multimodal large language models while substantially im-proving inference efficiency. Extensive experiments demon-strate that our method improves overall performance and successfully achieves adaptive tool routing. We believe that our BEE can provide meaningful references for designing low-latency, self-regulated MLLMs. 
+
+## REFERENCES 
+
+[1] S. Bai, K. Chen, X. Liu, J. Wang, W. Ge, S. Song, K. Dang, P. Wang, S. Wang, J. Tang et al. , “Qwen2.5-vl technical report,” arXiv preprint arXiv:2502.13923 , 2025. [2] S. Bai, Y. Cai, R. Chen, K. Chen, X. Chen, Z. Cheng, L. Deng, W. Ding, C. Gao, C. Ge et al. , “Qwen3-vl technical report,” arXiv preprint arXiv:2511.21631 , 2025. [3] D. Zhu, J. Chen, X. Shen, X. Li, and M. Elhoseiny, “Minigpt-4: Enhancing vision-language understanding with advanced large language models,” in Proceedings of the International Conference on Learning Representations (ICLR) , 2024. [4] A. Hurst, A. Lerer, A. P. Goucher, A. Perelman, A. Ramesh, A. Clark, A. Ostrow, A. Welihinda, A. Hayes, A. Radford et al. , “Gpt-4o system card,” arXiv preprint arXiv:2410.21276 , 2024. [5] H. Liu, C. Li, Q. Wu, and Y. J. Lee, “Visual instruc-tion tuning,” in Proceedings of the Advances in Neural Information Processing Systems (NeurIPS) , 2023. [6] J. Li, D. Li, S. Savarese, and S. C. H. Hoi, “Blip-2: Bootstrapping language-image pre-training with frozen image encoders and large language models,” in Proceedings of the International Conference on Learning Representations (ICLR) , 2023. [7] W. Dai, J. Li, D. Li, A. M. H. Tiong, J. Zhao, W. Wang, B. A. Li, P. Fung, and S. C. H. Hoi, “Instructblip: Towards general-purpose vision-language models with instruction tuning,” in Proceedings of the Advances in Neural Information Processing Systems (NeurIPS) , 2023. [8] G. Comanici, E. Bieber, M. Schaekermann, I. Pasupat, N. Sachdeva, I. Dhillon, M. Blistein, O. Ram, D. Zhang, E. Rosen et al. , “Gemini 2.5: Pushing the frontier with advanced reasoning, multimodality, long context, and next generation agentic capabilities,” arXiv preprint arXiv:2507.06261 , 2025. [9] Z.-Z. Li, D. Zhang, M.-L. Zhang, J. Zhang, Z. Liu, Y. Yao, H. Xu, J. Zheng, P.-J. Wang, X. Chen, Y. Zhang, F. Yin, J. Dong, Z. Guo, L. Song, and C.-L. Liu, “From system 1 to system 2: A survey of reasoning large language models,” IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI) , vol. 48, pp. 3335–3354, 2025. [10] Y. Wang, S. Wu, Y. Zhang, S. Yan, Z. Liu, J. Luo, and H. Fei, “Multimodal chain-of-thought rea-soning: A comprehensive survey,” arXiv preprint arXiv:2503.12605 , 2025. [11] R. Zhang, B. Zhang, Y. Li, H. Zhang, Z. Sun, Z. Gan, Y. Yang, R. Pang, and Y. Yang, “Improve vision language model chain-of-thought reasoning,” in Pro-ceedings of the Annual Meeting of the Association for Computational Linguistics (ACL) , 2024. [12] Y. Dong, Z. Liu, H.-L. Sun, J. Yang, W. Hu, Y. Rao, and Z. Liu, “Insight-v: Exploring long-chain visual reasoning with multimodal large language models,” in 
+
+Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR) , 2025. [13] Z. Zhang, A. Zhang, M. Li, H. Zhao, G. Karypis, and A. J. Smola, “Multimodal chain-of-thought reasoning in language models,” Transactions on Machine Learning Research (TMLR) , 2023. [14] H. Zhou, X. Li, R. Wang, M. Cheng, T. Zhou, and C.-J. Hsieh, “R1-zero’s ”aha moment” in visual reasoning on a 2b non-sft model,” arXiv preprint arXiv:2503.05132 ,2025. [15] J. Zhang, J. Huang, H. Yao, S. Liu, X. Zhang, S. Lu, and D. Tao, “R1-vl: Learning to reason with multimodal large language models via step-wise group relative policy optimization,” in Proceedings of the IEEE Interna-tional Conference on Computer Vision (ICCV) , 2025. [16] Y. Yang, X. He, H. Pan, X. Jiang, Y. Deng, X. Yang, H. Lu, D. Yin, F. Rao, M. Zhu, B. Zhang, and W. Chen, “R1-onevision: Advancing generalized multimodal reason-ing through cross-modal formalization,” in Proceedings of the IEEE International Conference on Computer Vision (ICCV) , 2025. [17] Y. Fan, X. He, D. Yang, K. Zheng, C.-C. Kuo, Y. Zheng, S. J. Narayanaraju, X. Guan, and X. E. Wang, “Grit: Teaching mllms to think with images,” in Proceedings of the Advances in Neural Information Processing Systems (NeurIPS) , 2025. [18] J. Feng, S. Huang, X. Qu, G. Zhang, Y. Qin, B. Zhong, C. Jiang, J. Chi, and W. Zhong, “Retool: Reinforcement learning for strategic tool use in llms,” in Proceedings of the International Conference on Learning Representations (ICLR) , 2026. [19] Y.-F. Zhang, X. Lu, S. Yin, C. Fu, W. Chen, X. Hu, B. Wen, K. Jiang, C. Liu, T. Zhang et al. , “Thyme: Think beyond images,” in Proceedings of the International Conference on Learning Representations (ICLR) , 2026. [20] X. Lai, J. Li, W. Li, T. Liu, T. Li, and H. Zhao, “Mini-o3: Scaling up reasoning patterns and interaction turns for visual search,” in Proceedings of the International Conference on Learning Representations (ICLR) , 2026. [21] Z. Zheng, M. Yang, J. Hong, C. Zhao, G. Xu, L. Yang, C. Shen, and X. Yu, “Deepeyes: Incentivizing” think-ing with images” via reinforcement learning,” in 
+
+Proceedings of the International Conference on Learning Representations (ICLR) , 2026. [22] X. Zhang, Z. Gao, B. Zhang, P. Li, X. Zhang, Y. Liu, T. Yuan, Y. Wu, Y. Jia, S.-C. Zhu et al. , “Chain-of-focus: Adaptive visual search and zooming for multimodal reasoning via rl,” in Proceedings of the International Conference on Learning Representations (ICLR) , 2025. [23] Y. Hu, W. Shi, X. Fu, D. Roth, M. Ostendorf, L. Zettle-moyer, N. A. Smith, and R. Krishna, “Visual sketchpad: Sketching as a visual chain of thought for multimodal language models,” in Proceedings of the Advances in Neural Information Processing Systems (NeurIPS) , 2024. [24] X. Chen, A. Zhao, H. Xia, X. Lu, H. Wang, Y. Chen, W. Zhang, J. Wang, W. Li, and X. Shen, “Reason-ing beyond language: A comprehensive survey on latent chain-of-thought reasoning,” arXiv preprint 14 
+
+arXiv:2505.16782 , 2025. [25] X. Yu, Z. Chen, Y. He et al. , “The latent space: Founda-tion, evolution, mechanism, ability, and outlook,” arXiv preprint arXiv:2604.02029 , 2026. [26] Q. Wang, Y. Shi, Y. Wang, Y. Zhang, P. Wan, K. Gai, X. Ying, and Y. Wang, “Monet: Reasoning in latent vi-sual space beyond image and language,” in Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR) , 2026. [27] X. Chen, W. Hu, Y. Wang, Z. Chen, L. Zhang, K. Xiang, J. Han, H.-L. Zhen, J. Zou, H. Xu et al. , “Latent visual states for efficient multimodal reasoning,” arXiv preprint arXiv:2606.24233 , 2026. [28] Q. Yu, Z. Zhang, R. Zhu, Y. Yuan, X. Zuo, Y. Yue, T. Fan, G. Liu et al. , “Dapo: An open-source llm reinforcement learning system at scale,” in Proceedings of the Advances in Neural Information Processing Systems (NeurIPS) , 2025. [29] W. Wang, L. Ding, M. Zeng, X. Zhou, L. Shen, Y. Luo, W. Yu, and D. Tao, “Divide, conquer and combine: A training-free framework for high-resolution image perception in multimodal large language models,” in 
+
+Proceedings of the AAAI Conference on Artificial Intelli-gence (AAAI) , 2025. [30] Y.-F. Zhang, H. Zhang, H. Tian, C. Fu, S. Zhang, J. Wu, F. Li, K. Wang, Q. Wen, Z. Zhang et al. , “Mme-realworld: Could your multimodal llm challenge high-resolution real-world scenarios that are difficult for humans?” in Proceedings of the International Conference on Learning Representations (ICLR) , 2025. [31] K. Team, T. Bai, Y. Bai, Y. Bao, S. Cai, Y. Cao, Y. Charles, H. Che, C. Chen, G. Chen et al. , “Kimi k2. 5: Visual agentic intelligence,” arXiv preprint arXiv:2602.02276 ,2026. [32] A. Jaech, A. Kalai, A. Lerer, A. Richardson, A. El-Kishky, A. Low, A. Helyar, A. Madry, A. Beutel, A. Carney et al. , “Openai o1 system card,” arXiv preprint arXiv:2412.16720 , 2024. [33] Z. Chen, J. Wu, W. Wang, W. Su, G. Chen, S. Xing, Z. Muyan, Q. Zhang, X. Zhu, L. Lu, B. Li, P. Luo, T. Lu, Y. Qiao, and J. Dai, “Intern vl: Scaling up vision foundation models and aligning for generic visual-linguistic tasks,” in Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR) , 2024. [34] B. Li, Y. Zhang, D. Guo, R. Zhang, F. Li, H. Zhang, K. Zhang, Y. Li, Z. Liu, and C. Li, “Llava-onevision: Easy visual task transfer,” Transactions on Machine Learning Research (TMLR) , 2025. [35] D. Zhang, Y. Yu, J. Dong, C. Li, D. Su, C. Chu, and D. Yu, “Mm-llms: Recent advances in multimodal large language models,” in Proceedings of the Annual Meeting of the Association for Computational Linguistics (ACL) ,2024. [36] B. Lin, Z. Tang, Y. Ye, J. Huang, J. Zhang, Y. Pang, P. Jin, M. Ning, J. Luo, and L. Yuan, “Moe-llava: Mixture of experts for large vision-language models,” IEEE Transactions on Multimedia (TMM) , vol. 28, pp. 4408– 4419, 2026. [37] Y. Jin, J. Li, Y. Liu, T. Gu, K. Wu, Z. Jiang, M. He, B. Zhao, X. Tan, Z. Gan, Y. Wang, C. Wang, and L. Ma, “Efficient multimodal large language models: a survey,” 
+
+Visual Intelligence , vol. 3, 2024. [38] G. Xu, P. Jin, Z. Wu, H. Li, Y. Song, L. Sun, and L. Yuan, “Llava-cot: Let vision language models reason step-by-step,” in Proceedings of the IEEE International Conference on Computer Vision (ICCV) , 2025. [39] K. Xiang, Z. Liu, T. J. Zhang, Y. Huang, Y. Nie, K. Cai, Y. Yin, R. Huang, H. Li, Y. Zeng, Y.-J. Yuan, J. Han, L. Hong, H. Xu, and X. Liang, “Atomthink: Multimodal slow thinking with atomic step reasoning,” IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI) , vol. 48, no. 05, pp. 5725–5741, 2026. [40] D. Zhang, J. Wu, J. Lei, T. Che, J. Li, T. Xie, X. Huang, S. Zhang, M. Pavone, Y. Li, W. Ouyang, and D. Zhou, “Llama-berry: Pairwise optimization for o1-like olympiad-level mathematical reasoning,” in 
+
+Proceedings of the Conference of the Nations of the Americas Chapter of the Association for Computational Linguistics (NAACL) , 2025. [41] R. Qiao, Q. Tan, G. Dong, M. MinhuiWu, C. Sun, X. Song, J. Wang, Z. GongQue, S. Lei, Y. Zhang, Z. Wei, M. Zhang, R. Qiao, X. Zong, Y. Xu, P. Yang, Z. Bao, M. Diao, C. Li, and H. Zhang, “We-math: Does your large multimodal model achieve human-like mathematical reasoning?” in Proceedings of the Annual Meeting of the Association for Computational Linguistics (ACL) , 2025. [42] Y. Peng, G. Zhang, M. Zhang, Z. You, J. Liu, Q. Zhu, K. Yang, X. Xu, X. Geng, and X. Yang, “Lmm-r1: Empowering 3b lmms with strong reasoning abili-ties through two-stage rule-based rl,” arXiv preprint arXiv:2503.07536 , 2025. [43] D. Guo, D. Yang, H. Zhang, J. Song, P. Wang, Q. Zhu, R. Xu, R. Zhang et al. , “Deepseek-r1 incentivizes reasoning in llms through reinforcement learning,” 
+
+Nature , vol. 645, pp. 633–638, 2025. [44] Y. Yue, Z. Chen, R. Lu, A. Zhao, Z. Wang, S. Song, and G. Huang, “Does reinforcement learning really incentivize reasoning capacity in llms beyond the base model?” in Proceedings of the Advances in Neural Information Processing Systems (NeurIPS) , 2025. [45] Z. Liu, Z. Sun, Y. Zang, X. wen Dong, Y. Cao, H. Duan, D. Lin, and J. Wang, “Visual-rft: Visual reinforcement fine-tuning,” in Proceedings of the IEEE International Conference on Computer Vision (ICCV) , 2025. [46] J. Hu, Y. Zhang, Q. Han, D. Jiang, X. Zhang, and H. yeung Shum, “Open-reasoner-zero: An open source approach to scaling up reinforcement learning on the base model,” in Proceedings of the Advances in Neural Information Processing Systems (NeurIPS) , 2025. [47] H. Wang, C. Qu, Z. Huang, W. Chu, F. Lin, and W. Chen, “Vl-rethinker: Incentivizing self-reflection of vision-language models with reinforcement learning,” in Proceedings of the Advances in Neural Information Processing Systems (NeurIPS) , 2025. [48] L. Feng, Z. Xue, T. Liu, and B. An, “Group-in-group policy optimization for llm agent training,” in Proceed-ings of the Advances in Neural Information Processing Systems (NeurIPS) , 2025. [49] Y. Zuo, K. Zhang, S. Qu, L. Sheng, X. Zhu, Y. Zhang, B. Qi, Y. Sun, G. Cui, N. Ding, and B. Zhou, “Ttrl: Test-time reinforcement learning,” in Proceedings of the Advances in Neural Information Processing Systems 15 
+
+(NeurIPS) , 2025. [50] S. Leng, J. Wang, J. Li, H. Zhang, Z. Hu, B. Zhang, Y. Jiang, H. Zhang, X. Li, L. Bing, D. Zhao, W. Lu, Y. Rong, A. Sun, and S. Lu, “Mmr1: Enhancing multi-modal reasoning with variance-aware sampling and open resources,” in IEEE Conference on Computer Vision and Pattern Recognition (CVPR) Findings , 2026. [51] W. Huang, B. Jia, Z. Zhai, S. Cao, Z. Ye, F. Zhao, Z. Xu, Y. Hu, and S. Lin, “Vision-r1: Incentivizing reasoning capability in multimodal large language models,” in 
+
+Proceedings of the International Conference on Learning Representations (ICLR) , 2026. [52] F. Meng, L. Du, Z. Liu, Z. Zhou, Q. Lu, D. Fu, T. Han, B. Shi, W. Wang, J. He et al. , “Mm-eureka: Exploring the frontiers of multimodal reasoning with rule-based rein-forcement learning,” Transactions on Machine Learning Research (TMLR) , 2026. [53] X. L.-C. T. Z. Yue, Z. Lin, Y.-H. Song, W. Wang, S.-Q. Ren, S. Gu, S. Li et al. , “Mimo-vl technical report,” 
+
+arXiv preprint arXiv:2506.03569 , 2025. [54] K. Team, Y. Bai, Y. Bao, G. Chen, J. Chen, N. Chen, R. Chen, Y. Chen, Y. Chen, Y. Chen et al. ,“Kimi k2: Open agentic intelligence,” arXiv preprint arXiv:2507.20534 , 2025. [55] X. Geng, P. Xia, Z. Zhang, X. Wang, Q. Wang, R. Ding, C. Wang, J. Wu, Y. Zhao, K. Li et al. , “Webwatcher: Breaking new frontier of vision-language deep research agent,” in Proceedings of the International Conference on Learning Representations (ICLR) , 2026. [56] X. Mai, H. Xu, Z.-Z. Li, W. Wang, J. Hu, Y. Zhang, W. Zhang et al. , “Agent rl scaling law: Agent rl with spontaneous code execution for mathematical problem solving,” in Proceedings of the Advances in Neural Information Processing Systems (NeurIPS) , 2025. [57] Z. Tao, J. Wu, W. Yin, J. Zhang, B. Li, H. Shen, K. Li, L. Zhang, X. Wang, Y. Jiang et al. , “Webshaper: Agentically data synthesizing via information-seeking formalization,” in Proceedings of the International Confer-ence on Learning Representations (ICLR) , 2026. [58] Z. Xue, L. Zheng, Q. Liu, Y. Li, X. Zheng, Z. Ma, and B. An, “Simpletir: End-to-end reinforcement learning for multi-turn tool-integrated reasoning,” in Proceed-ings of the International Conference on Learning Represen-tations (ICLR) , 2026. [59] X. Hou, S. Xu, M. Biyani, M. Li, J. Liu, T. C. Hollon, and B. Wang, “Codev: Code with images for faithful visual reasoning via tool-aware policy optimization,” in Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR) , 2026. [60] Z. Zhou, D. Chen, Z. Ma, Z. Hu, M. Fu, S. Wang, Y. Wan, Z. Zhao, and R. Krishna, “Reinforced visual perception with tools,” arXiv preprint arXiv:2509.01656 , 2025. [61] S. Zhao, H. Zhang, S. Lin, M. Li, Q. Wu, K. Zhang, and C. Wei, “Pyvision: Agentic vision with dynamic tool-ing,” in Proceedings of the Advances in Neural Information Processing Systems (NeurIPS) Workshop , 2025. [62] M. Wu, J. Yang, J. Jiang, M. Li, K. Yan, H. Yu, M. Zhang, C. Zhai, and K. Nahrstedt, “Vtool-r1: Vlms learn to think with images via reinforcement learning on multimodal tool use,” in Proceedings of the International Conference on Learning Representations (ICLR) , 2026. [63] Y. X. Chng, T. Hu, W. Tong, X. Li, J. Chen, H. Yu, J. Lu, H. Guo, H. Deng, X. Chen, G. Huang, D. Lin, and L. Lu, “Sensenova-mars: Empowering multimodal agentic reasoning and search via reinforcement learning,” in 
+
+Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR) , 2026. [64] A. Su, H. Wang, W. Ren, F. Lin, and W. Chen, “Pixel reasoner: Incentivizing pixel-space reasoning with curiosity-driven reinforcement learning,” in Proceedings of the Advances in Neural Information Processing Systems (NeurIPS) , 2025. [65] M. Zhu, H. Zhong, C. Zhao, Z. Du, Z. Huang, M. Liu, H. Chen, C. Zou, J. Chen, M. Yang et al. , “Active-o3: Empowering multimodal large language models with active perception via grpo,” in International Conference on Machine Learning (ICML) , 2026. [66] X. Huang, Y. Dong, W. Tian, B. Li, R. Feng, and Z. Liu, “High-resolution visual reasoning via multi-turn grounding-based reinforcement learning,” in Pro-ceedings of the Annual Meeting of the Association for Computational Linguistics (ACL) Findings , 2026. [67] X. Chen, W. Hu, H. Li, J. Zhou, Z. Chen, M. Cao, Y. Zeng, K. Zhang, Y.-J. Yuan, J. Han, H. Xu, and X. Liang, “Syncloop: A multimodal dual-loop frame-work for self-improving mathematical reasoning,” in 
+
+Proceedings of the European Conference on Computer Vision (ECCV) , 2026. [68] J. Hong, C. Zhao, C. Zhu, W. Lu, G. Xu, and X. Yu, “Deepeyesv2: Toward agentic multimodal model,” in 
+
+Proceedings of the International Conference on Learning Representations (ICLR) , 2026. [69] Y. Zhang, L. Hu, H. Sun, P. Wang, Y. Wei, S. Yin, J. Pei, W. Shen, P. Xia, Y. Peng et al. , “Skywork-r1v4: Toward agentic multimodal intelligence through interleaved thinking with images and deepresearch,” arXiv preprint arXiv:2512.02395 , 2025. [70] S. Hao, S. Sukhbaatar, D. Su, X. Li, Z. Hu, J. Weston, and Y. Tian, “Training large language models to reason in a continuous latent space,” in Proceedings of the Conference on Language Modeling (COLM) , 2025. [71] H. Li, C. Li, T. Wu, X. Zhu, Y. Wang, Z. Yu, E. H. Jiang, S.-C. Zhu, Z. Jia, Y. N. Wu et al. , “Seek in the dark: Reasoning via test-time instance-level policy gradient in latent space,” arXiv preprint arXiv:2505.13308 , 2025. [72] X. Chen, R. Zhang, D. Jiang, A. Zhou, S. Yan, W. Lin, and H. Li, “Mint-cot: Enabling interleaved visual tokens in mathematical chain-of-thought reasoning,” in Proceedings of the Advances in Neural Information Processing Systems (NeurIPS) , 2025. [73] B. Li, X. Sun, J. Liu, Z. Wang, J. Wu, X. Yu, H. Chen, E. Barsoum, M. Chen, and Z. Liu, “Latent visual reasoning,” in Proceedings of the International Conference on Learning Representations (ICLR) , 2026. [74] M. Bigverdi, Z. Luo, C.-Y. Hsieh, E. Shen, D. Chen, L. G. Shapiro, and R. Krishna, “Perception tokens enhance visual reasoning in multimodal language models,” in 
+
+Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR) , 2025. [75] Y. Qin, B. Wei, J. Ge, K. Kallidromitis, S. Fu, T. Darrell, and X. Wang, “Chain-of-visual-thought: Teaching vlms to see and think better with continuous visual tokens,” 16 
+
+arXiv preprint arXiv:2511.19418 , 2025. [76] H. Zhang, W. Wu, C. Li, N. Shang, Y. Xia, Y. Huang, Y. Zhang, L. Dong, Z. Zhang, L. Wang, T.-P. Tan, and F. Wei, “Latent sketchpad: Sketching visual thoughts to elicit multimodal reasoning in mllms,” arXiv preprint arXiv:2510.24514 , 2025. [77] Y. Wei, L. Zhao, J. Sun, K. Lin, J. Yin, J. Hu, Y. Zhang, E. Yu, H. Lv, Z. Weng, J. Wang, C. Han, Y. Peng, Q. Han, Z. Ge, X. Zhang, D. Jiang, and V. M. Patel, “Open vision reasoner: Transferring linguistic cognitive behavior for visual reasoning,” in Proceedings of the Advances in Neural Information Processing Systems (NeurIPS) , 2025. [78] J. Gu, Y. Hao, H. W. Wang, L. Li, M. Shieh, Y. Choi, R. Krishna, and Y. Cheng, “Thinkmorph: Emergent properties in multimodal interleaved chain-of-thought reasoning,” in Proceedings of the International Conference on Learning Representations (ICLR) , 2026. [79] C. Liu, Y. Yang, Y. Yang, Y. Fan, Q. Wei, S. Liu, and X. E. Wang, “Reasoning within the mind: Dynamic multimodal interleaving in latent space,” in IEEE Conference on Computer Vision and Pattern Recognition (CVPR) Findings , 2026. [80] S. Dong, S. Wang, X. Liu, C. Li, H. Hou, and Z. Wei, “Interleaved latent visual reasoning with selective perceptual modeling,” in Proceedings of the Annual Meeting of the Association for Computational Linguistics (ACL) , 2026. [81] T.-H. Pham and C. Ngo, “Multimodal chain of con-tinuous thought for latent-space reasoning in vision-language models,” arXiv preprint arXiv:2508.12587 ,2025. [82] C. Chen, Z. Ma, Y. Li, Y. Hu, Y. Wei, W. Li, and L. Nie, “Reasoning in the dark: Interleaved vision-text reasoning in latent space,” in Proceedings of the Annual Meeting of the Association for Computational Linguistics (ACL) Findings , 2026. [83] M. Cao, X. Li, X. Liu, I. Reid, and X. Liang, “Spa-tialdreamer: Incentivizing spatial reasoning via active mental imagery,” in IEEE Conference on Computer Vision and Pattern Recognition (CVPR) Findings , 2026. [84] Y. Wang, J. Zhang, Y. Wu, Y. Lin, N. Lukas, and Y. Liu, “Forest before trees: Latent superposition for efficient visual reasoning,” in Proceedings of the Annual Meeting of the Association for Computational Linguistics (ACL) ,2026. [85] A. Ray, A. Abdelkader, C. Mao, B. A. Plummer, K. Saenko, R. Krishna, L. J. Guibas, and W.-S. Chu, “Mull-tokens: Modality-agnostic latent thinking,” in 
+
+IEEE Conference on Computer Vision and Pattern Recogni-tion (CVPR) Findings , 2026. [86] C. Zhang, H. Qiu, Q. Zhang, Z. Zeng, L. Ma, and J. Zhang, “Deepsketcher: Internalizing visual manipu-lation for multimodal reasoning,” in IEEE Conference on Computer Vision and Pattern Recognition (CVPR) Findings , 2026. [87] K. Z. Li, C. Shang, L. Karlinsky, R. Feris, T. Darrell, and R. Herzig, “Latent implicit visual reasoning,” in 
+
+Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR) , 2026. [88] Y. Li, C. Chen, Y. Li, F. Zeng, K. Huang, J. Xu, and M. Sun, “Imagination helps visual reasoning, but not yet in latent space,” in International Conference on Machine Learning (ICML) , 2026. [89] B. Jeon, Y. Jeong, H. Lee, M. Cho, and J. Shin, “Vision-aligned latent reasoning for multi-modal large lan-guage model,” in International Conference on Machine Learning (ICML) , 2026. [90] Z. Yang, X. Yu, D. Chen, M. Shen, and C. Gan, “Ma-chine mental imagery: Empower multimodal reasoning with latent visual tokens,” in Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR) , 2026. [91] X. Fu, M. Liu, Z. Yang, J. Corring, Y. Lu, J. Yang, D. Roth, D. Florencio, and C. Zhang, “Refocus: Visual editing as a chain of thought for structured image understanding,” in International Conference on Machine Learning (ICML) ,2025. [92] H. Shao, S. Qian, H. Xiao, G. Song, Z. Zong, L. Wang, Y. Liu, and H. Li, “Visual cot: Advancing multi-modal language models with a comprehensive dataset and benchmark for chain-of-thought reasoning,” in Pro-ceedings of the Advances in Neural Information Processing Systems (NeurIPS) , 2024. [93] W. Hong, W. Yu, X. Gu, G. Wang, G. Gan, H. Tang, J. Cheng, J. Qi, J. Ji, L. Pan et al. , “Glm-4.5 v and glm-4.1 v-thinking: Towards versatile multimodal reasoning with scalable reinforcement learning,” arXiv preprint arXiv:2507.01006 , 2025. [94] P. Wu and S. Xie, “V ∗: Guided visual search as a core mechanism in multimodal llms,” in PProceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR) , 2024. [95] Y. Xiao, E. Sun, T. Liu, and W. Wang, “Logicvista: Multimodal llm logical reasoning benchmark in visual contexts,” arXiv preprint arXiv:2407.04973 , 2024. [96] Y. Li, Y. Du, K. Zhou, J. Wang, X. Zhao, and J.-R. Wen, “Evaluating object hallucination in large vision-language models,” in Proceedings of the Conference on Empirical Methods in Natural Language Processing (EMNLP) , 2023. [97] P. Esser, R. Rombach, and B. Ommer, “Taming trans-formers for high-resolution image synthesis,” in Pro-ceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR) , 2021. [98] A. Van Den Oord, O. Vinyals et al. , “Neural discrete representation learning,” in Proceedings of the Advances in Neural Information Processing Systems (NeurIPS) , 2017. [99] R. Huang, C. Wang, J. Yang, G. Lu, Y. Yuan, J. Han, L. Hou, W. Zhang, L. Hong, H. Zhao et al. , “Illume+: Il-luminating unified mllm with dual visual tokenization and diffusion refinement,” in Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR) , 2025. [100] Z. Chen, C. Wang, R. Huang, H. Xu, X. Chen, J. Zhou, J. Han, H. Xu, and X. Liang, “Semhitok: A unified image tokenizer via semantic-guided hierarchical code-book for multimodal understanding and generation,” in Proceedings of the International Conference on Learning Representations (ICLR) , 2026. [101] J. Wu, Y. Jiang, C. Ma, Y. Liu, H. Zhao, Z. Yuan, S. Bai, and X. Bai, “Liquid: Language models are scalable and unified multi-modal generators,” International Journal 17 
+
+of Computer Vision (IJCV) , vol. 134, no. 1, p. 39, 2026. [102] A. Li, C. Wang, D. Fu, K. Yue, Z. Cai, W. B. Zhu, O. Liu, P. Guo, W. Neiswanger, F. Huang et al. , “Zebra-cot: A dataset for interleaved vision language reasoning,” in 
+
+Proceedings of the International Conference on Learning Representations (ICLR) , 2026. 18 
+
+## APPENDIX CONTENT 
+
+A Method Design . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19 A.1 Theoretical Analysis of MC-Reward . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19 A.2 Algorithm of BEE . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20 A.3 Semantic Tool Tokenizer . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 20 B Experiment Details . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21 B.1 Curating BEE Training Data . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21 B.2 Hyperparameters . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21 B.3 Alternative Forms of Implicit Tools . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21 B.4 Efficiency comparisons setting . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22 B.5 SFT Training Examples . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22 B.6 Pseudocode for System-Level Metrics . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 22 C Additional Results . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 27 C.1 Substantial Gain over Base Models . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 27 C.2 Analysis of Specialized Benchmarks . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 28 C.3 Ablation study on τ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .28 C.4 Ablation study on each component . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 28 C.5 Analysis of decoupled training . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 28 C.6 Training Curves . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .28 D Discussion . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 33 D.1 Limitations . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 33 E Case Studies . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 34 E.1 Success Cases . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 34 E.2 Failure Cases . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 34 19 
+
+## APPENDIX AMETHOD DESIGN .
+
+A.1 Theoretical Analysis of MC-Reward 
+
+Based on the value ranges of the accuracy, format, and consistency rewards and the computation in Equation 1, the range of MC-reward under the four scenarios is 
+
+α1 + β1p + γ cos( πp ) + u ≤ 1,α1 + β1p ≤ 1,
+
+−1 ≤ α2 + β2p + γ cos( πp ) + u, 
+
+−1 ≤ α2 + β2p, 
+
+
+
+for p ∈ [0 , 1] . (11) 
+
+γ cos( πp ) + u = 0 , at p = 23 . (12) 
+
+α1 + β1p + γ cos( πp ) + u > α 1 + β1p, α2 + β2p + γ cos( πp ) + u > α 2 + β2p, 
+
+)
+
+for p ∈ [0 , 23 ).
+
+(13) 
+
+α1 + β1p + γ cos( πp ) + u < α 1 + β1p, α2 + β2p + γ cos( πp ) + u < α 2 + β2p, 
+
+)
+
+for p ∈ ( 23 , 1] .
+
+(14) By integrating the global boundary inequality constraints in Equation 11, the critical point equality in Equation 12, and the action-advantage interval inequalities in Equations 13 and 14, we perform a rigorous mathematical analysis of the admissible parameter space for the internal system parameters α1, β 1, α 2, β 2, γ, u .1. Analytical relationship and sign determination for u
+
+and γ
+
+Following the seamless junction design at the cognitive threshold p = 23 and Equation 12: 
+
+γ cos 
+
+
+
+π · 23
+
+
+
++ u = 0 . (15) Substituting cos   2π
+
+> 3
+
+ = −0.5 yields: 
+
+u = 0 .5γ.  (16) Inserting u = 0.5γ into Equation 13 eliminates the common linear term, giving the condition for the difficult exploration region p ∈ [0 , 23 ):
+
+γ (cos( πp ) + 0 .5) > 0. (17) Since cos( πp ) > −0.5 for all p ∈ [0 , 23 ), the inequality strictly holds if and only if γ > 0. This condition also ensures that Equation 14 is automatically satisfied. To simplify the nonlinear boundary, we set γ = 0 .3,resulting in u = 0 .15 . The nonlinear patch term then becomes: 
+
+P (p) = 0 .3 cos( πp ) + 0 .15 . (18) 2. Derivative and extremal properties of the core function The composite reward function has the unified algebraic form H(p) = α + βp + 0 .3 cos( πp ) + 0 .15 . Its derivative with respect to p is: 
+
+H′(p) = β − 0.3π sin( πp ). (19) Based on the critical slope k = 0 .3π ≈ 0.942 , H(p) exhibits three monotonicity patterns: Pattern A ( β ≤ 0) is strictly decreasing, with maximum at p = 0 and minimum at p = 1 .Pattern B ( β ≥ 0.3π) is strictly increasing, with maximum at p = 1 and minimum at p = 0 .Pattern C ( 0 < β < 0.3π) has internal extrema. Let 
+
+sin( θ) = β 
+
+> 0.3π
+
+; the local maximum occurs at p1 = θπ , and the local minimum at p2 = 1 − θπ .3. Upper bounds for positive-reward region parameters 
+
+(α1, β 1)
+
+According to Equation 11, it suffices to ensure that the maximum does not exceed the upper limit 1:
+
+α1 + β1p ≤ 1 and H1(p) ≤ 1 for all p ∈ [0 , 1] .Case 3.1: β1 ≤ 0 (strictly decreasing) The global maximum is H1(0) . Enforcing the endpoint: 
+
+H1(0) = α1 + 0 .45 ≤ 1 = ⇒ α1 ≤ 0.55 . (20) This automatically satisfies the basic constraint α1 ≤ 1. No lower bound check is required. The admissible region is 
+
+α1 ≤ 0.55 .Case 3.2: β1 ≥ 0.3π (strictly increasing) The global maximum is H1(1) . Enforcing: 
+
+H1(1) = α1 + β1 − 0.15 ≤ 1 = ⇒ α1 + β1 ≤ 1.15 . (21) Taking the intersection with the basic constraint α1 + β1 ≤ 1,the admissible region is α1 + β1 ≤ 1.Case 3.3: 0 < β 1 < 0.3π (internal maximum) The internal peak must satisfy: 
+
+α1 + β1
+
+ θπ
+
+
+
++ 0 .3
+
+s
+
+1 −
+
+ β1
+
+0.3π
+
+2
+
++ 0 .15 ≤ 1. (22) Along with the endpoint constraint α1 + β1 ≤ 1.4. Lower bounds for negative-penalty region parameters 
+
+(α2, β 2)
+
+According to Equation 11, it suffices to ensure that the minimum does not fall below −1:
+
+α2 + β2p ≥ − 1 and H2(p) ≥ − 1 for all p ∈ [0 , 1] .Case 4.1: β2 ≤ 0 (strictly decreasing) The global minimum is H2(1) . Enforcing the endpoint: 
+
+H2(1) = α2 + β2 − 0.15 ≥ − 1 = ⇒ α2 + β2 ≥ − 0.85 . (23) Intersection with the basic lower bound α2 + β2 ≥ − 1 gives the admissible region α2 + β2 ≥ − 0.85 .Case 4.2: β2 ≥ 0.3π (strictly increasing) The global minimum is H2(0) . Enforcing: 
+
+H2(0) = α2 + 0 .45 ≥ − 1 = ⇒ α2 ≥ − 1.45 . (24) Intersection with the basic lower bound α2 ≥ − 1 gives 
+
+α2 ≥ − 1.Case 4.3: 0 < β 2 < 0.3π (internal minimum) The internal trough must satisfy: 
+
+α2 + β2
+
+
+
+1 − θπ
+
+
+
+− 0.3
+
+s
+
+1 −
+
+ β2
+
+0.3π
+
+2
+
++ 0 .15 ≥ − 1. (25) Along with the endpoint constraint α2 ≥ − 1.Based on these conditions, we select α1 = 0 .3, β1 = −0.2,
+
+α2 = −0.5, and β2 = 0 .3. Alternative values are also feasible, 20 
+
+Algorithm 1 BEE Algorithm 
+
+Input: Cold-Start Dataset DBEE,SF T , DAPO Dataset 
+
+DBEE,RL , Base Model πθ
+
+Output: Improved Model πθ, BEE  
+
+> 1:
+
+▷ Formalized CoT Supervised Fine-tuning  ▷ see §3.2  
+
+> 2:
+
+πθ,SF T ← update πθ with SFT on DBEE,SF T  
+
+> 3:
+
+▷ Self-regulated Reward-driven Alignment  ▷ see §3.2  
+
+> 4:
+
+for each batch B in DBEE,RL do  
+
+> 5:
+
+Ti, Ai ← πθ,SF T (B)  
+
+> 6:
+
+ri ← Self Regulated Reward( Ti, Ai) 
+
+> 7:
+
+πθ, RL ← DAPO( πθ,SF T , T i, Ai, r i) ▷ Using Eq 3  
+
+> 8:
+
+end for  
+
+> 9:
+
+return πθ, RL 
+
+and as long as the MC-reward exhibits a similar trend, the trained model converges to comparable outcomes. 
+
+Why are Rbase and Ωbuf f er selected in Equation 7? In the initial stage of our exploration, we investigate a discrete reward mechanism that assigns fixed constant rewards to different behavioral phases. However, experimental results demonstrate that under this configuration, the tool utilization capability of the model remains stagnant and fluctuates significantly during training, occasionally even degenerating to zero calls. This sub-optimal performance primarily stems from the sparse feedback signals inherent in discrete rewards, which induces a reward cliff effect and consequently deprives the model of clear gradient guidance. To alleviate this issue, we reformulate the reward mechanism into a continuous functional form. Specifically, we implement a linear contin-uous function for the baseline reward, complemented by a cosine-based continuous reward specifically designed for tool invocation. This dual formulation provides a continuous optimization landscape for the model. More importantly, the cosine model maintains excellent smoothness at the critical boundaries of 0 and 1, which successfully eliminates gradient discontinuities, prevents training variance, and ultimately enables the model to stably acquire tool invocation capabilities. 
+
+A.2 Algorithm of BEE. 
+
+The algorithmic procedure of the BEE method is illustrated in Algorithm 1. The BEE algorithm has two main stages. In the first stage, the BEE model generates implicit tools, and we fine-tune it on the BEE-SFT-320K dataset to establish an initial ability for this task. In the second stage, the model learns to control its own behavior and adjust tool usage based on its capabilities. 
+
+A.3 Semantic Tool Tokenizer  
+
+> •
+
+Data. We trained the tokenizer using the complete SFT dataset alongside the pre-training data from the LLaVA [5] paper.  
+
+> •
+
+Training. Inspired by autoregressive image generation paradigms [97, 98] and unified vision-language models (VLMs) [ 99–101], we develop a semantic tool tokenizer that discretizes tool targets into code tokens, thereby enabling unified autoregressive reasoning and planning. Specifically, given a tool representation B ∈ RH×W ×C ,we first extract semantic features using a frozen encoder Features F   
+
+> MLP Semantic
+> Codebook
+> Features ෠𝐹
+> Vision
+> Encoder Decode r
+> Semantic
+> Loss
+> Semantic
+> Codebook
+> Vision
+> Encoder
+> 34
+> 12
+> 56
+> 15
+> 63
+> <Tool_0034>
+> <Tool_0012>
+> <Tool_0056>
+> <Tool_0015>
+> …
+> <Tool_0063>
+> (a)
+> (b)
+
+Fig. 11: Training framework of the semantic tokenizer. 
+
+Eθ (·): F = Eθ (B). The features are projected via an MLP gϕ(·) into a quantization space: H = gϕ(F ).We then apply vector quantization with a learnable codebook Z = {zk}Kk=1 , where feature is mapped to its nearest code: 
+
+Zq, I q = arg min 
+
+> k∈{ 1,...,K }
+
+∥H − Z[k]∥22 (26) Where K is the codebook size, Zq is the quantized feature, and Iq is the quantized index. The quantized features are then decoded by Dψ (·) to reconstruct the semantic representation: ˆF = Dψ (Zq ). The tokenizer is trained with a standard VQ objective: 
+
+L = Lsem (F, ˆF )+ ∥sg [H]−Zq ∥22 +β∥H−sg [Zq ]∥22 (27) where Lsem represents the mean squared error loss, sg [·]
+
+denotes the stop-gradient operator. The semantic tool tokenizer converts tool representations into discrete codes, thereby enabling seamless integra-tion with existing vlm frameworks. As shown in Fig. 11, we demonstrate how to train a semantic tool tokenizer and how to use it to convert tool representations into discrete special tokens compatible with the autoregressive VLM interface. 21 
+
+TABLE 11: Statistics of the BEE-SFT-320K dataset .Source Domain Visual Operation Type Samples Visual-CoT Real-world, documents, chart Cropping, drawing bounding box 20K Thyme Real-world, chart, OCR Cropping ( e.g ., zooming), rotation, low-contrast enhancement 297.6K Zebra-CoT Real-world, chart Cropping, drawing auxiliary lines 2K ReFocus Chart Drawing bounding box, highlighting, focus 0.4K 
+
+Algorithm 2 BEE-SFT Training Data Construction Pipeline 
+
+Input: Base Dataset Dbase , a tool-call action f (·), a tool-tokenizer T (·), CoT generator G
+
+Output: BEE-SFT-320K Dataset DBEE,SF T  
+
+> 1:
+
+DBEE,SF T ← ∅ 
+
+> 2:
+
+for each I, Q, A I in Dbase do  
+
+> 3:
+
+Ctext , C code ← G(Q, A, I ) 
+
+> 4:
+
+Itool ← f (Ccode ) 
+
+> 5:
+
+ˆI ← T (Itool ) 
+
+> 6:
+
+C ← Ctext ∪ Replace (Ccode , ˆI) 
+
+> 7:
+
+ˆC ← Quality-check(C)  
+
+> 8:
+
+DBEE,SF T ← D BEE,SF T ∪ ˆC 
+
+> 9:
+
+end for  
+
+> 10:
+
+return DBEE,SF T 
+
+## APPENDIX BEXPERIMENT DETAILS 
+
+B.1 Curating BEE Training Data. 
+
+BEE training data consists of two parts.: BEE-SFT-320K and BEE-RL-55K.  
+
+> •
+
+SFT dataset. For the supervised fine-tuning phase, we construct the BEE-SFT dataset, comprising approxi-mately 320,000 samples integrated from Vision-CoT [ 92], ReFocus [ 91], Thyme [ 19], and Zebra-CoT [ 102]. The data format for implicit token understanding is shown as follows: 
+
+Question : <START_OF_GEN><IMG_OF_0920> <IMG_OF_0646><IMG_OF_0018><IMG_OF_0990> <END_OF_GEN>Share a concise interpretation of the image provided. 
+
+Answer : radar image for severe weather, as shown by the national weather service.  
+
+> •
+
+RL dataset. For the subsequent reinforcement learning stage, we compile the BEE-RL dataset, consisting of roughly 55,000 samples derived from Thyme [19]. Table 11 presents the tasks included in each dataset, the types of visual operations, and their corresponding proportions. The algorithmic procedure of the BEE dataset is illustrated in Algorithm 2. Please note that our SFT and RL datasets do not contain any data from additional scenarios such as logical reasoning, autonomous driving, or medical applications, and these can therefore serve as out-of-distribution (OOD) test sets. 
+
+B.2 Hyperparameters  
+
+> •
+
+SFT Stage. During the SFT stage, we use the LLaMA-Factory framework 1 and train our models based on 
+
+> 1. https://github.com/hiyouga/LlamaFactory
+
+Algorithm 3 System-Level Metric Evaluation for MLLM Inference 
+
+Require: Dataset D, Node hourly cost Ch 
+
+> 1:
+
+Initialize Nsamples ← 0, Ntokens ← 0, L ← []  
+
+> 2:
+
+Tstart ← CurrentTime ()  
+
+> 3:
+
+for each sample xi ∈ D do  
+
+> 4:
+
+tistart ← CurrentTime ()  
+
+> 5:
+
+yi, n itokens ← ModelInference (xi) ▷ Execute inference loop  
+
+> 6:
+
+tiend ← CurrentTime ()  
+
+> 7:
+
+li ← tiend − tistart  ▷ Calculate sample latency  
+
+> 8:
+
+L.append (li) 
+
+> 9:
+
+Nsamples ← Nsamples + 1  
+
+> 10:
+
+Ntokens ← Ntokens + nitokens  
+
+> 11:
+
+end for  
+
+> 12:
+
+Tend ← CurrentTime ()  
+
+> 13:
+
+Ttotal ← Tend − Tstart  
+
+> 14:
+
+▷ Compute Throughput Metrics  
+
+> 15:
+
+Throughput samples ← Nsamples /T total  
+
+> 16:
+
+Throughput tokens ← Ntokens /T total  
+
+> 17:
+
+TPOT ← (Ttotal /N tokens ) × 1000  ▷ Time per Output Token (ms)  
+
+> 18:
+
+▷ Compute Latency Statistics  
+
+> 19:
+
+Lavg ← Mean (L) 
+
+> 20:
+
+Lstd ← StandardDeviation (L) 
+
+> 21:
+
+LP 50 , L P 90 , L P 99 ← Percentiles (L, {50 , 90 , 99 }) 
+
+> 22:
+
+▷ Compute Cost Analysis  
+
+> 23:
+
+Csec ← Ch/3600  ▷ Cost per second  
+
+> 24:
+
+Cost 1k ← (Ttotal /N samples ) × 1000 × Csec  ▷ Cost per 1K samples  
+
+> 25:
+
+return Throughput samples , Throughput tokens , TPOT , 
+
+> 26:
+
+Lavg , L std , {LP 50 , L P 90 , L P 99 }, Cost 1k
+
+Qwen2.5-VL-7B-Instruct and Qwen3-VL-4B/8B-Instruct. The detailed hyperparameter settings are summarized in Table 12. All variant models in this paper use the same training framework and hyperparameter settings as BEE during the SFT stage.  
+
+> •
+
+RL Stage. During the RL stage, we use the Easy-R1 framework 2 and keep the backbone models the same as those used in the SFT stage. The detailed hyperparameter settings are summarized in Table 13. All variant models also use the same training framework and hyperparameter settings as BEE during the RL stage. 
+
+B.3 Alternative Forms of Implicit Tools 
+
+Figure 12 shows examples of different alternatives to implicit tool usage. Figure 12 (a) corresponds to the BEE-SFT data format, Figure 12 (b) replaces the implicit tool target with the 
+
+> 2. https://github.com/hiyouga/easyr1 22
+
+TABLE 12: Hyperparameters used for SFT on Qwen2.5-VL-7B-Instruct and Qwen3-VL-2/4/8B-Instruct. Parameters SFT General 
+
+Model Qwen/Qwen2.5-VL-7B-Instruct Qwen/Qwen3-VL-2B-Instruct Qwen/Qwen3-VL-4B-Instruct Qwen/Qwen3-VL-8B-Instruct Thinking False Train vision tower False Train projector False Train language model True 
+
+Data 
+
+Prompt format Chat template (system + user) Completion-only loss True Max. sequence length 8196 
+
+Batching 
+
+Per-device train batch size 8Per-device eval batch size 1Gradient accumulation steps 1Effective global batch size 64 
+
+Optimization / Training 
+
+Optimizer Adamw torch fused Learning rate 1e-5 Scheduler Cosine Warmup ratio 0.03 Num. epochs 2Weight decay 0.0 Adam β1 0.9 Adam β2 0.999 Precision bfloat16 Gradient checkpointing True Deepspeed Zero3 original image, Figure 12 (c) replaces the implicit tool token with a meaningless <unk> token, and Figure 12 (d) removes the implicit tool entirely. 
+
+B.4 Efficiency comparisons setting 
+
+The parameters for comparing the efficiency of each model are in Table 14. 
+
+B.5 SFT Training Examples. 
+
+Figure 13 shows examples from our SFT dataset, including cases that require implicit tool usage and cases that can be solved without it. 
+
+B.6 Pseudocode for system-level metrics. 
+
+Because different methods are built on different codebases, and some tool-based methods require additional processing with external tools, we add the computation procedure described in Algorithm 3 to the implementation of each method. This allows us to measure throughput, latency, and cost consistently across all compared models. 23 
+
+TABLE 13: Hyperparameters used for RL on Qwen2.5-VL-7B-Instruct and Qwen3-VL-2/4/8B-Instruct. Parameters DAPO General 
+
+Model Qwen/Qwen2.5-VL-7B-Instruct Qwen/Qwen3-VL-2B-Instruct Qwen/Qwen3-VL-4B-Instruct Qwen/Qwen3-VL-8B-Instruct Thinking False 
+
+Data 
+
+Max. prompt length 4096 Max. response length 4096 Train batch size 512 Validation batch size 1024 Shuffle True Seed 1
+
+Batching 
+
+Rollouts per prompt (n) 8PPO mini-batch size 128 PPO micro-batch size per GPU 2Logprob micro-batch size per GPU 8Max grad norm 1.0 
+
+Rollout / Generation 
+
+Inference engine VLLM Temperature 1.0 Top-p 1.0 Top-k -1 Max new tokens 8192 Tensor parallel size 1Enable chunked prefill True 
+
+Actor / Policy Optimization 
+
+PPO epochs 3Clip ratio low 0.2 Clip ratio high 0.3 Online filtering False Disable KL True Dynamic batching True 
+
+Reference Model 
+
+Strategy FSDP CPU offload True Offload params False 
+
+Parallelism 
+
+Number of GPUs 8Number of nodes 1Sequence parallel 1Gradient checkpointing True 
+
+Training 
+
+Optimizer Adamw Learning rate 2e-6 Scheduler Constant Adam β (0.9, 0.999) Warmup ratio 0.0 Weight decay 1e-2 Precision Bfloat16 24 <think> To determine the color of the shirt, we need to focus on 
+
+the specific area of the image where the shirt is located. 
+
+Cropping and zooming are essential because they allow us to 
+
+isolate the relevant portion of the image, enhancing the 
+
+visibility of the shirt‘s color. In this case, the shirt is worn 
+
+by a person in the water, and we need to refine the image to 
+
+focus on this individual. 
+
+<START_OF_GEN><IMG_OF_0146><IMG_OF_0744><IMG_OF_0745><IMG_OF_0441 
+
+><END_OF_GEN> After correctly cropping the image, it is now clear 
+
+that the shirt is black. The cropped image focuses on the person 
+
+lying on the surfboard, and the shirt’s color is distinctly 
+
+visible as black. This analysis directly addresses the user‘s 
+
+question about the shirt’s color . </think> 
+
+<answer>  The color of the shirt is black.  </answer> .
+
+What is the color of the 
+
+shirt? 
+
+Question  Thinking 
+
+<think> To determine the color of the shirt, we need to focus on 
+
+the specific area of the image where the shirt is located. 
+
+Cropping and zooming are essential because they allow us to 
+
+isolate the relevant portion of the image, enhancing the 
+
+visibility of the shirt‘s color. In this case, the shirt is worn 
+
+by a person in the water, and we need to refine the image to 
+
+focus on this individual. 
+
+<START_OF_GEN><IMG_OF_0146><IMG_OF_0744><IMG_OF_0745><IMG_OF_0441 
+
+><END_OF_GEN> After correctly cropping the image, it is now clear 
+
+that the shirt is black. The cropped image focuses on the person 
+
+lying on the surfboard, and the shirt’s color is distinctly 
+
+visible as black. This analysis directly addresses the user‘s 
+
+question about the shirt’s color . </think> 
+
+<answer>  The color of the shirt is black.  </answer> .What is the color of the 
+
+shirt? 
+
+<think> To determine the color of the shirt, we need to focus on 
+
+the specific area of the image where the shirt is located. 
+
+Cropping and zooming are essential because they allow us to 
+
+isolate the relevant portion of the image, enhancing the 
+
+visibility of the shirt‘s color. In this case, the shirt is worn 
+
+by a person in the water, and we need to refine the image to 
+
+focus on this individual. 
+
+<START_OF_GEN>< unk >< unk >< unk >< unk ><END_OF_GEN> After correctly 
+
+cropping the image, it is now clear that the shirt is black. The 
+
+cropped image focuses on the person lying on the surfboard, and 
+
+the shirt’s color is distinctly visible as black. This analysis 
+
+directly addresses the user‘s question about the shirt’s color .
+
+</think> 
+
+<answer>  The color of the shirt is black.  </answer> .
+
+What is the color of the 
+
+shirt? 
+
+<think> To determine the color of the shirt, we need to focus on 
+
+the specific area of the image where the shirt is located. 
+
+Cropping and zooming are essential because they allow us to 
+
+isolate the relevant portion of the image, enhancing the 
+
+visibility of the shirt‘s color. In this case, the shirt is worn 
+
+by a person in the water, and we need to refine the image to 
+
+focus on this individual. After correctly cropping the image, it 
+
+is now clear that the shirt is black. The cropped image focuses 
+
+on the person lying on the surfboard, and the shirt’s color is 
+
+distinctly visible as black. This analysis directly addresses the 
+
+user‘s question about the shirt’s color . </think> 
+
+<answer>  The color of the shirt is black.  </answer> .
+
+What is the color of the 
+
+shirt? 
+
+(a) BEE 
+
+(b) Original image 
+
+(c) Unk 
+
+(d) No visual 
+
+Fig. 12: Variant forms of tool slot in the training phase. 25 
+
+TABLE 14: Efficiency comparison settings used for Thyme, Mini-o3, Qwen2.5/3-VL, DeepEyes, and BEE. 
+
+Parameters Details 
+
+Hardware / Software 
+
+Platform H800 GPUs 1CUDA 12.4 NVIDIA Driver 570.124.06 FlashAttention 2.8.3 VLLM 0.8.5 Transformer 4.49.0 Torch 2.6.0 Python 3.10.0 
+
+Evaluation 
+
+Precision Bfloat16 Max. input length -Max. generation length 2048 Temperature 0.01 Top-p 0.001 Top-k 1Prompt format Chat template (system+user) 
+
+Benchmark 
+
+Dataset HRBench4K Nums 800 26 <think >To determine the color of the shirt, we need to focus on 
+
+the specific area of the image where the shirt is located. 
+
+Cropping and zooming are essential because they allow us to 
+
+isolate the relevant portion of the image, enhancing the 
+
+visibility of the shirt‘s color. In this case, the shirt is worn 
+
+by a person in the water, and we need to refine the image to 
+
+focus on this individual. 
+
+<START_OF_GEN><IMG_OF_0146><IMG_OF_0744><IMG_OF_0745><IMG_OF_0441 
+
+><END_OF_GEN> After correctly cropping the image, it is now clear 
+
+that the shirt is black. The cropped image focuses on the person 
+
+lying on the surfboard, and the shirt’s color is distinctly 
+
+visible as black. This analysis directly addresses the user‘s 
+
+question about the shirt’s color . </ think> 
+
+<answer>  The color of the shirt is black.  </answer> .
+
+What is the color of the 
+
+shirt? 
+
+Question  Thinking 
+
+Which side is the tray 
+
+on? 
+
+<think >To determine the side of the tray in the image, it's 
+
+essential to focus on the specific area where the tray is located. 
+
+Cropping and zooming are critical as they help isolate the tray 
+
+from other objects, ensuring a clear view of its position 
+
+relative to the surrounding vegetables. The tray appears to be 
+
+near the top left of the image, surrounded by green vegetables. 
+
+By cropping this region, we can better analyze its placement. 
+
+<START_OF_GEN><IMG_OF_0047><IMG_OF_0631><IMG_OF_0448><IMG_OF_0448 
+
+><END_OF_GEN> After analyzing the refined cropped image, it is 
+
+evident that the tray is located on the left side of the image. 
+
+The tray is positioned near the cucumbers, confirming its 
+
+placement on the left side. This refined crop effectively 
+
+isolates the tray, providing a clear answer to the user's 
+
+question .</ think> 
+
+<answer> The tray is on the left of the image. </ answer> .
+
+Who is wearing a shirt? 
+
+<think >To determine who is wearing a shirt in the image, it's 
+
+essential to focus on the individuals present. The goal is to 
+
+identify the person wearing a shirt by closely examining the 
+
+relevant portion of the image. To improve visibility, I will crop 
+
+the region around the person and zoom in. Based on the provided 
+
+context, the person is located near the bottom left of the image, 
+
+walking on the sidewalk. I will refine this region to increase 
+
+clarity and focus on the relevant portion of the image. 
+
+<START_OF_GEN><IMG_OF_0945><IMG_OF_0097><IMG_OF_0973><IMG_OF_0650 
+
+><END_OF_GEN> After cropping the image correctly, it is clear 
+
+that the person walking on the sidewalk is wearing a shirt. The 
+
+cropped image shows the individual from the waist up, and the 
+
+shirt is visible. This directly answers the user's question about 
+
+who is wearing a shirt in the image .</ think> 
+
+<answer> The man is wearing a shirt . </ answer> .
+
+How many objects are 
+
+preferred by more than 50 
+
+percent of people in at 
+
+least one category? 
+
+<think >The image is clear and contains a bar chart that is easy 
+
+to interpret. The bars represent the percentage of people who 
+
+prefer certain objects in different categories. The chart is 
+
+labeled with the categories (chin, attack, idea) and the objects 
+
+(master, yield, iodine). The y -axis is labeled \"Percent of 
+
+People, \" and the values are clearly visible. The question asks 
+
+how many objects are preferred by more than 50 percent of people 
+
+in at least one category. By visually inspecting the chart, we 
+
+can see that all three objects (master, yield, and iodine) have 
+
+at least one bar exceeding the 50 percent mark. Therefore, the 
+
+image conditions are sufficient to answer the question without 
+
+further processing .</ think> 
+
+<answer> 3 </ answer> .
+
+Fig. 13: Data format of the final SFT training set. 27 
+
+TABLE 15: Performance comparison on various tasks. For all open-source models, the best performance for each metric is 
+
+bolded , and the second best is underlined. The result ( †, ‡) is collected from [69] and [2], respectively. Benchmark Split BEE-7B Qwen2.5-VL-7B Qwen2.5-VL-32B ZwZ-7B Gemini 2.5 Pro Perception V* Attribute 80.3 78.2 77.4 82.6 -Spatial 86.1 73.6 86.8 82.9 -Overall 83.8 76.4 81.2 82.7 79.1 FSP 92.5 85.2 87.5 90.5 -FCP 58.3 52.2 59.3 56.5 -HRBench-4K Overall 75.4 68.8 73.4 73.5 83.9 FSP 87.0 78.8 82.3 59.7 -FCP 60.5 51.8 58.5 87.7 -HRBench-8K Overall 73.9 65.3 70.4 73.7 81.5 Perception 67.2 60.6 63.8 67.9 -Reasoning 43.7 38.6 40.4 43.8 -MME-Real Overall 64.4 58.3 61.0 65.0 71.3 Perception 56.5 48.8 50.6 57.7 -Reasoning 45.7 37.7 39.3 43.7 -MME-Real-Lite Overall 52.3 44.1 46.2 52.2 58.3 CVBench-2D Overall 75.0 74.2 72.2 74.7 -Reasoning LogicVista Overall 43.0 39.8 54.4 47.7 66.4 VisuLogic Overall 23.4 20.0 24.7 3.9 26.9 WeMath Overall 38.6 34.3 47.1 37.9 -General MMStar Overall 63.5 64.7 69.6 62.9 78.5 POPE Overall 89.3 85.8 86.2 87.7 -SeedBench-Image Overall 75.2 77.1 77.5 71.8 -OCRBench mini Overall 16.3 15.8 15.1 17.5 -MME Overall 2307 2290 2388 2301 -CMMMU val Overall 73.9 73.5 79.4 70.9 -TABLE 16: Performance comparison on the MME-RealWorld. BEE shows larger improvements on more challenging perception and reasoning tasks, as well as monitoring and autonomous driving tasks, where the baseline performs relatively poorly. Perception Model Monitoring Autonomous Driving OCR Diagram and Table Remote Sensing Overall Qwen2.5-VL-7B 38.8 22.7 87.0 78.8 45.4 60.9 BEE-7B 44.8 42.7 88.4 79.5 53.7 67.2 
+
+Improvement 15.5% 88.1% 1.6% 0.9% 18.3% 10.3% 
+
+Reasoning Model Monitoring Autonomous Driving OCR Diagram and Table Remote Sensing Overall Qwen2.5-VL-7B 26.1 24.3 64.8 63.4 - 38.6 BEE-7B 39.4 29.7 69.4 60.2 - 43.7 
+
+Improvement 51.0% 22.2% 7.1% -5.0% - 13.2% 
+
+## APPENDIX CADDITIONAL RESULTS .
+
+C.1 Substantial Gain over Base Models. 
+
+Table 15 presents a comparison of BEE-7B with the baseline model Qwen2-VL-7B, the larger model Qwen2.5-VL-32B, and the recent method ZwZ-7B. We also report the performance of the closed-source model Gemini-2.5 Pro for reference. The evaluation protocol used in the official ZwZ repository differs from ours. For a fair comparison, we evaluate the publicly released ZwZ model within our unified evaluation framework ( e.g ., VLMEValKit 3) and use the same system prompt as in the original implementation. In addition, all 
+
+> 3. https://github.com/open-compass/vlmevalkit
+
+model outputs are evaluated by Qwen2.5-VL-235B, which is also the judge model used for BEE. Consequently, some results differ from those reported in the original ZwZ paper. A comparison of the two evaluation protocols is shown in Algorithm 4 and Algorithm 5, respectively.  
+
+> •
+
+Compared with the baseline models. BEE consistently performs better on perception tasks . The improvement is particularly evident on MME-Real-Lite, where BEE achieves a score of 52.3, surpassing the 44.1 obtained by Qwen2.5-VL-7B by more than 18.6%. On challenging reasoning benchmarks , BEE is not trained on datasets that are similar to these tasks, which makes them out-of-distribution evaluations. Even in this setting, BEE achieves 43.0 on LogicVista, outperforming Qwen2.5-28 
+
+TABLE 17: Ablation study on τ . For all open-source models, the best performance for each metric is bolded .Settings of τ V* HRBench4K HRBench8K 
+
+BEE-7B (Qwen2.5-VL) 
+
+1/3 81.6 73.7 71.8 1/2 82.8 73.1 72.2 2/3 83.8 75.4 73.9 
+
+3/4 83.7 74.3 73.5 
+
+BEE-4B (Qwen3-VL) 
+
+1/3 89.5 76.6 75.5 1/2 91.2 78.0 76.3 2/3 91.6 78.4 77.0 
+
+3/4 89.5 78.6 76.5 VL-7B, which scores 39.8. However, BEE still shows relatively weak performance on some benchmarks, such as VisuLogic and MathVerse. On more general benchmarks , BEE brings limited gains on tasks where the baseline performance is already strong, including SEEDBench and AI2D. In contrast, it consistently out-performs Qwen2.5-VL-7B on benchmarks with relatively lower baseline scores, such as CMMMU val, MME, and OCRBench. These results suggest that the performance gains of BEE do not primarily come from fine-tuning on in-domain data, but instead reflect improvements in more general capabilities. BEE also further reduces hallucinations on the POPE benchmark.  
+
+> •
+
+Compared with ZwZ-7B. BEE outperforms it on almost all perception benchmarks except MME-Real. This result suggests that the implicit tool mechanism in BEE ef-fectively benefits multimodal reasoning. On complex reasoning tasks, ZwZ exhibits a noticeable drop in performance on VisuLogic and MathVerse. On more general benchmarks, BEE and ZwZ show comparable performance. 
+
+C.2 Analysis of Specialized Benchmarks. 
+
+Taking MME-RealWorld as an example, it contains a large number of high-resolution perception tasks in real-world scenarios. Table 16 reports the performance of BEE and the baseline model across different task categories. We find that BEE brings only limited gains on tasks where the baseline model already performs strongly, such as OCR, Diagram, and Table, where the accuracy exceeds 60% and even approaches 85% on some tasks. BEE even suffers a drop of around 5 percentage points on the reasoning subsets of Diagram and Table. In contrast, on more challenging tasks where Qwen2.5-VL-7B shows weaker perception ability, such as monitoring and autonomous driving, BEE improves performance by more than 15% on both perception and reasoning tasks, with larger gains on reasoning tasks. 
+
+C.3 Ablation study on τ .
+
+Table 17 shows the effect of the threshold τ across different tasks and models. The results indicate that performance is stable across models, with the best results obtained when τ
+
+is between 1/2 and 3/4. The same trend is observed across different tasks. TABLE 18: Ablation study on each component. For all open-source models, the best performance for each metric is 
+
+bolded .Models V* HRBench4K HRBench8K Qwen2.5-VL-7B 76.4 68.8 65.3 SFT 75.4 71.1 65.8 BEE-7B 83.8 75.4 73.9 
+
+C.4 Ablation study on each component. 
+
+Table 18 presents the results of the two stages of model training. 
+
+C.5 Analysis of decoupled training. 
+
+We utilize t-SNE to project pure textual tokens and visual tokens into a shared low-dimensional space (e.g., dimension 2, perplexity 30). 
+
+C.6 Training curves 
+
+We further provide an analysis of the training dynamics of BEE-7B, including learning curves of different reward signals, changes in tool usage and accuracy across different difficulty levels, the overall tool usage rate during training, and the evolution of the number of problems at each difficulty level.  
+
+> •
+
+Training reward curves. Figure 15 presents the curves of the accuracy reward, consistency reward, and tool reward. All rewards increase steadily during training, indicating that BEE gradually improves and eventually reaches an accuracy of around 80% on the training set.  
+
+> •
+
+Tool usage rate & accuracy curves. Figure 16 shows the changes in tool usage rate and accuracy across different difficulty levels. For easy problems, accuracy contin-uously improves, while the tool usage rate gradually decreases and eventually approaches zero, suggesting that the model can solve these problems without external tools. For hard problems, some relatively easier instances are gradually solved during training, leaving a subset of more difficult problems that exceed the model’s capability. As a result, the number of hard problems decreases over time, which also leads to a drop in the average accuracy of this subset. This behavior is consistent with the trend shown in Figure 17. Despite this change in the problem distribution, the tool usage rate on hard problems eventually stabilizes at around 40%. The tool usage rate on medium-difficulty problems follows a similar trend to that of hard problems.  
+
+> •
+
+Difficulty curves. Figure 17 illustrates the changes in the number of problems at different difficulty levels during training. The number of hard and medium-difficulty problems gradually decreases, while the number of easy problems steadily increases. This suggests that BEE progressively solves more challenging problems, resulting in a shift of the overall distribution toward easier cases. 29 
+
+Algorithm 4 Cascading Evaluation Pipeline for ZwZ Answer Matching 
+
+Require: Dataset D 
+
+> 1:
+
+is mcq ← True if D is an MCQ benchmark, else False  
+
+> 2:
+
+Initialize Qllm ← []  ▷ Queue for samples requiring LLM intervention  
+
+> 3:
+
+for each sample xi ∈ D do  
+
+> 4:
+
+▷ Step 1: Extract the core answer from the model’s raw output  
+
+> 5:
+
+if xi.output contains “ < answer > ” then  
+
+> 6:
+
+ans ext ← ExtractTextInsideTags (xi.output ) 
+
+> 7:
+
+else if xi.output contains “Answer:” then  
+
+> 8:
+
+ans ext ← ExtractTextAfterColon (xi.output ) 
+
+> 9:
+
+else  
+
+> 10:
+
+ans ext ← ExtractLastThreeLines (xi.output ) 
+
+> 11:
+
+end if  
+
+> 12:
+
+▷ Step 2: Strict rule-based matching  
+
+> 13:
+
+is correct ← MathRulerGrade (xi.gt, ans ext ) 
+
+> 14:
+
+if is correct == True then  
+
+> 15:
+
+xi.status ← “Yes” , x i.source ← “mathruler”  
+
+> 16:
+
+continue  ▷ Proceed to the next sample  
+
+> 17:
+
+end if  
+
+> 18:
+
+▷ Step 3: Heuristic option matching (MCQ datasets only)  
+
+> 19:
+
+if is correct == False and is mcq == True then  
+
+> 20:
+
+Lgt ← RegexExtractOption (xi.gt ) 
+
+> 21:
+
+Lpred ← RegexExtractFirstOptionLetter (ans ext ) 
+
+> 22:
+
+if Lgt ̸ = ∅ and Lgt == Lpred then  
+
+> 23:
+
+xi.status ← “Yes” , xi.source ←
+
+“first letter match”  
+
+> 24:
+
+continue  
+
+> 25:
+
+end if  
+
+> 26:
+
+end if  
+
+> 27:
+
+▷ Step 4: Enqueue failed or ambiguous samples for LLM Evaluation  
+
+> 28:
+
+xi.status ← “Pending”  
+
+> 29:
+
+pi ← BuildJudgePrompt (xi.question, x i.gt, ans ext ) 
+
+> 30:
+
+Qllm .append (( i, p i))  
+
+> 31:
+
+end for  
+
+> 32:
+
+▷ Step 5: Batch LLM Generation for final adjudication  
+
+> 33:
+
+if Qllm ̸ = ∅ then  
+
+> 34:
+
+Rllm ← VLLM Generate (Qllm .prompts ) 
+
+> 35:
+
+for each (result, i ) in Zip (Rllm , Q llm .indices ) do  
+
+> 36:
+
+if result contains “Yes” or “yes” then  
+
+> 37:
+
+xi.status ← “Yes”  
+
+> 38:
+
+else  
+
+> 39:
+
+xi.status ← “No”  
+
+> 40:
+
+end if  
+
+> 41:
+
+xi.source ← “llm judge”  
+
+> 42:
+
+end for  
+
+> 43:
+
+end if  
+
+> 44:
+
+▷ Final Statistics  
+
+> 45:
+
+Accuracy ← Count (xi.status == “Yes” )/|D|  
+
+> 46:
+
+return Accuracy 
+
+Algorithm 5 Cascading Answer Matching Pipeline for VLMEvalKit 
+
+Require: Dataset D, Judge LLM M, Choices C =
+
+{A, B, C, D } 
+
+> 1:
+
+for each sample xi ∈ D do  
+
+> 2:
+
+▷ Step 1: Rule-based option letter matching  
+
+> 3:
+
+ans ← xi.prediction  
+
+> 4:
+
+if ans contains rejection phrases (e.g., “Sorry, I can’t help”) then  
+
+> 5:
+
+opt ← ‘Z’, goto VERDICT  ▷ Refused to answer  
+
+> 6:
+
+end if  
+
+> 7:
+
+Strip punctuation {. () [ ] , :; ! ∗ #{}} from ans ,
+
+tokens ← Split (ans ) by whitespace  
+
+> 8:
+
+count ← number of tokens ∈ C appearing in tokens  
+
+> 9:
+
+if count == 1 then  
+
+> 10:
+
+if matched letter is ‘A’ and |tokens | > 3 then  
+
+> 11:
+
+goto STEP 2 ▷ ‘A’ likely a quantifier, skip  
+
+> 12:
+
+end if  
+
+> 13:
+
+opt ← the matched letter, goto VERDICT  
+
+> 14:
+
+else if count == 0 and ‘Z’ ∈ tokens then  
+
+> 15:
+
+opt ← ‘Z’, goto VERDICT  
+
+> 16:
+
+end if  
+
+> 17:
+
+▷ Step 2: Rule-based option text matching  
+
+> 18:
+
+STEP 2: ans lower ← Lowercase (ans ) 
+
+> 19:
+
+if |ans lower | > 2 × P 
+
+> c∈C
+
+|ctext | then  
+
+> 20:
+
+goto STEP 3 ▷ Answer too long, prone to false match  
+
+> 21:
+
+end if  
+
+> 22:
+
+cands ← []  
+
+> 23:
+
+for c ∈ C do  
+
+> 24:
+
+if Lowercase (ctext ) ⊂ ans lower then  
+
+> 25:
+
+cands .append (c) 
+
+> 26:
+
+end if  
+
+> 27:
+
+end for  
+
+> 28:
+
+if |cands | == 1 then  
+
+> 29:
+
+opt ← cands [0] , goto VERDICT  
+
+> 30:
+
+end if  
+
+> 31:
+
+▷ Step 3: LLM-based answer extraction  
+
+> 32:
+
+STEP 3:  
+
+> 33:
+
+if M is not available then  
+
+> 34:
+
+opt ← ‘Z’, goto VERDICT  ▷ No LLM under exact matching policy  
+
+> 35:
+
+end if  
+
+> 36:
+
+for retry = 1 to 3 do  
+
+> 37:
+
+prompt ← BuildPrompt (xi.question , C, ans ),
+
+llm ans ← M .generate (prompt ) 
+
+> 38:
+
+if llm ans contains API failure message then continue  
+
+> 39:
+
+end if  
+
+> 40:
+
+opt ← CanInfer (llm ans, C) ▷ Repeat Step 1 & 2 on LLM output  
+
+> 41:
+
+if opt ̸ = False then goto VERDICT  
+
+> 42:
+
+end if  
+
+> 43:
+
+end for  
+
+> 44:
+
+▷ Step 4: Random fallback  
+
+> 45:
+
+opt ← RandomChoice (C ∪ { ‘Z’ }) 
+
+> 46:
+
+// Verdict  
+
+> 47:
+
+VERDICT : xi.hit ← (opt == xi.GT ) ? 1 : 0  
+
+> 48:
+
+end for  
+
+> 49:
+
+return Accuracy ← 1
+
+> |D|
+
+P 
+
+> xi∈D
+
+xi.hit 30 (a) 
+
+# (b) 
+
+Fig. 14: Visualization of perception and reasoning tokens. (a): T-SNE visualization without text-vision decoupling. (b) T-SNE visualization with text-vision decoupling. 31 (a) accurac y (b) consistency  (c) gating 
+
+Fig. 15: The training reward of Qwen2.5-VL-7B .
+
+Fig. 16: Tool usage rate and accuracy over time .32 
+
+Fig. 17: Number of problems of different difficulties during training. 33 
+
+## APPENDIX DDISCUSSION 
+
+D.1 Limitations 
+
+Our error case analysis reveals two main limitations of BEE. The first is its limited ability to handle complex logical reason-ing tasks. In some cases, the model skips detailed reasoning steps and produces answers without sufficient justification. Such problems are also difficult for humans without prior exposure to similar tasks. We think this limitation mainly stems from the lack of complex reasoning examples in the current training data. In future work, the data construction strategy introduced in Section 3.2 can be extended by using recent foundation models such as Gemini3-Pro to generate high-quality reasoning chains, which may further improve the logical reasoning ability of BEE. The second limitation arises when multiple similar objects appear in the same image. BEE sometimes fails to identify all relevant targets. In our autonomous driving case studies, we observe that the model occasionally misses some vehicles. This issue is likely caused by the lack of autonomous driving scenarios and dense multi-object perception examples in the current training data. Incorporating more such scenarios into the training set is a natural direction for improving BEE’s ability to perceive and recognize a large number of objects. 34 
+
+## APPENDIX ECASE STUDIES .
+
+E.1 Success Cases. 
+
+Figures 18 - 26 showcase representative outputs of BEE on a broad range of tasks, including real-world image understanding ( cf ., Figure 20, 21, 22, 23), mathematical ( cf ., Figure 18) and general reasoning 19, logical reasoning ( cf ., Figure 27), autonomous driving ( cf ., Figure 26), and medical analysis ( cf ., Figure 24, 25). The results reported here are obtained based on the BEE-4B model.  
+
+> •
+
+Real-world image understanding. Figures 20, 21, 22, 23 present evaluations on scenarios involving small ob-jects, rotated objects, and blurry objects. We observe that the BEE model can directly produce correct answers for these relatively simple cases without requiring complex reasoning. These scenarios are also straightforward for human perception, suggesting that BEE is capable of selecting an appropriate reasoning strategy based on the input difficulty. This indicates that BEE exhibits a certain level of metacognitive ability.  
+
+> •
+
+Chart interpretation, Mathematical reasoning and Gen-eral reasoning. Figure 19 presents questions involving flowcharts. The results show that the BEE model can accurately extract information from the images and perform correct reasoning, demonstrating its robustness. Figure 18 presents a spatial geometry problem. The BEE model provides a reasonable solution strategy but does not include detailed computational steps.  
+
+> •
+
+Logical reasoning. Figure 27 presents an example of complex logical reasoning. The model produces the correct final answer but does not provide detailed intermediate reasoning steps, although humans also tend to lack a strictly formal reasoning process for this type of problem.  
+
+> •
+
+Autonomous driving. Figure 26 presents a relatively complex autonomous driving example. The BEE model adapts its tool use according to the complexity of the scene and identifies a small vehicle within it, suggesting that the BEE model has strong metacognitive capabili-ties.  
+
+> •
+
+Medical analysis. Figures 24, 25 present two medical-related examples. Without relevant domain knowledge, humans also often lack reliable judgment on such problems, while the BEE model still provides accurate answers, which indicates its robustness. The results highlight the model’s ability to perform consis-tently across diverse multimodal scenarios. 
+
+E.2 Failure Cases. 
+
+Figures 27 - 29 present several failure cases that reveal the current limitations of the model.  
+
+> •
+
+Missing relevant information. In scenes containing a large number of visual elements, BEE may miss part of the relevant information ( cf ., Figure 29). We examine the outputs of the BEE model and compare them with the corresponding images. Our inspection suggests that this behavior is likely driven by the model’s overconfidence. It may also reflect the limited presence of similar multi-object autonomous driving scenarios in the BEE training data. These limitations could be mitigated by incorporating more such data into future training.  
+
+> •
+
+Imperfect intermediate reasoning steps. The model also occasionally produces imperfect intermediate reasoning steps when handling complex logical reasoning prob-lems ( cf ., Figure 28). We further compare BEE with sev-eral existing methods, including visual grounding and display-based approaches, and find that similar issues persist across these systems. While BEE demonstrates strong overall performance, these observations indicate that there is still room for improvement. Complex logical reasoning remains challenging even for humans. A possi-ble direction is to use a stronger model such as Gemini3-Pro to generate high-quality reasoning chains, which may further improve the BEE model’s performance on complex reasoning tasks. 35 <think> The image provided is clear and simple, with sufficient resolution and 
+
+contrast. The question asks for the volume of a geometric body based on its 
+
+three views, which can be analyzed directly from the image. Therefore, no 
+
+further image processing is required to answer the question. The image shows a 
+
+combination of a triangular prism and a semicircle. The volume can be 
+
+calculated as the sum of the volume of the triangular prism and the volume of 
+
+the semicircle. The correct answer is 𝑩 . 𝟐  
+
+> 𝟑
+
++ 𝝅 .Thus , the image conditions are 
+
+sufficient to answer the user's question, and no further processing is 
+
+needed." </think> 
+
+<answer> 𝑩 . 𝟐  
+
+> 𝟑
+
++ 𝝅 </answer> .
+
+The three -view drawing of a geometric solid is shown in the figure. The volume 
+
+of this solid is ( )
+
+𝑨 . 𝟏 
+
+𝟑 + 𝝅 𝑩 . 𝟐 
+
+𝟑 + 𝝅 
+
+𝑪 . 𝟏 
+
+𝟑 + 𝟐 𝝅 𝑫 . 𝟐 
+
+𝟑 + 𝟐 𝝅 
+
+# Question 
+
+# Thinking 
+
+Front Vie w Left Vie w Top Vie w
+
+> Fig. 18: Mathematical reasoning case. 36
+
+<think> The image provided is clear and simple, with sufficient resolution and 
+
+contrast. The question asks for the output value of ( n ) based on the given 
+
+program flowchart, which can be analyzed directly without requiring further 
+
+image processing. Therefore, no further image processing is needed.To solve the 
+
+question:1. Initialize ( a = 1, b = 1, n = 1 ).2. Enter the loop and update ( b 
+
+= b + 2a ), then ( a = b - a ), and increment ( n ).3. Check the condition 
+
+( \\left| \\frac{b^2}{a^2} - 2 \\right| < 0.01 ) to exit the loop.By following 
+
+the steps: - Iteration 1: ( b = 3, a = 2, n = 2 ) - Iteration 2: ( b = 7, a = 5, 
+
+n = 3 ) - Iteration 3: ( b = 17, a = 12, n = 4 ) - Check condition: ( \\left| 
+
+\\frac{17^2}{12^2} - 2 \\right| < 0.01 ) is true.Thus , the output ( n = 4 ).The 
+
+correct answer is B. 4. "</think> 
+
+<answer> B. 4 </answer> .
+
+Execute the flowchart below, the output n= ( ) 
+
+A.  3 B. 4 
+
+C. 5 D. 6 
+
+# Question 
+
+# Thinking 
+
+# Begin 
+
+# End 
+
+# Output n 
+
+# Input a=1, b=1, n=1 
+
+# No 
+
+# Yes 
+
+> Fig. 19: General reasoning case. 37
+
+<think> The image conditions and content complexity are appropriate for analysis, 
+
+so no further processing is required. The question asks about the color of the 
+
+mailbox, which can be clearly identified as blue in the image. Therefore, the 
+
+answer to the question is A. Blue. "</think> 
+
+<answer> A. Blue </answer> .
+
+What is the color of the mailbox? 
+
+A.  Blue B. Red 
+
+C. Green D. Black 
+
+# Question 
+
+# Thinking 
+
+> Fig. 20: Real-world understanding case. 38
+
+<think> The image conditions and content complexity are suitable for direct 
+
+analysis, so no further processing is required. The question asks for the text 
+
+written on the white board in front of the girl in purple shorts, which can be 
+
+clearly identified as "ELEVATE" from the image. Therefore, the correct answer 
+
+is A. ELEVATE. "</think> 
+
+<answer> A. ELEVATE </answer> .
+
+What is written on the white board in front of the girl in purple shorts? 
+
+A.  ELEVATE B. ELEVATE. 
+
+C. ELVTE D. CeVaY 
+
+# Question 
+
+# Thinking 
+
+> Fig. 21: Real-world understanding case. 39
+
+<think> The image conditions and content complexity are suitable for direct 
+
+analysis, so no further processing is required. The text on the blue golf ball 
+
+holder is clearly visible and reads "NEW MEXICO MUTUAL," which matches option A. 
+
+Therefore, the answer to the user \'s question is A. NEW MEXICO MUTUAL." </think> 
+
+<answer> A. NEW MEXICO MUTUAL </answer> .
+
+What is the text written on the blue golf ball holder? 
+
+A.  NEW MEXICO MUTUAL B. NEW YORK MUTUAL 
+
+C. MUTUAL INSURANCE D. NEW MEXICO INSURANCE 
+
+# Question 
+
+# Thinking 
+
+> Fig. 22: Real-world understanding case. 40
+
+<think> The image conditions and content complexity are suitable for direct 
+
+analysis, so no further processing is required. The person in the image is 
+
+clearly standing in front of the recycle bin, making it easy to answer the 
+
+question. \n\nThe correct answer to the user's question is: A. In front of the 
+
+recycle bin. </think> 
+
+<answer> A. In front of the recycle bin </answer> .
+
+Where is the person standing in relation to the recycle bin? 
+
+A.  In front of the recycle bin B. Behind the recycle bin 
+
+C. To the right of the recycle bin D. To the left of the recycle bin 
+
+# Question 
+
+# Thinking 
+
+> Fig. 23: Real-world understanding case. 41
+
+<think> The image provided is a clear and high -contrast CT scan of the chest, 
+
+which is sufficient to answer the user \'s question. The image clearly shows the 
+
+lung structures, which are large, dark, and spongy in appearance, consistent 
+
+with the typical appearance of lungs on a CT scan. Therefore, no further image 
+
+processing is required to determine that the picture does contain lung. \n\nThe 
+
+correct answer to the user \'s question "Does the picture contain lung?" is A. 
+
+Yes </think> 
+
+<answer> A. Yes </answer> .
+
+Does the picture contain lung ？
+
+A. Yes B. No 
+
+# Question 
+
+# Thinking 
+
+> Fig. 24: Medical case. 42
+
+<think> The image provided is a clear and high -contrast CT scan of the chest, 
+
+which is sufficient to answer the user's question. The image clearly shows the 
+
+heart as a central structure within the thoracic cavity, making it easy to 
+
+identify. Therefore, no further image processing is required to determine that 
+
+the picture does contain a heart. \n\nThe correct answer to the user's question 
+
+is: B. Yes. </think> 
+
+<answer> B. Yes </answer> .
+
+Does the picture contain heart ？
+
+A. No B. Yes 
+
+# Question 
+
+# Thinking 
+
+> Fig. 25: Medical case. 43
+
+<think> The image provided shows a street scene... We need to crop the image to 
+
+focus on the area where the cars are... < tool_start >< tool_pad >< tool_end >
+
+...shows a clearer view of ...the status of the cars behind the ego car is that 
+
+one is moving and one is parked. </think> 
+
+<answer> One moving, one parked </answer> .
+
+What is the status of the cars that are to the back of the ego car? 
+
+One moving, one parked. 
+
+# Question 
+
+# Thinking 
+
+> Fig. 26: Autonomous driving case. 44
+
+<think> The image provided is clear and has sufficient resolution, making it 
+
+suitable for analysis. The question asks to identify the pattern and select the 
+
+correct option, which can be addressed based on the visual information given. 
+
+Therefore, no further image processing is required. The task involves 
+
+identifying a pattern in the sequence of shapes. Observing the sequence, the 
+
+shapes seem to be related to geometric figures with increasing complexity. The 
+
+last shape in the sequence should logically follow this pattern. Option D (a 
+
+complex star -like shape) fits the pattern best. Thus, the answer is D. </think> 
+
+<answer> D: D \nThe pattern in the given sequence appears to involve shapes 
+
+that are becoming more complex and symmetrical. The first row shows triangles 
+
+becoming more complex, and the second row shows shapes that are also becoming 
+
+more complex. The most complex and symmetrical shape among the options is D, 
+
+which is a complex star -like shape. Therefore, D is the most appropriate choice 
+
+to fill the question mark. </answer> 
+
+Choose the most appropriate option from the four choices to replace the question 
+
+mark and complete the pattern. ：
+
+A: A B: B 
+
+C: C D: D 
+
+# Question 
+
+# Thinking 
+
+> Fig. 27: Logical reasoning case. 45
+
+<think> The image provided is clear and has sufficient resolution, making it 
+
+suitable for analysis. The question asks to identify a pattern in the given 
+
+shapes and select the most appropriate option to complete the sequence. The 
+
+image conditions are adequate to answer the user's question without requiring 
+
+further processing. The task involves identifying a pattern in the sequence of 
+
+shapes. Observing the sequence, the shapes seem to be related to the number of 
+
+lines and their arrangement. The last shape in the sequence should logically 
+
+follow the pattern of increasing complexity in the number of lines. Option D 
+
+fits this pattern as it has three lines arranged in a way that matches the 
+
+previous shapes' complexity. Therefore, no further image processing is required, 
+
+and the answer is D. </think> 
+
+<answer> D: D \nThe pattern in the given sequence of images shows a progression 
+
+in the number of lines and their arrangement within the shapes. The first row 
+
+shows squares with increasing numbers of lines, and the second row shows 
+
+circles with a similar pattern. The question mark should follow the same 
+
+pattern, which is best represented by option D, showing a circle with three 
+
+lines that match the increasing complexity seen in the previous images. 
+
+</answer> .
+
+Choose the most appropriate option from the four choices to replace the question 
+
+mark and complete the pattern. 
+
+A: A B: B 
+
+C: C D: D 
+
+# Question 
+
+# Thinking 
+
+Correct answer is A 
+
+> Fig. 28: Logical reasoning case. 46
+
+<think> The image conditions and content analysis are sufficient to answer the 
+
+user \'s question, so no further processing is required. The question asks about 
+
+the status of the cars behind the ego car. From the image, it appears that one 
+
+car is moving (the truck in front) and one car is parked (on the right side of 
+
+the road). Therefore, the correct answer is "D. One moving, one parked. </think> 
+
+<answer> D. One moving, one parked </answer> .
+
+What is the status of the cars that are to the back of the ego car ？
+
+A. one moving, two parked  B. three  moving , one parked 
+
+C.  two moving, two parked  D. two  moving, one parked 
+
+# Question 
+
+# Thinking 
+
+Correct answer is B

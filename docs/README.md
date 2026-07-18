@@ -6,34 +6,31 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-17
-- 运行时间：2026-07-17 19:50:38 UTC
+- 最新运行日期：2026-07-18
+- 运行时间：2026-07-18 20:54:55 UTC
 - 运行状态：成功
-- 本次总论文数：4
-- 精读区：3
+- 本次总论文数：3
+- 精读区：2
 - 速读区：1
 
 ### 今日简报（AI）
-今日聚焦LLM推理链验证与认知专家混合，三篇论文揭示前沿进展。  
-最值得关注的是两项黑盒前提依赖性测试与答案条件化思维链退化研究，均获9.0高分。  
-建议优先精读这两篇推理链审计论文，理解链式推理的脆弱性，再速读多模态专家混合。
-- 详情：[/202607/17/README](/202607/17/README)
+今日日报聚焦多模态推理效率与思维链隐式低效诊断，两篇9分论文各有突破。
+最值得关注的方向：自调节隐式视觉工具可减少多模态推理开销，以及思维链中“有效未必必要”的无效步骤识别。
+建议优先精读这两篇高评分论文，重点关注其方法设计与实验结论，对优化大模型推理有直接参考价值。
+- 详情：[/202607/18/README](/202607/18/README)
 
 ### 精读区论文标签
-1. [Interventional Grounding Audits: Black-Box Premise-Dependency Tests for LLM Chain-of-Thought via Predicate Substitution](/202607/17/2607.13069v1-interventional-grounding-audits-black-box-premise-dependency-tests-for-llm-chain-of-thought-via-predicate-substitution)  
+1. [Beyond the Eye: Efficient Multimodal Reasoning via Self-Regulated Implicit Visual Tools](/202607/18/2607.11106v1-beyond-the-eye-efficient-multimodal-reasoning-via-self-regulated-implicit-visual-tools)  
    标签：评分：9.0/10、query:vlm-cot
-   evidence：直接研究LLM思维链推理的前提依赖性，采用黑盒干预方法
-2. [Answer-Conditioned Chains of Thought Degrade Verifiable-Reasoning Distillation in Large Language Models](/202607/17/2607.14552v1-answer-conditioned-chains-of-thought-degrade-verifiable-reasoning-distillation-in-large-language-models)  
+   evidence：多模态推理与隐式视觉工具
+2. [Valid $\ne$ Necessary: Diagnosing Latent Inefficiency in Chain-of-Thought](/202607/18/2607.11266v1-valid-ne-necessary-diagnosing-latent-inefficiency-in-chain-of-thought)  
    标签：评分：9.0/10、query:vlm-cot
-   evidence：链式推理蒸馏，答案条件导致性能下降
-3. [AI vs Human Expert Reasoning: Assessing Agreements in Building Typology Predictions based on Street View Imagery](/202607/17/2607.14756v1-ai-vs-human-expert-reasoning-assessing-agreements-in-building-typology-predictions-based-on-street-view-imagery)  
-   标签：评分：8.0/10、query:vlm-cot
-   evidence：使用思维链提示进行VLM推理
+   evidence：CoT低效诊断
 
 ### 速读区论文标签
-1. [Mixture of Cognitive Experts in Large Vision-Language Models](/202607/17/2607.10796v1-mixture-of-cognitive-experts-in-large-vision-language-models)  
+1. [Mixture of Cognitive Experts in Large Vision-Language Models](/202607/18/2607.10796v1-mixture-of-cognitive-experts-in-large-vision-language-models)  
    标签：评分：7.0/10、query:vlm-cot
-   evidence：大视觉语言模型认知推理，与VLM推理相关
+   evidence：处理大视觉语言模型中的推理，包含元认知等认知元素
 
 
 <div class="dpr-home-promo-card">

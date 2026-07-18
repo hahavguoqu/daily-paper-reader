@@ -1,0 +1,54 @@
+{
+  "label": "2026-07-18",
+  "date": "2026-07-18",
+  "generated_at": "2026-07-18T20:55:01",
+  "count": 3,
+  "papers": [
+    {
+      "paper_id": "202607/18/2607.11106v1-beyond-the-eye-efficient-multimodal-reasoning-via-self-regulated-implicit-visual-tools",
+      "section": "deep",
+      "title_en": "Beyond the Eye: Efficient Multimodal Reasoning via Self-Regulated Implicit Visual Tools",
+      "authors": "Xiuwei Chen, Quanlin Chen, Wentao Hu, Zisheng Chen, Kun Xiang, Zehua Ma, Mingyang Zhang, Jianhua Han, Hanhui Li, Hang Xu, Xiaodan Liang",
+      "date": "2026-07-13",
+      "pdf": "https://arxiv.org/pdf/2607.11106v1",
+      "score": "9.0",
+      "evidence": "多模态推理与隐式视觉工具",
+      "tldr": "多模态大模型在“Thinking with Images”范式中频繁调用外部视觉工具并重复重编码图像，导致巨大计算开销和推理延迟。针对此问题，本文提出BEE，一种自调节隐式视觉工具范式，通过将工具调用行为融入训练目标，使模型自适应平衡内部知识与隐式工具，避免冗余使用。两阶段训练包括形式化CoT监督微调激活隐式工具表示与自适应切换，以及自调节奖励机制惩罚无效工具依赖并鼓励知识路由。在细粒度视觉感知任务上达到SOTA，通用推理保持竞争力，显著提升推理效率，为高效多模态推理提供了新范式。",
+      "tags": "query:vlm-cot",
+      "abstract_en": "Recent multimodal large language models (MLLMs) have made remarkable progress on fine-grained perception tasks under the \"Thinking with Images\" (TwI) paradigm by iteratively performing various visual tool operations. However, this paradigm relies heavily on frequent external tool calls and repeated image re-encoding, which leads to substantial computational overhead and inference latency. To address these issues, we propose Beyond the Eye (BEE), a novel implicit visual tool paradigm centered on self-regulated capability. BEE directly incorporates visual tool invocation behaviors into the training objective and encourages the model to develop a self-regulated invocation mechanism. This design enables the model to adaptively balance internal knowledge and implicit tools, avoiding redundant tool usage while substantially reducing inference latency. Specifically, BEE involves a two-stage training process: (1) Formalized Chain-of-Thought (CoT) Supervised Fine-tuning (SFT). We construct CoT trajectories with structured tool slots and mixed invocation states. This stage activates the model's implicit tool representations and adaptive switching capability. (2) Self-regulated Reward-Driven Alignment. To address redundant tool usage caused by ambiguous cognitive boundaries, we first introduce the Net Tool Gain (NTG) metric to quantify this phenomenon. Based on this observation, we further propose a self-regulated reward mechanism. This mechanism penalizes ineffective tool dependency and encourages the model to perform knowledge routing, ensuring that implicit tools are invoked only when the model's internal knowledge is insufficient. BEE achieves state-of-the-art performance in fine-grained visual perception while remaining competitive in general reasoning tasks and achieving substantial gains in inference efficiency.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "paper_id": "202607/18/2607.11266v1-valid-ne-necessary-diagnosing-latent-inefficiency-in-chain-of-thought",
+      "section": "deep",
+      "title_en": "Valid $\\\ne$ Necessary: Diagnosing Latent Inefficiency in Chain-of-Thought",
+      "authors": "Daeyeop Lee, Hwanjo Yu",
+      "date": "2026-07-13",
+      "pdf": "https://arxiv.org/pdf/2607.11266v1",
+      "score": "9.0",
+      "evidence": "CoT低效诊断",
+      "tldr": "思维链推理中，模型常生成有效但冗余的步骤，浪费计算资源。现有评估器仅检测逻辑错误，忽略了低效步骤。为此，论文构建RIV-GSM8K基准注入五种低效类型，并提出基于信息论的CAID度量，用于PACE后压缩策略。实验显示PACE可将token消耗压缩31-53%而不损准确率。该工作揭示有效≠必要，填补了推理效率评估的空白。",
+      "tags": "query:vlm-cot",
+      "abstract_en": "Chain-of-Thought (CoT) prompting has significantly advanced the reasoning capabilities of Large Language Models (LLMs), yet it often incurs substantial computational costs due to over-reasoning: the generation of redundant, verbose, or irrelevant steps. While existing reasoning step evaluators effectively detect logical fallacies and factual errors, our analysis reveals a critical blind spot: they fail to penalize valid but inefficient reasoning steps that inflate token usage without contributing to the solution. To systematically diagnose this limitation, we introduce RIV-GSM8K, a diagnostic benchmark injected with five distinct types of inefficiencies, including circular reasoning and excessive decomposition. Diagnostic experiments reveal that state-of-the-art evaluators struggle to distinguish these inefficiencies from necessary reasoning. To address this gap, we propose CAID (Context-Aware Information Density), a training-free metric grounded in information theory that identifies low-utility steps. To validate the metric's practical utility, we apply it within PACE, a post-hoc compression strategy. Additional control experiments show that the gains of PACE are not explained by trivial pruning: compared with random step removal and PRM-based compression baselines, it preserves accuracy at substantially higher compression rates. Empirical results on GSM8K, StrategyQA, and ARC-Challenge demonstrate that PACE reduces token consumption by 31-53% while maintaining accuracy, confirming that CAID successfully distills informational froth from reasoning chains without compromising deductive validity.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "paper_id": "202607/18/2607.10796v1-mixture-of-cognitive-experts-in-large-vision-language-models",
+      "section": "quick",
+      "title_en": "Mixture of Cognitive Experts in Large Vision-Language Models",
+      "authors": "Robert Wijaya, Ngai-Man Cheung",
+      "date": "2026-07-12",
+      "pdf": "https://arxiv.org/pdf/2607.10796v1",
+      "score": "7.0",
+      "evidence": "处理大视觉语言模型中的推理，包含元认知等认知元素",
+      "tldr": "大型视觉语言模型（LVLM）需要强推理，但现有管道对所有查询采用相同感知-推理路由，无法适应不同认知需求。本文提出证据驱动的多模态推理框架，基于Bloom分类学作为分层推理协议，通过两阶段认知言语化将多编码器专家输出分解为原子证据语句，并利用轻量级推理轨迹模块量化分析证据使用和推理进程。实验表明框架显著提升了感知和推理能力，轨迹模块定量揭示了不同查询诱导不同认知入口和证据使用轨迹。该方法增强了模型的可解释性和可验证性，并有效减少了幻觉。",
+      "tags": "query:vlm-cot",
+      "abstract_en": "Large Vision Language Models (LVLMs) require strong reasoning over both visual and textual input. Recent work suggests that cognitive elements, especially diverse representations and metacognition, correlate with better performance. Many of the needed perceptual functions are already provided by specialized domain-specific computer vision models, which act as the perceptual subsystem for detecting objects, localizing them, inferring states, recovering spatial layout, and reading text. The key challenge is to integrate these multi-encoder experts into a trustworthy, interpretable, and coherent representation that improves verifiability and reduces hallucinations. This is difficult because vision-language questions span different cognitive levels, yet most LVLM pipelines apply the same perception-reasoning routing regardless of the demand of each query. We propose an evidence-driven multimodal reasoning framework that utilizes a Bloom-inspired taxonomy as a hierarchical reasoning protocol. The two-stage cognitive verbalization first produces a Literal Evidence Summary by decomposing expert outputs into short, atomic evidence statements. It then performs Bloom Verbalization to turn these evidence items into a staged reasoning trace, and a lightweight Reasoning Trace Module quantitatively analyzes the trace to make evidence usage and reasoning progression explicit. Through this integration, we observed several improvements in perception and reasoning abilities. Moreover, the trace module provides quantitative evidence that different queries induce different cognitive entry levels and evidence-use trajectories that enable fine-grained analysis.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "errors": []
+}
