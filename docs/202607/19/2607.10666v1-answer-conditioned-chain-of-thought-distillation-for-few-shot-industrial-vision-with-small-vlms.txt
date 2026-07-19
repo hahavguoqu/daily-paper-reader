@@ -1,0 +1,376 @@
+Title: Answer-Conditioned Chain-of-Thought Distillation for Few-Shot Industrial Vision with Small VLMs
+
+URL Source: https://arxiv.org/pdf/2607.10666v1
+
+Published Time: Tue, 14 Jul 2026 01:45:43 GMT
+
+Number of Pages: 11
+
+Markdown Content:
+## Answer-Conditioned Chain-of-Thought Distillation for Few-Shot Industrial Vision with Small VLMs 
+
+Shubham Rao Entropy AI Research Labs Private Limited 
+
+director@entropyresearch.ai https://entropyresearch.ai 
+
+Abstract 
+
+Deploying AI-based visual inspection in manufacturing is hard because requirements change often, new defect types appear, and large labeled datasets are rarely available. We propose answer-conditioned chain-of-thought (CoT) distillation for rapidly adapting small vision-language models (VLMs) to new industrial tasks using minimal labeled data. A frontier VLM receives each training image along with its correct label and generates a justified visual explanation. A 3B-parameter model is then fine-tuned on these reasoning-augmented examples via LoRA. By conditioning on correct answers, we ensure all train-ing reasoning is directed toward the correct conclusion, which is critical because frontier models score as low as 24.1% on our hardest task. We validate on four industrial classification tasks spanning three image modalities using only 18 to 30 labeled images per task. Across 4 seeds per task (32 training runs), our method outperforms direct fine-tuning on all 16 seed-task combinations, with mean improvements of +1.7 to +4.4 percentage points. A controlled equal-budget experiment confirms the improvement comes from reasoning quality, not additional training steps. An unconditioned baseline demonstrates that with-out answer-conditioning, wrong reasoning degrades performance by 17.8 percentage points. On weld radiograph classification, the fine-tuned 3B model outperforms GPT-4.1 by 10.0pp using just 24 training images. 
+
+1 Introduction 
+
+Visual quality inspection is central to manufacturing. Every production line needs to identify defects, classify materials, or verify compliance with standards. These requirements change often. Each change demands a new or retrained vision model. Traditional approaches rely on CNNs trained on thousands of labeled images [2]. Collecting this data is expensive. In many settings, a factory has fewer than 30 labeled examples and needs a working classifier within days, not months. Large VLMs like GPT-4.1 can interpret images without task-specific training. But their accuracy on specialized industrial tasks is poor. On concrete aggregate grading (9 classes, DIN 1045 [4]), GPT-4.1 achieves 29.6% few-shot. Gemini 2.5 Pro achieves 24.1%. These models cannot be deployed on-premises due to cost and data privacy constraints. Small VLMs (1–7B parameters) [14] fit on edge hardware and can be fine-tuned with LoRA [6]. But standard fine-tuning on 18–30 images maps images to labels without transferring domain knowledge. The model memorizes rather than learns. CoT distillation [5] trains smaller models on reasoning-augmented data from larger models, but existing work targets text-only settings. STaR [17] and Video-STaR [19] use answer-conditioned reasoning in text and video settings, but not for VLMs where the teacher itself performs poorly. 1arXiv:2607.10666v1 [cs.CV] 12 Jul 2026 We propose answer-conditioned CoT distillation for VLMs. A frontier model receives each training image with its correct label and explains why that label is correct. A small VLM is fine-tuned on these reasoning-augmented pairs via LoRA. The frontier model is not classifying. It already knows the answer. It is explaining what visual features justify that answer. This is critical because frontier model accuracy ranges from 24.1% to 91.1% across our tasks. If we asked it to classify and explain, up to 76% of training data would contain incorrect reasoning. We show experimentally that unconditioned CoT destroys performance ( −17.8pp) when the teacher is mostly wrong. Our contributions: 1. We apply answer-conditioned CoT distillation to VLMs for industrial few-shot classification, showing consistent improvement across 4 tasks, 3 modalities, and 4 random seeds (16/16 wins). 2. A controlled equal-budget experiment demonstrates that the improvement comes from reasoning qual-ity, not additional training steps. 3. We show that without answer-conditioning, unconditioned CoT degrades performance by up to 17.8pp. 4. A 3B model fine-tuned on 24 images outperforms GPT-4.1 and Gemini 2.5 Pro on specialized indus-trial tasks. 
+
+2 Related Work 
+
+Chain-of-thought distillation. CoT prompting [15] improves performance by including reasoning steps. Hsieh et al. [5] showed training small LMs on reasoning-augmented outputs outperforms standard fine-tuning. Their work is text-only. We extend this to VLMs with image-grounded visual reasoning. 
+
+Answer-conditioned reasoning. STaR [17] bootstraps reasoning by filtering for correct answers. Ra-jani et al. [11] generate explanations conditioned on correct answers for commonsense reasoning. Video-STaR [19] applies self-training with answer conditioning to video. All operate where the teacher is already competent. We apply answer-conditioning where teacher accuracy is as low as 24.1%. 
+
+Knowledge distillation for VLMs. VLsI [8] distills internal representations. KD for long-tail recogni-tion [18] uses logit-based distillation. Online In-Context Distillation [7] maintains the teacher at inference time. None use answer-conditioned reasoning, and none target industrial few-shot settings. 
+
+Industrial vision with VLMs. Adapting foundation models for industry [10] typically requires large datasets. CLIP-based few-shot approaches [9] require 50–100 examples. Xia et al. [16] bootstrap grounded CoT in multimodal LLMs but do not condition on correct answers. 
+
+3 Method 
+
+3.1 Prompt Design 
+
+Each task uses a single classification prompt containing: (1) image context, (2) class definitions with visual descriptions, (3) contrastive features distinguishing similar classes, and (4) JSON output format. The same prompt is used for training and evaluation. Prompt quality is critical. In early experiments on steel surface defects, using shorter class definitions during training (while keeping the full definitions for evaluation) degraded accuracy by 18.1 percentage points (48.6% vs 66.7%), with the same training images and hyperparameters. The class definitions must be detailed and identical between training and evaluation. 23.2 Answer-Conditioned CoT Generation 
+
+For each training image (xi, y i), the frontier model (GPT-4.1) receives the correct label yi with the image xi.It explains why yi is correct using contrastive reasoning. We generate 3 descriptions per image at temperature 0.7. An example generated description for a weld radiograph classified as porosity :
+
+“The image shows several scattered small dark circular spots distributed across the weld area. These spots are characteristically round, consistent with gas pores trapped during solidification. This is not lack of penetration, which would show a continuous dark line along the weld centerline, nor cracks, which would appear as sharp jagged lines.” 
+
+The frontier model is not classifying. It already knows the answer. It is explaining what visual features justify that answer and why similar classes do not apply. The JSON output is never generated by the frontier model; it is appended programmatically to guarantee format consistency. 
+
+3.3 Training Data Construction 
+
+From the same N labeled images, we construct: 
+
+Direct LoRA: N pairs (image + prompt → JSON label). 
+
+CoT-Augmented LoRA: 4N pairs (3 CoT + 1 direct per image). For CoT pairs, the “Respond with JSON” instruction is stripped from the user prompt. The assistant response contains the description followed by the correct JSON. Figure 1 illustrates both approaches. Training Image 
+
+Classi fi cation 
+
+prompt 
+
+(with JSON 
+
+Instructions) 
+
+Qwen2.5-
+
+VL-3B 
+
+(Frozen) 
+
+LoRA 
+
+Adaptor 
+
+(trainable) 
+
++ JSON Output  Loss 
+
+Ground Truth 
+
+(a) Direct LoRA Training 
+
+N training pairs (1 per image, 18-30 total) 
+
+Training Image 
+
+CoT 
+
+Description 
+
+Generation 
+
+Prompt 
+
+Ground 
+
+Truth 
+
+GPT-4.1 Frontier Model 
+
+(answer-conditioned) 
+
+CoT 
+
+Descriptions 
+
+Classi fi cation 
+
+prompt 
+
+(without JSON 
+
+Instructions) 
+
+Qwen2.5-
+
+VL-3B 
+
+(Frozen) 
+
+LoRA 
+
+Adaptor 
+
+(trainable) 
+
++
+
+Training Image 
+
+Text Output  Loss 
+
+Classi fi cation 
+
+prompt 
+
+(with JSON 
+
+Instructions) 
+
+Qwen2.5-
+
+VL-3B 
+
+(Frozen) 
+
+LoRA 
+
+Adaptor 
+
+(trainable) 
+
++
+
+Training Image 
+
+JSON Output  Loss 
+
+Ground Truth 
+
+4xN training pairs (4 per image, 72-120 total) 
+
+(b) CoT Augmented LoRA Training 
+
+Classi fi cation Prompt with JSON Instruction at the End 
+
+Classify this concrete aggregate photograph. 
+
+Ground sampling distance (GSD) = 2.1 px/mm. 
+
+At this GSD: 8mm ≈ 17px, 16mm ≈ 34px, 32mm ≈ 68px. 
+
+Classi fi cation axes: 
+
+1. MAX PARTICLE SIZE: estimate the largest stone’s width in pixels, 
+
+divide by GSD, round to 8, 16, or 32 mm. 
+
+2. GRADING (DIN 1045 standard): 
+
+- COARSE (A): gaps between stones EMPTY 
+
+- MEDIUM (B): gaps PARTIALLY  fi lled 
+
+- FINE (C): gaps COMPLETELY  fi lled 
+
+Respond with JSON: {"max particle size mm": <8|16|32>, "grading": 
+
+""} 
+
+CoT Description Generation Prompt 
+
+Look at this concrete aggregate photograph. The correct 
+
+classi fi cation is: 
+
+max_particle_size_mm: 16, grading: coarse 
+
+Ground sampling distance (GSD) = 2.1 px/mm. 
+
+At this GSD: 8mm stone ≈ 17px, 16mm ≈ 34px, 32mm ≈ 68px. 
+
+Grading de fi nitions (DIN 1045 standard — describes size 
+
+DISTRIBUTION): 
+
+- COARSE (A): particles concentrated near max size. Gaps between 
+
+stones are 
+
+EMPTY. Uniform, single-layer texture. 
+
+- MEDIUM (B): balanced mix. Gaps PARTIALLY  fi lled by smaller 
+
+particles. 
+
+- FINE (C): wide size range. Gaps COMPLETELY  fi lled with small 
+
+particles. 
+
+Dense, packed texture. 
+
+Key distinguishing features: 
+
+- coarse vs medium: coarse has EMPTY gaps (you can see the 
+
+background), 
+
+medium has gaps PARTIALLY  fi lled with smaller stones 
+
+- medium vs  fi ne: medium still has some visible gaps,  fi ne has NO 
+
+visible 
+
+gaps (everything packed tight) 
+
+- 8mm vs 16mm vs 32mm: estimate the largest stone's width in 
+
+pixels, 
+
+CoT Descriptions 
+
+The largest stones in this image appear to be around 16mm,  fi tting the 
+
+max_particle_size_mm: 16 classi fi cation. The gaps between the largest 
+
+stones 
+
+are mostly empty, with very few smaller particles  fi lling the spaces, which 
+
+is characteristic of a coarse grading. The overall texture looks uniform and 
+
+not densely packed with mixed sizes, supporting the classi fi cation of 
+
+coarse 
+
+aggregate according to DIN 1045. 
+
+JSON Output 
+
+{"max_particle_size_mm": 16, "grading": "coarse"} 
+
+Result: Base 12.0% → Direct LoRA 71.3% → CoT-Augmented 79.6% (+8.3pp) 
+
+Figure 1: Method overview. (a) Direct LoRA learns image →JSON from N pairs. (b) CoT-augmented LoRA: GPT-4.1 receives each image with the correct label and generates justified descriptions, yielding 4N
+
+training examples from N images. 33.4 LoRA Fine-Tuning 
+
+Both approaches use identical hyperparameters on Qwen2.5-VL-3B-Instruct [14] (Table 1). Only the assis-tant response tokens contribute to the loss; all user-prompt and image tokens are masked. 
+
+Parameter Value Base model Qwen2.5-VL-3B-Instruct (3.8B params) Precision BF16 (no quantization) LoRA rank / alpha / dropout 16 / 32 / 0.05 Target modules q, k, v, o, gate, up, down proj Trainable parameters 37.2M (0.98% of total) Learning rate 2 × 10 −5
+
+Epochs 40 Effective batch size 4 (gradient accumulation) Scheduler Cosine with 10% warmup 
+
+Table 1: Training hyperparameters (identical for Direct and CoT-Aug). 
+
+4 Experimental Setup 
+
+4.1 Datasets 
+
+We evaluate on four tasks spanning three image modalities (Table 2). 
+
+Dataset Modality Classes Train Test Granulometry [1] Photography 9 18 108 NEU-CLS [12] Photography 6 30 360 UHCS [3] Microscopy 5 30 120 RIAWELC [13] X-ray 4 24 240 
+
+Table 2: Dataset summary. Three modalities: visible-light photography (macro and surface), optical/SEM microscopy, and X-ray radiography. 
+
+Concrete Aggregate Grading (Granulometry). 9 classes from particle size (8, 16, 32mm) × grad-ing (coarse, medium, fine) per DIN 1045. Images are 2200 ×3000 pixels, resized to 800px max. Ground sampling distance is computed dynamically. 4Figure 2: Concrete aggregate: 9 classes (3 sizes × 3 gradings). 
+
+Steel Surface Defects (NEU-CLS). 6 defect classes on 200 ×200 grayscale images of hot-rolled steel strips: crazing, inclusion, patches, pitted surface, rolled-in scale, scratches. 5Figure 3: Steel surface: 6 defect classes (NEU-CLS). 
+
+Steel Microstructure (UHCS). 5 microconstituent classes from optical/SEM micrographs: spheroidite, network, spheroidite+widmanstatten, pearlite+spheroidite, pearlite. 
+
+Figure 4: UHCS: 5 microconstituent classes. 
+
+Weld Defects (RIAWELC). 4 classes on 227 ×227 grayscale X-ray radiographs: lack of penetration, porosity, cracks, no defect. 
+
+Figure 5: Weld radiographs: 4 defect classes (RIAWELC). 64.2 Baselines and Evaluation 
+
+Base model zero-shot. Qwen2.5-VL-3B-Instruct without fine-tuning. Frontier model few-shot. GPT-4.1 with reference images (one per class) at inference. Note: our fine-tuned models do not receive reference images. Direct LoRA. Same model, same images, same hyperparameters, without reasoning augmentation. All results are means across 4 random seeds (123, 456, 789, 1024). Each seed controls LoRA weight initialization and dropout masks. Training data, hyperparameters, and test sets are fixed. Evaluation uses temperature 0.1. For granulometry, we report “both correct” (size AND grading). 
+
+5 Results 
+
+5.1 Main Results 
+
+CoT-Aug outperforms Direct LoRA on all 4 tasks across all 4 seeds (16/16 individual runs), as shown in Table 3. Task Base ZS GPT-4.1 FS Direct CoT-Aug Granulometry 12.0 29.6 75.2 ±1.2 77.8 ±1.5 
+
+Steel Surface 21.7 91.1 63.6 ±0.9 66.4 ±1.3 
+
+UHCS 60.8 71.7 64.4 ±0.4 68.8 ±1.1 
+
+Weld Defects 30.8 65.0 73.3 ±0.3 75.0 ±0.8 
+
+Table 3: Accuracy (%, mean ±std over 4 seeds). Granulometry = both correct. Bold = best overall. The 3B model outperforms GPT-4.1 few-shot on 3/4 tasks despite GPT-4.1 receiving reference images at inference. On weld: 75.0% vs 65.0% (+10.0pp). On granulometry: 77.8% vs 29.6% (+48.2pp). Steel is the exception where GPT-4.1’s reference-image approach (91.1%) wins. UHCS achieves p=0.002 (paired 
+
+t-test); other tasks p=0.05–0.10 with 4 seeds. Table 4 shows results for each individual seed.                                          
+
+> Direct CoT-Aug Seed Gran Steel UHCS Weld Gran Steel UHCS Weld 123 75.0 63.6 65.0 73.8 75.9 65.0 70.0 74.2 456 76.9 63.6 64.2 73.3 77.8 66.4 69.2 74.6 789 74.1 62.5 64.2 72.9 79.6 68.1 68.3 75.8 1024 75.0 64.7 64.2 73.3 77.8 66.1 67.5 75.4
+
+Table 4: Individual seed results (%). CoT-Aug wins all 16 comparisons. 
+
+5.2 Per-Class Analysis 
+
+Table 5 shows per-class accuracy for weld defects. Cracks is the hardest class (0% for all baselines in zero-shot). With 6 training images, CoT-Aug reaches 50%. Direct LoRA reaches 58% on cracks but is worse overall because CoT-Aug gains more on no defect (+11pp) and lack of penetration (+7pp). Table 6 shows steel surface results. The largest CoT-Aug gains are on scratches (+22pp) and patches (+23pp), where contrastive reasoning (“sharp linear grooves” vs “blotchy zones”) transfers well. Inclusion remains hard for both methods because dark elongated streaks are visually similar to scratches in grayscale. 7Class (N=60 each) Direct CoT-Aug no defect 87% 98%         
+
+> porosity 83% 83% lack of penetration 65% 72%
+> cracks 58% 50% Overall 73.3% 75.8%
+
+Table 5: Per-class accuracy, weld defects (seed 42).                 
+
+> Class (N=60 each) Direct CoT-Aug pitted surface 83% 85%
+> scratches 63% 85%
+> crazing 83% 68% patches 52% 75%
+> rolled-in scale 58% 55% inclusion 38% 32% Overall 63.1% 66.7%
+
+Table 6: Per-class accuracy, steel surface (seed 42). For granulometry (9 classes), size classification is easier than grading: 91.7% vs 86.1% for CoT-Aug. The hardest class is C32 (32mm, fine grading) at 42% both-correct. This is an unusual combination (large stones with fine distribution) that may be underrepresented in 2 training images. 
+
+5.3 Improvement Is From Reasoning Quality, Not Data Volume 
+
+CoT-Aug uses 4N examples while Direct uses N . To isolate reasoning quality from training budget, we trained Direct-4 ×: each image duplicated 4 times, matching CoT-Aug’s steps exactly (Table 7). Task Direct Direct-4 × CoT-Aug Granulometry 75.2 74.1 77.8 
+
+Steel Surface 63.6 63.1 66.4 
+
+UHCS 64.4 70.8 68.8 Weld Defects 73.3 72.9 75.0 
+
+Table 7: Equal-budget control (%). Direct-4 × matches CoT-Aug’s optimizer steps. On 3/4 tasks, Direct-4 × performs at or below Direct despite 4 × more steps. The training loss tells the story: Direct-4 × reaches near-zero loss by epoch 30 (complete memorization of repeated JSON targets), while CoT-Aug converges to 0.02–0.05 (still learning from diverse descriptions at epoch 40). Naive repetition causes overfitting; diverse reasoning provides genuine signal. UHCS is the exception: compound class names (“spheroidite+widmanstatten”) are 3–4 tokens long. Repeated exposure helps the model memorize these unusual label sequences. 85.4 Answer-Conditioning Is Essential 
+
+We tested what happens without answer-conditioning. Gemini 2.5 Pro classified each training image freely (no correct answer provided). We trained on its predictions even when wrong. Table 8 shows results along-side Gemini’s measured accuracy. Task Gemini ZS Gemini FS Uncond. Direct Cond. Granulometry 24.1 27.8 57.4 75.2 77.8 
+
+Weld 63.7 62.1 73.3 73.3 75.0 
+
+Table 8: Unconditioned CoT (%). Gemini 2.5 Pro as teacher without knowing the correct answer. The pattern is clear: • Teacher accuracy 24% (granulometry): Unconditioned CoT drops 17.8pp below Direct. Wrong reasoning poisons the model. • Teacher accuracy 63.7% (weld): Unconditioned CoT matches Direct exactly. Correct and incorrect reasoning cancel out. • Teacher accuracy 100% (conditioned): CoT improves over Direct by +1.7 to +4.4pp. We used Gemini 2.5 Pro (a model stronger than GPT-4.1 on most vision benchmarks) to demonstrate this principle is model-independent. If even a state-of-the-art frontier model produces harmful training data without answer-conditioning, the design choice is essential, not optional. 
+
+5.5 Training Convergence 
+
+Direct models start at low loss (0.17–0.19) since targets are short JSON strings (10–30 tokens). They con-verge to near-zero by epoch 25 (complete memorization). CoT-augmented models start at higher loss (1.35– 1.55) because targets are 50–150 tokens. They converge smoothly to 0.02–0.05 by epoch 40.                    
+
+> Direct Loss CoT-Aug Loss Task Ep.1 Ep.20 Ep.40 Ep.1 Ep.20 Ep.40 Granulometry 0.184 0.084 0.023 1.396 0.131 0.046 Weld 0.174 0.006 0.000 1.351 0.113 0.022
+
+Table 9: Training loss at epochs 1, 20, 40. Direct reaches near-zero (memorization); CoT-Aug retains learning signal throughout. The weld Direct model reaching near-zero loss by epoch 25 indicates complete memorization of 24 JSON outputs. This motivates the augmented approach: by providing diverse descriptions, the model has more to learn from and is less prone to overfitting. 
+
+6 Discussion 
+
+When does CoT distillation help most? The gain correlates with task complexity. Granulometry (9 classes, relational reasoning about gap patterns) and UHCS (compound classes requiring co-feature detection) show the largest gains. Weld (4 well-separated classes) shows smaller but consistent gain. The contrastive descrip-tions are most valuable where classes are visually confusable. 9Characteristic confusion patterns. Each task has specific confusion pairs that CoT addresses: • Granulometry: coarse vs medium at small sizes (subtle gap differences) • Steel: inclusion ↔ scratches (both dark elongated features) • UHCS: spheroidite+widmanstatten → spheroidite (requires detecting co-existing features) • Weld: cracks ↔ lack of penetration (both dark lines in radiographs) CoT descriptions explicitly teach these distinctions (“circular spots, NOT jagged lines”) which is information that JSON-only training cannot convey. 
+
+The role of answer-conditioning. Our unconditioned experiment reveals a clear relationship: perfor-mance tracks teacher accuracy. At 24% teacher accuracy, unconditioned CoT is catastrophic. At 63.7%, neutral. At 100% (conditioned), positive. This makes answer-conditioning essential for any domain where frontier models lack expertise, which is precisely the setting where the method is most needed. 
+
+Prompt design matters more than expected. The 18.1pp drop from using weaker class definitions (same images, same hyperparameters) suggests that prompt engineering is not auxiliary to the method. It is the method. The class definitions are what the frontier model uses to generate structured reasoning. Weak definitions produce weak reasoning. 
+
+Practical deployment. The complete pipeline (CoT generation via API + LoRA training) completes in under 2 hours per task on a single NVIDIA L4 24GB GPU ($1/hr). Training times range from 19 minutes (granulometry Direct) to 111 minutes (UHCS CoT-Aug). A factory engineer with 18–30 labeled images can deploy a domain-adapted VLM the same day. 
+
+Limitations. All experiments use Qwen2.5-VL-3B. We do not test other architectures or model sizes. We use 3 CoT descriptions per image; the optimal number may vary. Steel surface remains a case where reference-image approaches outperform. The GPT-4.1 few-shot comparison is not apples-to-apples (it re-ceives reference images at inference; our model does not). 
+
+7 Conclusion 
+
+We presented answer-conditioned CoT distillation for adapting small VLMs to industrial inspection with minimal labeled data. Across 4 tasks, 3 modalities, and 32 training runs, the method consistently outperforms direct fine-tuning (16/16 wins). The gain comes from reasoning quality (not training budget), and answer-conditioning is essential (without it, performance drops 17.8pp). A 3B model fine-tuned on 24 images outperforms both GPT-4.1 and Gemini 2.5 Pro on specialized tasks. The full pipeline runs in under 2 hours on commodity hardware. 
+
+References 
+
+[1] M. Coenen, D. Beyer, C. Heipke, and M. Haist. Learning to sieve: Prediction of grading curves from images of concrete aggregate. ISPRS Annals of Photogrammetry, Remote Sensing and Spatial Information Sciences , V-2-2022:227–235, 2022. [2] T. Czimmermann, G. Ciuti, M. Milazzo, M. Chiurazzi, S. Roccella, C.M. Oddo, and P. Dario. Visual-based defect detection and classification approaches for industrial applications—a survey. Sensors , 20 (5):1459, 2020. 10 [3] B.L. DeCost, B. Lei, T. Francis, and E.A. Holm. High throughput quantitative metallography for complex microstructures using deep learning: A case study in ultrahigh carbon steel. Microscopy and Microanalysis , 25(1):21–29, 2019. [4] German Institute for Standardization (Deutsches Institut f¨ ur Normung). DIN 1045-2:2008. Concrete, reinforced and prestressed concrete structures, 2008. [5] C.Y. Hsieh, C.L. Li, C.K. Yeh, H. Nakhost, Y. Fujii, A. Ratner, R. Krishna, C.Y. Lee, and T. Pfister. Distilling step-by-step! outperforming larger language models with less training data and smaller model sizes. In Findings of ACL , 2023. [6] E.J. Hu, Y. Shen, P. Wallis, Z. Allen-Zhu, Y. Li, S. Wang, L. Wang, and W. Chen. LoRA: Low-rank adaptation of large language models. arXiv preprint arXiv:2106.09685 , 2021. [7] Z. Kang, R. Aljundi, V. Dorovatas, and K. Alahari. Online in-context distillation for low-resource vision language models. arXiv preprint arXiv:2510.18117 , 2025. [8] B.K. Lee, R. Hachiuma, Y.C.F. Wang, Y.M. Ro, and Y.H. Wu. VLsI: Verbalized layers-to-interactions from large to small vision language models. arXiv preprint arXiv:2412.01822 , 2024. [9] F.M. Megahed, Y.J. Chen, B.M. Colosimo, M.L.G. Grasso, L.A. Jones-Farmer, S. Knoth, H. Sun, and I. Zwetsloot. Adapting OpenAI’s CLIP model for few-shot image inspection in manufacturing quality control. arXiv preprint arXiv:2501.12596 , 2025. [10] K. Moenck, D.T. Thieu, J. Koch, and T. Sch¨ uppstuhl. Industrial language-image dataset (ILID): Adapt-ing vision foundation models for industrial settings. arXiv preprint arXiv:2406.09637 , 2024. [11] Nazneen Fatema Rajani, Bryan McCann, Caiming Xiong, and Richard Socher. Explain yourself! lever-aging language models for commonsense reasoning. In ACL , 2019. [12] K. Song and Y. Yan. A noise robust method based on completed local binary patterns for hot-rolled steel strip surface defects. Applied Surface Science , 285:858–864, 2013. [13] B. Totino, F. Spagnolo, and S. Perri. RIAWELC: A novel dataset of radiographic images for automatic weld defects classification. Research Square (Preprint) , 2022. [14] P. Wang, S. Bai, S. Tan, S. Wang, Z. Fan, J. Bai, K. Chen, X. Liu, J. Wang, W. Ge, Y. Fan, K. Dang, M. Du, X. Ren, R. Men, D. Liu, C. Zhou, J. Zhou, and J. Lin. Qwen2-VL: Enhancing vision-language model’s perception of the world at any resolution. arXiv preprint arXiv:2409.12191 , 2024. [15] J. Wei, X. Wang, D. Schuurmans, M. Bosma, B. Ichter, F. Xia, E. Chi, Q.V. Le, and D. Zhou. Chain-of-thought prompting elicits reasoning in large language models. In Advances in Neural Information Processing Systems , volume 35, pages 24824–24837, 2022. [16] Jiaer Xia, Bingkui Tong, Yuhang Zang, Rui Shao, and Kaiyang Zhou. Bootstrapping grounded chain-of-thought in multimodal LLMs for data-efficient model adaptation. In ICCV , 2025. arXiv:2507.02859. [17] Eric Zelikman, Yuhuai Wu, Jesse Mu, and Noah Goodman. STaR: Bootstrapping reasoning with rea-soning. In NeurIPS , 2022. [18] Z. Zhang, G.P. Meyer, Z. Lu, A. Shrivastava, and A. Ravichandran. Knowledge distillation from VLM for long-tail visual recognition. arXiv preprint arXiv:2408.16930 , 2024. [19] Orr Zohar, Xiaohan Wang, Yonatan Bitton, Idan Szpektor, and Serena Yeung-Levy. Video-STaR: Self-training enables video instruction tuning with any supervision. In ICLR , 2025. 11

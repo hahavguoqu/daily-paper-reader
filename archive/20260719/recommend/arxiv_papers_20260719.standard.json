@@ -1,0 +1,291 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-07-19T20:37:23.063113+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 3,
+    "deep_cap": 6,
+    "deep_selected": 3,
+    "quick_candidates": 4,
+    "quick_skim_target": 11,
+    "quick_selected": 4
+  },
+  "deep_dive": [
+    {
+      "id": "2607.10386v1",
+      "source": "arxiv",
+      "title": "Structured Thoughts For Improved Reasoning And Context Pruning",
+      "abstract": "Large language models (LLMs) excel at generating long chains of thought, but long reasoning traces are often verbose and memory-inefficient. In this work, we introduce Structured Thoughts, a framework that organizes reasoning into alternating <try> and <outcome> blocks: <try> captures exploratory scratch work, while <outcome> contains the distilled conclusion of that step. We construct a dataset of structured thoughts by segmenting reasoning traces into <try> blocks and prompting an LLM to summarize each step into its corresponding <outcome>. Fine-tuning pretrained foundation models on this reformatted data produces models that adopt the structured reasoning style, leading to performance gains of up to 8.08\\% on reasoning benchmarks compared to standard SFT. The explicit structure also enables context pruning: after each <try>/<outcome> pair, the <try> can be pruned, allowing the model to retain conclusions without keeping the full scratch work in the context. A proof-of-concept pruning implementation achieves an average of 85\\% memory / context savings with an 8.67\\% performance drop across mathematical tasks.",
+      "authors": [
+        "Zain Sarwar",
+        "Supriyo Chakraborty",
+        "Berkcan Kapusuzoglu",
+        "Chia-Hsuan Lee",
+        "Anirban Das",
+        "Stephen Rawls",
+        "Kartik Balasubramaniam",
+        "Sambit Sahu"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL",
+        "cs.AI"
+      ],
+      "published": "2026-07-11T16:29:51+00:00",
+      "link": "https://arxiv.org/pdf/2607.10386v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "directly addresses chain-of-thought reasoning in LLMs",
+      "llm_evidence_cn": "直接针对大语言模型中的链式思考推理",
+      "llm_evidence": "直接针对大语言模型中的链式思考推理",
+      "canonical_evidence": "直接针对大语言模型中的链式思考推理",
+      "llm_tldr_en": "Introduces Structured Thoughts framework that organizes reasoning into <try> and <outcome> blocks; fine-tuned models show up to 8.08% improvement on reasoning benchmarks.",
+      "llm_tldr_cn": "大型语言模型的长链推理存在冗余和内存效率低的问题。本文提出Structured Thoughts框架，将推理过程组织为交替的<尝试>和<结果>块，并构建数据集微调模型。实验表明，该方法在推理基准上最高提升8.08%，有效提高了推理效率和紧凑性。",
+      "llm_tldr": "大型语言模型的长链推理存在冗余和内存效率低的问题。本文提出Structured Thoughts框架，将推理过程组织为交替的<尝试>和<结果>块，并构建数据集微调模型。实验表明，该方法在推理基准上最高提升8.08%，有效提高了推理效率和紧凑性。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.12815v1",
+      "source": "arxiv",
+      "title": "Visual Access Boundaries in Vision-Language Model Reasoning",
+      "abstract": "Chain-of-Thought (CoT) prompting is widely used as a test-time scaling strategy for Vision-Language Models (VLMs), but it remains unclear what is extended when VLMs generate longer reasoning traces. We ask whether CoT requires continued access to image tokens, or whether it mainly operates over visual information already made available earlier in the forward pass. We introduce Visual Access Sweep, a causal intervention that masks attention from generated-token queries to image-token keys along layer depth and generation time, and define the Visual Access Boundary (VAB) as the minimal access region that preserves task accuracy. Across six model configurations from Qwen2.5-VL and InternVL3, both no-CoT direct answering and CoT prompting exhibit finite VABs. In Qwen2.5-VL-32B and InternVL3 at 14B and 38B scales, when CoT is evaluated against the no-CoT full-access target, its VAB layer differs from the no-CoT boundary by at most two layers, despite substantially longer generations. This suggests that CoT does not primarily improve performance by prolonging direct image-token access throughout the reasoning trace, but by extending language-side computation over image-derived hidden-state information. We further show that CoT gains are constrained by perceptual readout. CoT helps when the queried visual attribute can be reliably read out by the model, but not when that readout is unreliable. A symbolic-attribute oracle shows that CoT can improve counting once ground-truth attributes are supplied as text, while a single-object probe-vs-decode check shows that hard attributes can be linearly recoverable from hidden states yet difficult for the model itself to output. Together, these analyses place the bottleneck at readout rather than counting.",
+      "authors": [
+        "Hiroto Osaka",
+        "Shohei Taniguchi",
+        "Gouki Minegishi",
+        "Kai Yamashita",
+        "Masahiro Suzuki",
+        "Yutaka Matsuo"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-07-14T14:27:58+00:00",
+      "link": "https://arxiv.org/pdf/2607.12815v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "chain-of-thought reasoning in large vision-language models",
+      "llm_evidence_cn": "视觉语言模型中的链式思维推理",
+      "llm_evidence": "视觉语言模型中的链式思维推理",
+      "canonical_evidence": "视觉语言模型中的链式思维推理",
+      "llm_tldr_en": "Studies visual access boundaries during CoT reasoning in VLMs using a causal intervention method on Qwen2.5-VL and InternVL3, finding finite access regions needed for accuracy.",
+      "llm_tldr_cn": "本文针对视觉语言模型(VLM)中链式思维(CoT)推理的视觉访问边界问题展开研究。现有CoT推理机制在VLM中广泛应用，但模型生成长推理链时是否需要持续访问图像标记尚不明确。为此，作者提出视觉访问扫描(Visual Access Sweep)这一因果干预方法，通过屏蔽生成标记查询与图像标记键之间的注意力，沿层深度和生成时间定义视觉访问边界(VAB)。在Qwen2.5-VL和InternVL3的六种配置上实验发现，无论是直接回答还是CoT提示，都存在有限的VAB，表明CoT主要依赖前期已获取的视觉信息。该发现为理解VLM推理中的视觉信息利用机制提供了新视角，并为优化CoT策略奠定了基础。",
+      "llm_tldr": "本文针对视觉语言模型(VLM)中链式思维(CoT)推理的视觉访问边界问题展开研究。现有CoT推理机制在VLM中广泛应用，但模型生成长推理链时是否需要持续访问图像标记尚不明确。为此，作者提出视觉访问扫描(Visual Access Sweep)这一因果干预方法，通过屏蔽生成标记查询与图像标记键之间的注意力，沿层深度和生成时间定义视觉访问边界(VAB)。在Qwen2.5-VL和InternVL3的六种配置上实验发现，无论是直接回答还是CoT提示，都存在有限的VAB，表明CoT主要依赖前期已获取的视觉信息。该发现为理解VLM推理中的视觉信息利用机制提供了新视角，并为优化CoT策略奠定了基础。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.10666v1",
+      "source": "arxiv",
+      "title": "Answer-Conditioned Chain-of-Thought Distillation for Few-Shot Industrial Vision with Small VLMs",
+      "abstract": "Deploying AI-based visual inspection in manufacturing is hard because requirements change often, new defect types appear, and large labeled datasets are rarely available. We propose answer-conditioned chain-of-thought (CoT) distillation for rapidly adapting small vision-language models (VLMs) to new industrial tasks using minimal labeled data. A frontier VLM receives each training image along with its correct label and generates a justified visual explanation. A 3B-parameter model is then fine-tuned on these reasoning-augmented examples via LoRA. By conditioning on correct answers, we ensure all training reasoning is directed toward the correct conclusion, which is critical because frontier models score as low as 24.1% on our hardest task. We validate on four industrial classification tasks spanning three image modalities using only 18 to 30 labeled images per task. Across 4 seeds per task (32 training runs), our method outperforms direct fine-tuning on all 16 seed-task combinations, with mean improvements of +1.7 to +4.4 percentage points. A controlled equal-budget experiment confirms the improvement comes from reasoning quality, not additional training steps. An unconditioned baseline demonstrates that with out answer-conditioning, wrong reasoning degrades performance by 17.8 percentage points. On weld radiograph classification, the fine-tuned 3B model outperforms GPT-4.1 by 10.0pp using just 24 training images.",
+      "authors": [
+        "Shubham Rao"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cond-mat.mtrl-sci",
+        "cs.AI",
+        "cs.LG"
+      ],
+      "published": "2026-07-12T09:23:05+00:00",
+      "link": "https://arxiv.org/pdf/2607.10666v1",
+      "tags": [
+        "keyword:vlm-cot",
+        "query:vlm-cot"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "CoT distillation for industrial vision with small VLMs; relates to visual CoT and engineering foundation",
+      "llm_evidence_cn": "针对工业视觉的小VLM的CoT蒸馏；涉及视觉CoT和扎实工程基础",
+      "llm_evidence": "针对工业视觉的小VLM的CoT蒸馏；涉及视觉CoT和扎实工程基础",
+      "canonical_evidence": "针对工业视觉的小VLM的CoT蒸馏；涉及视觉CoT和扎实工程基础",
+      "llm_tldr_en": "Answer-conditioned CoT distillation rapidly adapts small VLMs to industrial visual inspection tasks with few labels.",
+      "llm_tldr_cn": "工业视觉检测面临需求多变、缺陷类型新和标注数据少的挑战。本文提出答案条件化的思维链蒸馏方法，使用前沿VLM生成带解释的视觉说明，再用LoRA微调3B参数小模型。实验表明该方法能有效适应新任务，且条件于正确答案确保了推理质量。",
+      "llm_tldr": "工业视觉检测面临需求多变、缺陷类型新和标注数据少的挑战。本文提出答案条件化的思维链蒸馏方法，使用前沿VLM生成带解释的视觉说明，再用LoRA微调3B参数小模型。实验表明该方法能有效适应新任务，且条件于正确答案确保了推理质量。",
+      "llm_tags": [
+        "query:vlm-cot:composite"
+      ],
+      "matched_query_tag": "query:vlm-cot:composite",
+      "matched_query_text": "Papers central to 视觉大模型CoT及大厂出品，大模型相关且有扎实的工程基础, especially work that connects or combines: chain of thought reasoning large model; large model by big tech companies.",
+      "matched_requirement_id": "req-composite-vlm-cot",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2607.10096v1",
+      "source": "arxiv",
+      "title": "Scaling and Stabilizing Large-Scale Embedding-Based Retrieval",
+      "abstract": "Embedding-based retrieval (EBR) is foundational to large-scale e-commerce search, yet its effectiveness is often constrained by the quality of training signals and the representational capacity of the encoder. Standard dual-encoders suffer from a training-inference gap: they are optimized on narrow candidate pools but must discriminate against hundreds of millions of items during inference. Furthermore, while transitioning to higher-capacity backbones can mitigate this gap, simply replacing a mature model can lead to inconsistent retrieval behavior and a loss of the domain-specific knowledge established in previous iterations. In this paper, we present a unified pipeline deployed at Walmart that addresses both signal quality and model evolution. Our contributions are two-fold: (1) Hybrid Hard Negative Mining: We integrate Online Cross-Batch Sampling to increase negative diversity by an order of magnitude and Hybrid Offline Mining, which combines cross-encoder predictions with metadata heuristics to identify nuanced mismatches. (2) Legacy-Aware Distillation: We transition from DistilBERT to a higher-capacity GTE-base encoder. To ensure a smooth and superior transition, we introduce a Warm-Start Distillation technique that transfers domain-specific expertise from the legacy model to the new backbone. Validated through extensive offline experiments and online A/B testing, the proposed pipeline is deployed in live production, delivering a +7.34% improvement in NDCG@5 and a +0.50% lift in gross revenue.",
+      "authors": [
+        "Zhen Yang",
+        "Juexin Lin",
+        "Hongwei Shang",
+        "Kaihao Li",
+        "Feng Liu",
+        "Satya Chembolu",
+        "Xunfan Cai",
+        "Xinyi Liu",
+        "Cun Mu",
+        "Tony Lee",
+        "Ciya Liao"
+      ],
+      "primary_category": "cs.IR",
+      "categories": [
+        "cs.IR"
+      ],
+      "published": "2026-07-11T03:24:26+00:00",
+      "link": "https://arxiv.org/pdf/2607.10096v1",
+      "tags": [
+        "query:vlm-cot"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "unified pipeline from Walmart for large-scale retrieval",
+      "llm_evidence_cn": "来自沃尔玛的大规模嵌入检索统一流水线",
+      "llm_evidence": "来自沃尔玛的大规模嵌入检索统一流水线",
+      "canonical_evidence": "来自沃尔玛的大规模嵌入检索统一流水线",
+      "llm_tldr_en": "Proposes a unified pipeline for scaling embedding-based retrieval at Walmart with improved signals and model evolution.",
+      "llm_tldr_cn": "该论文针对大规模电商搜索中嵌入检索的训练-推理鸿沟和模型演化问题，提出统一流水线，在沃尔玛部署。通过改良训练信号和渐进式模型更新，提升了检索效果和稳定性。",
+      "llm_tldr": "该论文针对大规模电商搜索中嵌入检索的训练-推理鸿沟和模型演化问题，提出统一流水线，在沃尔玛部署。通过改良训练信号和渐进式模型更新，提升了检索效果和稳定性。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "large model by big tech companies",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2607.12195v1",
+      "source": "arxiv",
+      "title": "Comparing Semantic Navigation in Humans and Large Language Models using Natural Language Processing",
+      "abstract": "Semantic memory retrieval can be conceptualized as navigation through conceptual space. We compared semantic search dynamics between humans and three large language models (GPT-4o, Gemini-2.5-Pro, Claude-Sonnet-4.5) using verbal fluency data. By applying trajectory-based NLP metrics to the items generated by 82 human participants and LLM output across eight temperature settings, we quantified three complementary dimensions: entropy (step size predictability), distance to next (successive semantic steps), and distance to centroid (global dispersion). Humans exhibited higher entropy, larger semantic steps and broader dispersion than all LLMs, indicating more variable and exploratory search. Temperature tuning produced only partial alignments, as individual metrics matched between humans and LLMs at specific settings, but no configuration reproduced the complete human profile (in all dimensions). These findings suggest that human semantic search implements a distinctive balance between local exploitation and global exploration that current model architectures fail to reproduce.",
+      "authors": [
+        "Gabriel Paris-Colombo",
+        "Rodrigo M. Cabral-Carvalho",
+        "Felipe D. Toro-Hernández"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL",
+        "cs.AI"
+      ],
+      "published": "2026-07-13T22:38:58+00:00",
+      "link": "https://arxiv.org/pdf/2607.12195v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "uses big tech LLMs (GPT-4o, Gemini, Claude)",
+      "llm_evidence_cn": "使用大厂大型语言模型",
+      "llm_evidence": "使用大厂大型语言模型",
+      "canonical_evidence": "使用大厂大型语言模型",
+      "llm_tldr_en": "Compares semantic search dynamics between humans and LLMs (GPT-4o, Gemini, Claude) using NLP metrics; humans show more variable and exploratory search behavior.",
+      "llm_tldr_cn": "本文通过语义记忆检索任务比较人类与大型语言模型的搜索动态。使用GPT-4o、Gemini-2.5-Pro、Claude-Sonnet-4.5等大模型，应用轨迹NLP指标分析熵、步长和分散度。发现人类搜索更具变异性，而LLM通过温度调节只能部分模拟人类行为。",
+      "llm_tldr": "本文通过语义记忆检索任务比较人类与大型语言模型的搜索动态。使用GPT-4o、Gemini-2.5-Pro、Claude-Sonnet-4.5等大模型，应用轨迹NLP指标分析熵、步长和分散度。发现人类搜索更具变异性，而LLM通过温度调节只能部分模拟人类行为。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "large model by big tech companies",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2607.14242v1",
+      "source": "arxiv",
+      "title": "Implicit Reasoning Steering via Concept Chaining",
+      "abstract": "Large language models often appear to reason reliably, yet on many questions repeated sampling yields both correct and incorrect answers, revealing an underlying fragility in how final decisions are formed. We study whether this fragility can be exploited through implicit reasoning steering: using natural-language text to bias a model toward a designated answer without explicit instructions, triggers, or direct answer cues. Our approach, Concept Chaining, generates a short connection paragraph that links question entities to a target option through one or two intermediate concepts. We then continue pretraining a victim model on these connection paragraphs and evaluate whether its answer preference shifts on the original multiple-choice questions. Our results show that indirect, natural-looking text can systematically steer model predictions while remaining substantially less inferable than direct paraphrases, which shows that reasoning brittleness is not merely an evaluation artifact: it creates a practical channel through which latent biases can be amplified by ordinary-looking text to covertly redirect model decisions.",
+      "authors": [
+        "Xiao Ye",
+        "Sanika Chavan",
+        "Yuxi Huang",
+        "Shahriar Kabir Nahin",
+        "Muhao Chen",
+        "Anshuman Chhabra",
+        "Ben Zhou"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-07-15T18:03:08+00:00",
+      "link": "https://arxiv.org/pdf/2607.14242v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "implicit reasoning steering via concept chaining relates to chain of thought",
+      "llm_evidence_cn": "通过概念链进行隐式推理引导，与思维链相关",
+      "llm_evidence": "通过概念链进行隐式推理引导，与思维链相关",
+      "canonical_evidence": "通过概念链进行隐式推理引导，与思维链相关",
+      "llm_tldr_en": "Concept Chaining uses natural-language paragraphs to steer LLM reasoning implicitly, showing fragility in decision formation.",
+      "llm_tldr_cn": "大型语言模型在重复采样时会出现答案不一致，暴露出推理脆弱性。本文提出概念链方法，通过生成连接段落隐式引导模型偏向指定答案，无需显式指令。实验表明该方法能有效改变模型偏好，揭示推理可被利用的弱点。",
+      "llm_tldr": "大型语言模型在重复采样时会出现答案不一致，暴露出推理脆弱性。本文提出概念链方法，通过生成连接段落隐式引导模型偏向指定答案，无需显式指令。实验表明该方法能有效改变模型偏好，揭示推理可被利用的弱点。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2607.14707v1",
+      "source": "arxiv",
+      "title": "Harnessing LLMs for Reliable Academic Supervision: A Comparative Study",
+      "abstract": "Large language models routinely produce fluent answers to single-shot prompts, yet deploying them as reliable components of a domain decision system is substantially harder. Closing this gap is the work of harness engineering: the deliberate composition of deterministic scaffolding (symbolic filters, retrieval, schema-typed I/O, LLM-as-judge loops, HITL gates, persistent state, audit trails) around an LLM core. We present a case study in academic supervision, a domain combining high-stakes recommendation, longitudinal accountability, and structured operational workflows.   We compare a baseline (ASA), a GPT-5 chatbot with no scaffolding, against a multi-module system (ASuS) that wraps the much smaller GPT-4o-mini in a LangGraph harness with symbolic-semantic retrieval, schema-validated outputs, LLM-as-judge with bounded retry, HITL gates, deterministic weighted risk scoring with LLM narration, and a per-node SQLite audit trail. The evaluation rubric is retargeted at six harness-mechanism dimensions (grounding, explainability, consistency, process integrity, cognitive load, constraint adherence). A blind ten-rater hybrid evaluation, supplemented by a 2 x 2 model-harness ablation, finds that ASuS, despite using a much smaller base model, outscores ASA on every dimension. Across ten raters the pooled mean for ASuS is 4.08 versus 1.23 for ASA, and 8 of 10 raters reject the null at alpha = 0.05 on a paired Wilcoxon test; full numbers are in Sections 6.4 and 6.7. The ablation confirms that the structural contributions of the harness are largely model-invariant. We extract seven recurring harness-engineering patterns and argue that where reliability, traceability, and institutional consistency matter more than open-ended fluency, harness engineering challenges the prevailing 'bigger model is better' intuition.",
+      "authors": [
+        "Akash Raj"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL",
+        "cs.AI"
+      ],
+      "published": "2026-07-16T08:14:27+00:00",
+      "link": "https://arxiv.org/pdf/2607.14707v1",
+      "tags": [
+        "keyword:vlm-cot",
+        "query:vlm-cot"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "uses GPT-5 and GPT-4o-mini from OpenAI in academic supervision",
+      "llm_evidence_cn": "在学术监督中使用OpenAI的GPT-5和GPT-4o-mini",
+      "llm_evidence": "在学术监督中使用OpenAI的GPT-5和GPT-4o-mini",
+      "canonical_evidence": "在学术监督中使用OpenAI的GPT-5和GPT-4o-mini",
+      "llm_tldr_en": "Compares GPT-5 chatbot with a scaffolded system using GPT-4o-mini for reliable academic supervision.",
+      "llm_tldr_cn": "该论文针对大语言模型在领域决策系统中的可靠性问题，提出基于LangGraph的框架(ASuS)包装GPT-4o-mini，并与GPT-5基线对比。实验显示轻量模型配以确定性脚手架可达到甚至超越大模型效果。",
+      "llm_tldr": "该论文针对大语言模型在领域决策系统中的可靠性问题，提出基于LangGraph的框架(ASuS)包装GPT-4o-mini，并与GPT-5基线对比。实验显示轻量模型配以确定性脚手架可达到甚至超越大模型效果。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "large model by big tech companies",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    }
+  ]
+}

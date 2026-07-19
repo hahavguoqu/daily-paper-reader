@@ -6,31 +6,41 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-18
-- 运行时间：2026-07-18 20:54:55 UTC
+- 最新运行日期：2026-07-19
+- 运行时间：2026-07-19 20:41:10 UTC
 - 运行状态：成功
-- 本次总论文数：3
-- 精读区：2
-- 速读区：1
+- 本次总论文数：7
+- 精读区：3
+- 速读区：4
 
 ### 今日简报（AI）
-今日日报聚焦多模态推理效率与思维链隐式低效诊断，两篇9分论文各有突破。
-最值得关注的方向：自调节隐式视觉工具可减少多模态推理开销，以及思维链中“有效未必必要”的无效步骤识别。
-建议优先精读这两篇高评分论文，重点关注其方法设计与实验结论，对优化大模型推理有直接参考价值。
-- 详情：[/202607/18/README](/202607/18/README)
+今日精读两篇高分论文（9.0/10）并速读三篇，聚焦推理优化与视觉语言模型。最值得关注的是《Structured Thoughts》提出的推理与上下文修剪新范式，以及《Visual Access Boundaries》揭示的视觉语言模型推理边界问题。后续可重点关注结构化思考在长文本推理中的应用，以及视觉边界对多模态系统可靠性的影响。
+- 详情：[/202607/19/README](/202607/19/README)
 
 ### 精读区论文标签
-1. [Beyond the Eye: Efficient Multimodal Reasoning via Self-Regulated Implicit Visual Tools](/202607/18/2607.11106v1-beyond-the-eye-efficient-multimodal-reasoning-via-self-regulated-implicit-visual-tools)  
+1. [Structured Thoughts For Improved Reasoning And Context Pruning](/202607/19/2607.10386v1-structured-thoughts-for-improved-reasoning-and-context-pruning)  
    标签：评分：9.0/10、query:vlm-cot
-   evidence：多模态推理与隐式视觉工具
-2. [Valid $\ne$ Necessary: Diagnosing Latent Inefficiency in Chain-of-Thought](/202607/18/2607.11266v1-valid-ne-necessary-diagnosing-latent-inefficiency-in-chain-of-thought)  
+   evidence：直接针对大语言模型中的链式思考推理
+2. [Visual Access Boundaries in Vision-Language Model Reasoning](/202607/19/2607.12815v1-visual-access-boundaries-in-vision-language-model-reasoning)  
    标签：评分：9.0/10、query:vlm-cot
-   evidence：CoT低效诊断
+   evidence：视觉语言模型中的链式思维推理
+3. [Answer-Conditioned Chain-of-Thought Distillation for Few-Shot Industrial Vision with Small VLMs](/202607/19/2607.10666v1-answer-conditioned-chain-of-thought-distillation-for-few-shot-industrial-vision-with-small-vlms)  
+   标签：评分：8.0/10、query:vlm-cot
+   evidence：针对工业视觉的小VLM的CoT蒸馏；涉及视觉CoT和扎实工程基础
 
 ### 速读区论文标签
-1. [Mixture of Cognitive Experts in Large Vision-Language Models](/202607/18/2607.10796v1-mixture-of-cognitive-experts-in-large-vision-language-models)  
+1. [Scaling and Stabilizing Large-Scale Embedding-Based Retrieval](/202607/19/2607.10096v1-scaling-and-stabilizing-large-scale-embedding-based-retrieval)  
    标签：评分：7.0/10、query:vlm-cot
-   evidence：处理大视觉语言模型中的推理，包含元认知等认知元素
+   evidence：来自沃尔玛的大规模嵌入检索统一流水线
+2. [Implicit Reasoning Steering via Concept Chaining](/202607/19/2607.14242v1-implicit-reasoning-steering-via-concept-chaining)  
+   标签：评分：7.0/10、query:vlm-cot
+   evidence：通过概念链进行隐式推理引导，与思维链相关
+3. [Harnessing LLMs for Reliable Academic Supervision: A Comparative Study](/202607/19/2607.14707v1-harnessing-llms-for-reliable-academic-supervision-a-comparative-study)  
+   标签：评分：7.0/10、query:vlm-cot
+   evidence：在学术监督中使用OpenAI的GPT-5和GPT-4o-mini
+4. [Comparing Semantic Navigation in Humans and Large Language Models using Natural Language Processing](/202607/19/2607.12195v1-comparing-semantic-navigation-in-humans-and-large-language-models-using-natural-language-processing)  
+   标签：评分：6.0/10、query:vlm-cot
+   evidence：使用大厂大型语言模型
 
 
 <div class="dpr-home-promo-card">

@@ -1,0 +1,229 @@
+Title: Scaling and Stabilizing Large-Scale Embedding-Based Retrieval
+
+URL Source: https://arxiv.org/pdf/2607.10096v1
+
+Published Time: Tue, 14 Jul 2026 00:34:36 GMT
+
+Number of Pages: 6
+
+Markdown Content:
+# Scaling and Stabilizing Large-Scale Embedding-Based Retrieval 
+
+# Zhen Yang ∗† 
+
+Walmart Global Tech Sunnyvale, USA njuyangz@gmail.com 
+
+# Juexin Lin ∗† 
+
+Walmart Global Tech Sunnyvale, USA linjuexin@gmail.com 
+
+# Hongwei Shang 
+
+Walmart Global Tech Sunnyvale, USA hongwei.shang@walmart.com 
+
+# Kaihao Li 
+
+Walmart Global Tech Sunnyvale, USA kaihao.li@walmart.com 
+
+# Feng Liu ∗
+
+Walmart Global Tech Sunnyvale, USA liu.f@pku.edu.cn 
+
+# Satya Chembolu 
+
+Walmart Global Tech Sunnyvale, USA satya.chembolu@walmart.com 
+
+# Xunfan Cai 
+
+Walmart Global Tech Sunnyvale, USA xunfan.cai@walmart.com 
+
+# Xinyi Liu 
+
+Walmart Global Tech Sunnyvale, USA xinyi.liu@walmart.com 
+
+# Cun Mu 
+
+Walmart Global Tech Sunnyvale, USA cun.mu@walmart.com 
+
+# Tony Lee ∗
+
+Walmart Global Tech Sunnyvale, USA tonyleexyz@gmail.com 
+
+# Ciya Liao ∗
+
+Walmart Global Tech Sunnyvale, USA liao_ciya@yahoo.com 
+
+## Abstract 
+
+Embedding-based retrieval (EBR) is foundational to large-scale e-commerce search, yet its effectiveness is often constrained by the quality of training signals and the representational capacity of the encoder. Standard dual-encoders suffer from a training-inference gap: they are optimized on narrow candidate pools but must dis-criminate against hundreds of millions of items during inference. Furthermore, while transitioning to higher-capacity backbones can mitigate this gap, simply replacing a mature model can lead to inconsistent retrieval behavior and a loss of the domain-specific knowledge established in previous iterations. In this paper, we present a unified pipeline deployed at Walmart that addresses both signal quality and model evolution. Our contributions are two-fold: (1) Hybrid Hard Negative Mining: We integrate Online Cross-Batch Sampling to increase negative diversity by an order of magnitude and Hybrid Offline Mining, which combines cross-encoder predic-tions with metadata heuristics to identify nuanced mismatches. (2) Legacy-Aware Distillation: We transition from DistilBERT to a higher-capacity GTE-base encoder. To ensure a smooth and supe-rior transition, we introduce a Warm-Start Distillation technique that transfers domain-specific expertise from the legacy model to the new backbone. Validated through extensive offline experiments and online A/B testing, the proposed pipeline is deployed in live production, delivering a +7.34% improvement in NDCG@5 and a +0.50% lift in gross revenue. 
+
+## CCS Concepts 
+
+• Information systems → Retrieval models and ranking . 
+
+> ∗Work done while at Walmart.
+> †Both authors contributed equally to this research.
+> This work is licensed under a Creative Commons Attribution 4.0 International License.
+> SIGIR ’26, Melbourne, VIC, Australia
+> ©2026 Copyright held by the owner/author(s). ACM ISBN 979-8-4007-2599-9/2026/07 https://doi.org/10.1145/3805712.3808474
+
+## Keywords 
+
+Embedding-based Retrieval, Hard Negative Mining, Knowledge Distillation, E-commerce Search, Dense Retrieval, Dual-Encoders 
+
+ACM Reference Format: 
+
+Zhen Yang, Juexin Lin, Hongwei Shang, Kaihao Li, Feng Liu, Satya Chem-bolu, Xunfan Cai, Xinyi Liu, Cun Mu, Tony Lee, and Ciya Liao. 2026. Scaling and Stabilizing Large-Scale Embedding-Based Retrieval. In Proceedings of the 49th International ACM SIGIR Conference on Research and Development in Information Retrieval (SIGIR ’26), July 20–24, 2026, Melbourne, VIC, Australia. 
+
+ACM, New York, NY, USA, 6 pages. https://doi.org/10.1145/3805712.3808474 
+
+## 1 Introduction 
+
+Embedding-based retrieval (EBR) using dual-encoder architectures and Approximate Nearest Neighbor (ANN) [ 10 ] search has become a foundational component of large-scale e-commerce platforms. By mapping queries and products into a shared dense vector space, EBR enables semantic matching that transcends traditional lexical constraints and addresses common issues like the vocabulary mis-match problem. Prior works [ 4, 16 , 22 ] have demonstrated that EBR can significantly improve recall and user engagement over purely lexical approaches. As a result, EBR has been widely adopted in the search stacks of major platforms, including Walmart, Amazon, Taobao, and Facebook [ 5, 13 , 15 , 16 , 19 , 26 ]. However, despite these semantic advantages of EBR, its effectiveness in production is often constrained by a training-inference gap and model capacity limits. While in-batch sampling is efficient and widely adopted in e-commerce [ 6 , 15 , 16 ], it is fundamentally constrained by the narrow diversity of a single batch. To expose models to harder distractors, offline mining methods have evolved from lexical heuristics [ 11 , 25 ]to ANCE-style periodic index refreshes [ 31 ], often augmented with domain-specific constraints [ 15 – 17 ]. However, because offline min-ing evaluates a massive global index to retrieve the most challenging candidates, it is highly susceptible to sampling false negatives. This noise degrades the quality of the training set. To scale negative diversity while preserving signal quality, we propose a dual-signal approach. Online, we implement cross-batch sampling [ 23 ] to share representations across GPUs, exponentially expanding the negative pool to better approximate massive catalogs. Offline, we capture arXiv:2607.10096v1 [cs.IR] 11 Jul 2026 SIGIR ’26, July 20–24, 2026, Melbourne, VIC, Australia Zhen Yang et al. 
+
+a broader, more diverse range of hard negatives by extending Lin et al . [15] ’s framework, integrating a cross-encoder and metadata guardrails to safely mine semantically confusable negatives that traditional heuristics miss. Enriched training signals expose a secondary bottleneck: model capacity. The representational capacity of models in industry like DistilBERT [ 28 ] often lags behind the state-of-the-art, which strug-gle to resolve the complex decision boundaries of harder nega-tives. Transitioning to a higher-capacity encoder like GTE-base [14 ] mitigates this gap but introduces significant model-evolution risk. Even with standard fine-tuning on current data, a newly initial-ized high-capacity model often fails to outperform a smaller legacy model that has been iteratively refined over multiple generations. Starting "cold" from public checkpoints discards this accumulated domain knowledge, consistently leading to performance regres-sion. To safely execute this upgrade, we introduce a Legacy-Aware Warm-Start Distillation technique. While traditional knowledge distillation typically focuses on compressing a large teacher into a smaller student for inference efficiency [ 7 , 8], recent literature has begun exploring "inverse" distillation to bootstrap larger archi-tectures [ 27 ]. Building on this emerging paradigm, we utilize the highly refined legacy model as a teacher for the larger, uninitial-ized backbone prior to full fine-tuning, we prevent performance instability. With this warm start, our final model preserves histori-cal domain expertise and ensures the higher-capacity model fully exploits the enriched signals. To address these challenges, we propose a unified "Scaling and Stabilizing" framework deployed at Walmart: 
+
+• Scaling Negatives through Hybrid Mining: We imple-ment Online Cross-Batch Sampling to expand the negative pool by an order of magnitude. This is augmented by Hy-brid Offline Mining, which integrates a cross-encoder with metadata guardrails to identify nuanced mismatches. 
+
+• Stabilizing through Legacy-Aware Distillation: We fa-cilitate the transition to a higher-capacity encoder using a Warm-Start Distillation technique. By initializing the new student model to approximate the score distribution of the legacy model, we preserve domain-specific expertise while unlocking the capacity to exploit improved training signals. The proposed system has been evaluated both offline and on-line, deployed to serve real user traffic, delivering consistent im-provements across relevance metrics (NDCG@5 + 7.34%) and key business metrics (gross revenue +0.50%). 
+
+## 2 Methodology 2.1 Model Architecture 
+
+2.1.1 Dense Retrieval Model. We adopt the same dual-encoder model architecture and training objective as described in Lin et al .[15] . Queries and products (product title associated with attributes: product type, brand, color, age, gender) are independently encoded into dense vector representations using identical encoder architec-tures, and retrieval is performed via similarity search in the shared embedding space. To balance user interaction signals with semantic fidelity, we optimize a joint objective comprising an Engagement Loss ( L𝐸𝑛𝑔 ) and a Relevance Loss ( L𝑅𝑒𝑙 ). The formulation is defined as: 
+
+L𝐸𝑛𝑔 𝑖 = −
+
+> 𝑁
+
+∑︁ 
+
+> 𝑗 =1
+
+˜𝑆 𝑖 𝑗 log exp (cos (𝑞 𝑖 , 𝑝 𝑗 )/ 𝜎 )
+
+Í𝑁 𝑘 =1 exp (cos (𝑞 𝑖 , 𝑝 𝑘 )/ 𝜎 )
+
+!
+
+, (1) 
+
+L𝑅𝑒𝑙 𝑖 = −
+
+> 𝑁
+
+∑︁ 
+
+> 𝑗 =1
+
+˜𝑅 𝑖 𝑗 log exp (cos (𝑞 𝑖 , 𝑝 𝑗 )/ 𝜏 )
+
+Í𝑁 𝑘 =1 exp (cos (𝑞 𝑖 , 𝑝 𝑘 )/ 𝜏 )
+
+!
+
+, (2) 
+
+L𝑖 = 𝜔 · L 𝐸𝑛𝑔 𝑖 + ( 1 − 𝜔 ) · L 𝑅𝑒𝑙 𝑖 , (3) where 𝑁 denotes the number of products, and cos (· , ·) is the cosine similarity between two embeddings. 𝑞 𝑖 and 𝑝 𝑗 represent the em-beddings for query 𝑖 and product 𝑗 , respectively. ˜𝑆 ′ 
+
+> 𝑖 𝑗
+
+and ˜𝑅 𝑖 𝑗 are the normalized engagement and relevance labels. 𝜎 and 𝜏 are learnable temperature parameters. Finally, 𝜔 is a hyperparameter empirically selected to balance the contribution of engagement and relevance. In our work, we set 𝜔 = 0.5.
+
+2.1.2 Relevance Cross-Encoder Model. To assess query-product relevance, we employ a BERT-based [ 3] cross-encoder model [ 2,18 , 21 ]. Similar to Mehrdad et al . [18] , the model is formulated as a three-class classification task [ 24 ], producing probabilities over irrelevant, semi-relevant, and exact match. To train this model, we first optimize a Mistral-7B teacher model [ 9] on small-scale human-annotated data using cross-entropy loss. We then transfer this knowledge to the BERT student via distillation [ 29 ] using a Kullback-Leibler (KL) divergence objective [ 12 ]. For the model’s input, the query is concatenated with the product’s text attributes, including title, product type (PT), brand, color, and gender, with dedicated separator tokens. This combined sequence is fed into the BERT encoder and passed through non-linear layers with a softmax activation to obtain the final three-dimensional class probability distribution. 
+
+## 2.2 Scaling Negatives through Hybrid Mining 
+
+2.2.1 Cross-Batch Online Hard Negatives. While standard in-batch sampling is computationally efficient because embeddings can be reused [ 15 , 16 ], it fundamentally restricts the negative pool to the local batch size 𝐵 . To expose the model to a larger and more chal-lenging distribution without incurring additional encoder forward passes, we implement online cross-batch negative sampling [ 30 ]. Formally, let 𝑞 𝑖 ∈ R𝑑 be the encoded representation of a query on a given device, and let P𝑙𝑜𝑐𝑎𝑙 ∈ R𝐵 ×𝑑 denote the local item embed-ding matrix. In a standard setup, the contrastive loss denominator is strictly bounded by the local batch size 𝐵 . Under the cross-batch framework, we utilize a differentiable all-gather communication primitive across 𝐷 distributed devices to construct a global item embedding matrix P𝑔𝑙𝑜𝑏𝑎𝑙 ∈ R(𝐵 ×𝐷 ) × 𝑑 . This expands the negative candidate pool by allowing the similarity function to be computed against all parallel mini-batches, scaling the effective contrastive space from 𝐵 to 𝐵 × 𝐷 . This substantially increases the diversity of negatives seen during training while preserving the memory footprint of standard in-batch execution. 
+
+2.2.2 Offline Hard Negative Mining. While heuristic offline mining based on Product Type (PT) mismatching successfully identifies basic negatives [ 15 ], it fails to capture nuanced distractors—such as items that share the correct PT but mismatch on critical attributes like brand or size. As illustrated in Table 1, such cases are often Scaling and Stabilizing Large-Scale Embedding-Based Retrieval SIGIR ’26, July 20–24, 2026, Melbourne, VIC, Australia 
+
+Table 1: Examples of challenging offline hard negatives. In these instances, the heuristic Product Type (PT) successfully matches, yet the candidate remains strictly irrelevant due to critical attribute mismatches.            
+
+> Query Product Class Explanation
+> LG Television 32" 1080p Samsung 65" 4K Smart LED TV Irrelevant PT matches, but major attribute mismatches: wrong brand, much larger size, and different resolution (4K vs. 1080p). Revlon round hair brush Conair Square Professional Hair Brush, Black Irrelevant PT matches, but both the brand and brush shape/type differ from the query intent.
+
+excluded by PT-only filtering. To mine these challenging hard neg-atives and provide more informative training signals, we augment the iterative ANCE-style pipeline with the cross-encoder relevance model introduced in Section 2.1.2. As detailed in Figure 1, we first retrieve the top-𝐾 candidates via an ANN search using the model from the previous training iteration. The cross-encoder then evalu-ates these candidates to isolate hard semantic distractors. Finally, the remaining items are classified into heuristic negatives or semi-positives based on PT matching and token overlap constraints, constructing a highly refined dataset for the next training cycle. 
+
+## 2.3 Legacy-Aware Warm-Start Distillation 
+
+Even when high-quality training signals are available, the rep-resentational capacity of the model often becomes the limiting factor. While lightweight legacy models like DistilBERT (teacher 
+
+𝑀 T ) struggle to resolve harder negatives, upgrading to a higher-capacity student 𝑀 S (e.g., GTE-base) introduces model-evolution risk. While standard fine-tuning on a recent snapshot of engage-ment data captures macro-level user intent, it does not fully en-capsulate the platform’s historical edge cases. The legacy model (𝑀 T ) has undergone continual, iterative refinement over multiple generations—accumulating implicit knowledge of seasonal shifts, domain-specific vocabulary nuances, and historically mined hard negatives that are not entirely represented in a single, temporally bounded training snapshot. Therefore, initializing a higher-capacity model from scratch risks discarding this deeply embedded historical expertise. To mitigate this domain shift and preserve the knowledge captured by the previous system, we introduce a Legacy-Aware Warm-Start distillation phase prior to full fine-tuning. As illustrated in Figure 2, this stabilizing phase bypasses the typical "cold start" from a public checkpoint by first transferring knowledge from the legacy production model. Following this Warm-Start Distillation, the newly initialized model proceeds to standard iterative training utilizing both the cross-batch and hybrid offline negatives. We transfer accumulated historical expertise of 𝑀 T by mini-mizing the KL divergence between the temperature-scaled score distributions of the legacy production dual-encoder teacher and high-capacity student. Here, 𝑀 T strictly refers to the original pro-duction baseline model (the DistilBERT architecture proposed by Lin et al . [15] ), rather than the newly data refreshed checkpoint. For a query 𝑞 and candidate set 𝑃 ,
+
+L𝑊 𝑆 =∑︁  
+
+> 𝑝 ∈𝑃
+
+𝑠 T (𝑞, 𝑝 ) log 
+
+ 𝑠 T (𝑞, 𝑝 )
+
+𝑠 S (𝑞, 𝑝 )
+
+
+
+,
+
+where 𝑠 (𝑞, 𝑝 ) = exp (cos (𝑞,𝑝 )/ 𝑡 )Í𝑝 ′ ∈𝑃 exp (cos (𝑞,𝑝 ′ )/ 𝑡 ) and 𝑡 is distillation temperature. In our work, we set 𝑡 = 1.
+
+## 3 Offline Experiments 3.1 Experiment setup 
+
+To capture broad user intent while adhering strictly to industry norms for data privacy, we relied exclusively on anonymized and aggregated engagement data. Specifically, we sampled 4 million fully anonymized queries with at least one order from a one-year aggregation of system logs. By collecting the top 300 impressed products per query, we safely generated approximately 900 million training pairs. We evaluated semantic relevance strictly on Exact Match (EM) targets using two distinct index scales: (1) A Small Index of 3.6M products: 122k queries with comprehensive human annotations to measure EM Recall@K. (2) A Big Index of 200M products: 1k traffic-weighted queries to measure EM Precision@K, effectively testing the model’s robustness against false positives in a massive search space. We used the small index for rapid iteration and recall-focused analysis, and the big index to better reflect precision behavior un-der realistic large-scale retrieval conditions. In practice, we often observe strong alignment between EM Recall and EM Precision across models. In this work, we report metrics at 𝐾 = 20 , noting that evaluations at larger retrieval depths (e.g., 𝐾 ∈ { 128 , 256 , 512 })yield consistent performance trends. Models were optimized using Adam [ 1] with a learning rate of 2𝑒 − 6 on 8 NVIDIA A100 GPUs via PyTorch [ 20 ]. Each query sampled 7 positive products, 3 offline negatives and 5 cross-batch negatives. Distributing a local batch size of 72 across the cluster yielded an effective global batch size of 576. Finally, the model minimized a multi-objective loss (Section 2.1.1) for 40 epochs. 
+
+## 3.2 Offline Experiments Results 
+
+To rigorously quantify the contribution of each proposed enhance-ment, we conducted a progressive ablation study. By incrementally adding components to the baseline, we isolated their specific impact on retrieval performance. Table 2 summarizes these findings as rela-tive improvements over the previous production model. Because all variants incorporate standard in-batch sampling, the reported gains explicitly reflect the additive value of our proposed cross-batch and offline mining strategies. In our production pipeline, offline evalu-ations serve as directional indicators for rapid iteration. Because these metrics are computed over massive transient pipelines, we rely on large-scale online A/B testing (Section 4) to establish strict statistical significance. SIGIR ’26, July 20–24, 2026, Melbourne, VIC, Australia Zhen Yang et al. 
+
+Figure 1: Flowchart of the hybrid offline hard negative mining process. 
+
+Figure 2: Flowchart of legacy-aware warm-start distillation. Table 2: Offline results for the progressive ablation study. Performance is reported as relative improvements over the previous production baseline for Data Refresh (DR), Cross-Batch Negatives (CB), Hybrid Hard Negatives (HHN), and Warm-Start Distillation (WS).               
+
+> Model EM Recall@20 EM Precision@20 DistilBERT proposed in [15] (baseline) --DistilBERT + DR +2.67% +1.60% DistilBERT + DR + CB +2.88% +1.84% DistilBERT + DR + CB + HHN +3.15% +2.09% GTE-base + DR + CB + HHN +3.74% +1.97% GTE-base + DR + CB + HHN + WS +4.00% +2.01%
+
+3.2.1 Impact of data recency. Refreshing the training data (DR) led to consistent baseline improvements, driving relative gains of +2.67% in EM Recall@20 and +1.60% in EM Precision@20. These results highlight the critical impact of temporal distribution shift in evolving e-commerce catalogs. However, while data recency establishes a stronger baseline, it does not fundamentally resolve the structural limitations of the dual-encoder, such as its inability to distinguish fine-grained distractors. 
+
+3.2.2 Impact of cross-batch negatives. To address the limitations of local batch sizes, we integrated cross-batch (CB) negatives. By sharing embeddings across all distributed GPUs, we exponentially expand the negative pool. This provided an incremental lift over the data-refreshed model, bringing the total EM Recall@20 gain to +2.88% over the baseline. This suggests that exposing the model to a much larger and more diverse set of negatives significantly improves its discriminative power in the dense vector space. 
+
+3.2.3 Impact of hybrid offline hard negative mining. Integrating our hybrid hard negatives (HHN) pushed the cumulative improve-ments to +3.15% in EM Recall@20 and +2.09% in EM Precision@20. Because the baseline already filters basic structural mismatches via PT heuristics, the primary contribution of HHN is its ability to ex-plicitly penalize nuanced semantic distractors. By capturing highly confusable hard negatives that share the correct PT but remain irrelevant, HHN provides strictly verified, high-quality training signals that traditional metadata rules alone cannot surface. 
+
+3.2.4 Impact of encoder capacity and warm-start. Finally, we eval-uated whether the model architecture itself throttles performance given these enriched training signals. Transitioning from the Distil-BERT backbone to the higher-capacity GTE-Base encoder yielded a substantial jump in recall (+3.74%). Interestingly, we observed a slight regression in precision (+1.97% for GTE-base vs. +2.09% for DistilBERT). This likely reflects a domain-shift penalty: while the larger model’s increased capacity allows it to retrieve more valid targets, initializing it "cold" discards the baseline model’s deeply learned boundary constraints. Crucially, applying our Legacy-Aware Warm-Start (WS) initialization successfully recovered this lost preci-sion (+2.01%) while driving the highest overall recall (+4.00%). This confirms that transitioning to a high-capacity encoder requires explicit knowledge transfer to fully exploit enriched signals. From a theoretical standpoint, we acknowledge that the success of this Warm-Start Distillation is likely a combined effect. It preserves Scaling and Stabilizing Large-Scale Embedding-Based Retrieval SIGIR ’26, July 20–24, 2026, Melbourne, VIC, Australia 
+
+the deeply learned historical boundary constraints of the legacy system, while simultaneously leveraging the well-documented reg-ularization benefits of knowledge distillation, where the teacher’s soft labels provide structural inductive biases that prevent the higher-capacity student from overfitting to false positives. While the Warm-Start’s offline gains (+0.26% EM Recall@20 and +0.04% EM Precision@20) appear modest, they represent a massive real-world impact at Walmart’s scale. These shifts surface millions of additional relevant products, setting the stage for the live business metrics detailed in Section 4. 
+
+## 4 Online Experiments 
+
+We deployed our best-performing model (GTE-base with hybrid negatives mining and warm-start) into Walmart’s production search environment. We then conducted a two-stage evaluation: a human expert review to assess relevance, followed by large-scale A/B test-ing to measure business impact. These online results corroborate our offline findings. 
+
+Manual Relevance Evaluation. We performed a side-by-side manual evaluation to ensure the new model met our strict rel-evance standards. We identified that the new model altered the retrieved top-10 results for 20.85% of total search traffic compared to the baseline [ 15 ]. We presented the top-10 retrieved items to professional human annotators. As shown in Table 3, the proposed model demonstrated a statistically significant lift in ranking qual-ity, achieving a +7.34% improvement in NDCG@5 and +6.89% in NDCG@10. 
+
+Live A/B Testing. Following the successful manual evaluation, we conducted A/B testing on live user traffic. The model successfully translated its semantic relevance gains into tangible business value. As shown in Table 3, the proposed model delivered a statistically significant gross revenue lift of +0.50% ( 𝑝 = 0.03 ). 
+
+Table 3: Manual evaluation and online A/B testing results comparing the proposed model against the baseline [15]. 
+
+NDCG@5 Lift (p-val) NDCG@10 Lift (p-val) Revenue Lift (p-val) +7.34% (0.00) +6.89% (0.00) +0.50% (0.03) 
+
+## 5 Conclusion 
+
+In this work, we present a unified framework deployed in Walmart’s production system that successfully bridges the training-inference gap in large-scale e-commerce retrieval. By scaling negative di-versity through an integration of online cross-batch sampling and the novel metadata-aware offline mining, we expose models to a highly refined distribution of challenging distractors. Further-more, our Legacy-Aware Warm-Start distillation safely mitigates model-evolution risks during capacity upgrades, ensuring that new encoders retain historical domain expertise while fully exploiting enriched training signals. Together, these advancements drive con-sistent improvements in search relevance and deliver significant tangible business value in live user traffic. 
+
+## Presenter Bio 
+
+Hongwei Shang is a Principal Data Scientist at Walmart Global Tech, working on large-scale machine learning systems for e-commerce search, including retrieval and ranking. Her research focuses on embedding-based retrieval, relevance modeling, and knowledge dis-tillation, with an emphasis on bridging offline training and produc-tion deployment. She holds a Ph.D. in Statistics from the University of Connecticut. 
+
+## References 
+
+[1] Kingma DP Ba J Adam et al . 2014. A method for stochastic optimization. arXiv preprint arXiv:1412.6980 1412, 6 (2014). [2] Shuyi Chen, Philip Fu, Ajit Puthenputhussery, Changsung Kang, Ming Sun, Cun Mu, Sachin Kumar Yadav, and Hongwei Shang. 2026. Bert-Based Cross-Encoder for Large-Scale Engagement Prediction and Re-Ranking in Walmart Search Engine. In Proceedings of the 49th International ACM SIGIR Conference on Research and Development in Information Retrieval .[3] Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. 2019. Bert: Pre-training of deep bidirectional transformers for language understanding. In 
+
+Proceedings of the 2019 conference of the North American chapter of the association for computational linguistics: human language technologies, volume 1 (long and short papers) . 4171–4186. [4] Niklas Freymuth, Dong Liu, Thomas Ricatte, and Saab Mansour. 2025. Hierar-chical Multi-field Representations for Two-Stage E-commerce Retrieval. arXiv preprint arXiv:2501.18707 (2025). [5] Yunzhong He, Yuxin Tian, Mengjiao Wang, Feier Chen, Licheng Yu, Mao-long Tang, Congcong Chen, Ning Zhang, Bin Kuang, and Arul Prakash. 2023. Que2engage: Embedding-based retrieval for relevant and engaging products at facebook marketplace. In Companion Proceedings of the ACM Web Conference 2023 . 386–390. [6] Matthew Henderson, Rami Al-Rfou, Brian Strope, Yun-hsuan Sung, Laszlo Hege-dus, Ray Kurzweil, et al . 2017. Efficient natural language response suggestion for smart reply. arXiv preprint arXiv:1705.00652 (2017). [7] Geoffrey Hinton, Oriol Vinyals, and Jeff Dean. 2015. Distilling the knowledge in a neural network. arXiv preprint arXiv:1503.02531 (2015). [8] Sebastian Hofstätter, Sophia Althammer, Michael Schröder, Mete Sertkan, and Allan Hanbury. 2020. Improving efficient neural ranking models with cross-architecture knowledge distillation. arXiv preprint arXiv:2010.02666 (2020). [9] Albert Qiaochu Jiang, Alexandre Sablayrolles, Arthur Mensch, Chris Bamford, Devendra Singh Chaplot, Diego de Las Casas, Florian Bressand, Gianna Lengyel, Guillaume Lample, Lucile Saulnier, Lélio Renard Lavaud, Marie-Anne Lachaux, Pierre Stock, Teven Le Scao, Thibaut Lavril, Thomas Wang, Timothée Lacroix, and William El Sayed. 2023. Mistral 7B. arXiv preprint abs/2310.06825 (2023). https://arxiv.org/abs/2310.06825 [10] Jeff Johnson, Matthijs Douze, and Hervé Jégou. 2019. Billion-scale similarity search with GPUs. IEEE transactions on big data 7, 3 (2019), 535–547. [11] Vladimir Karpukhin, Barlas Oguz, Sewon Min, Patrick SH Lewis, Ledell Wu, Sergey Edunov, Danqi Chen, and Wen-tau Yih. 2020. Dense Passage Retrieval for Open-Domain Question Answering.. In EMNLP (1) . 6769–6781. [12] Solomon Kullback. 1951. Kullback-leibler divergence. Encyclopedia of Machine Learning (1951), 581–583. [13] Sen Li, Fuyu Lv, Taiwei Jin, Guli Lin, Keping Yang, Xiaoyi Zeng, Xiao-Ming Wu, and Qianli Ma. 2021. Embedding-based product retrieval in taobao search. In 
+
+Proceedings of the 27th ACM SIGKDD Conference on Knowledge Discovery & Data Mining . 3181–3189. [14] Zehan Li, Xin Zhang, Yanzhao Zhang, Dingkun Long, Pengjun Xie, and Meishan Zhang. 2023. Towards general text embeddings with multi-stage contrastive learning. arXiv preprint arXiv:2308.03281 (2023). [15] Juexin Lin, Sachin Yadav, Feng Liu, Nicholas Rossi, Praveen R Suram, Satya Chem-bolu, Prijith Chandran, Hrushikesh Mohapatra, Tony Lee, Alessandro Magnani, et al . 2024. Enhancing Relevance of Embedding-based Retrieval at Walmart. In 
+
+Proceedings of the 33rd ACM International Conference on Information and Knowl-edge Management . 4694–4701. [16] Alessandro Magnani, Feng Liu, Suthee Chaidaroon, Sachin Yadav, Praveen Reddy Suram, Ajit Puthenputhussery, Sijie Chen, Min Xie, Anirudh Kashi, Tony Lee, et al . 2022. Semantic retrieval at walmart. In Proceedings of the 28th ACM SIGKDD Conference on Knowledge Discovery and Data Mining . 3495–3503. [17] Hansa Meghwani, Amit Agarwal, Priyaranjan Pattnayak, Hitesh Laxmichand Patel, and Srikant Panda. 2025. Hard Negative Mining for Domain-Specific Retrieval in Enterprise Systems. arXiv preprint arXiv:2505.18366 (2025). [18] Navid Mehrdad, Hrushikesh Mohapatra, Mossaab Bagdouri, Prijith Chandran, Alessandro Magnani, Xunfan Cai, Ajit Puthenputhussery, Sachin Yadav, Tony Lee, ChengXiang Zhai, et al . 2024. Large language models for relevance judgment in product search. arXiv preprint arXiv:2406.00247 (2024). SIGIR ’26, July 20–24, 2026, Melbourne, VIC, Australia Zhen Yang et al. 
+
+[19] Aashiq Muhamed, Sriram Srinivasan, Choon-Hui Teo, Qingjun Cui, Belinda Zeng, Trishul Chilimbi, and SVN Vishwanathan. 2023. Web-scale semantic product search with large language models. In Pacific-Asia Conference on Knowledge Discovery and Data Mining . Springer, 73–85. [20] Adam Paszke, Sam Gross, Francisco Massa, Adam Lerer, James Bradbury, Gregory Chanan, Trevor Killeen, Zeming Lin, Natalia Gimelshein, Luca Antiga, et al . 2019. Pytorch: An imperative style, high-performance deep learning library. Advances in neural information processing systems 32 (2019). [21] Ajit Puthenputhussery, Changsung Kang, Alessandro Magnani, Tian Zhang, Hongwei Shang, Nitin Yadav, Prijith Chandran, Bhavin Madhani, Yuan-Tai Fu, He Wang, et al . 2025. Large Scale Deployment of BERT Based Cross Encoder Model for Re-Ranking in Walmart Search Engine. In Proceedings of the 48th International ACM SIGIR Conference on Research and Development in Information Retrieval . 4365–4369. [22] Yiming Qiu, Chenyu Zhao, Han Zhang, Jingwei Zhuo, Tianhao Li, Xiaowei Zhang, Songlin Wang, Sulong Xu, Bo Long, and Wen-Yun Yang. 2022. Pre-training tasks for user intent detection and embedding retrieval in e-commerce search. In 
+
+Proceedings of the 31st ACM International Conference on Information & Knowledge Management . 4424–4428. [23] Yingqi Qu, Yuchen Ding, Jing Liu, Kai Liu, Ruiyang Ren, Wayne Xin Zhao, Daxi-ang Dong, Hua Wu, and Haifeng Wang. 2021. RocketQA: An optimized training approach to dense passage retrieval for open-domain question answering. In 
+
+Proceedings of the 2021 conference of the North American chapter of the association for computational linguistics: human language technologies . 5835–5847. [24] Chandan K Reddy, Lluís Màrquez, Fran Valero, Nikhil Rao, Hugo Zaragoza, Sambaran Bandyopadhyay, Arnab Biswas, Anlu Xing, and Karthik Subbian. 2022. Shopping queries dataset: A large-scale ESCI benchmark for improving product search. arXiv preprint arXiv:2206.06588 (2022). [25] Stephen E Robertson and Steve Walker. 1994. Some simple effective approxi-mations to the 2-poisson model for probabilistic weighted retrieval. In SIGIR’94: Proceedings of the Seventeenth Annual International ACM-SIGIR Conference on Research and Development in Information Retrieval, organised by Dublin City University . Springer, 232–241. [26] Nicholas Rossi, Juexin Lin, Feng Liu, Zhen Yang, Tony Lee, Alessandro Magnani, and Ciya Liao. 2024. Relevance filtering for embedding-based retrieval. In Pro-ceedings of the 33rd ACM International Conference on Information and Knowledge Management . 4828–4835. [27] Jiacheng Ruan, Jingsheng Gao, Mingye Xie, Daize Dong, Suncheng Xiang, Ting Liu, and Yuzhuo Fu. 2024. iDAT: inverse distillation adapter-tuning. In 2024 IEEE International Conference on Multimedia and Expo (ICME) . IEEE, 1–6. [28] Victor Sanh, Lysandre Debut, Julien Chaumond, and Thomas Wolf. 2019. Dis-tilBERT, a distilled version of BERT: smaller, faster, cheaper and lighter. arXiv preprint arXiv:1910.01108 (2019). [29] Hongwei Shang, Nguyen Vo, Nitin Yadav, Tian Zhang, Ajit Puthenputhussery, Xunfan Cai, Shuyi Chen, Prijith Chandran, and Changsung Kang. 2025. Knowl-edge distillation for enhancing walmart e-commerce search relevance using large language models. In Companion Proceedings of the ACM on Web Conference 2025 .449–457. [30] Jinpeng Wang, Jieming Zhu, and Xiuqiang He. 2021. Cross-batch negative sam-pling for training two-tower recommenders. In Proceedings of the 44th interna-tional ACM SIGIR conference on research and development in information retrieval .1632–1636. [31] Lee Xiong, Chenyan Xiong, Ye Li, Kwok-Fung Tang, Jialu Liu, Paul Bennett, Junaid Ahmed, and Arnold Overwijk. 2020. Approximate Nearest Neighbor Negative Contrastive Learning for Dense Text Retrieval. arXiv preprint arXiv:2007.00808 
+
+(2020).
