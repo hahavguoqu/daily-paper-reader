@@ -1,0 +1,270 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-07-20T21:08:53.531555+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 4,
+    "deep_cap": 6,
+    "deep_selected": 4,
+    "quick_candidates": 2,
+    "quick_skim_target": 11,
+    "quick_selected": 2
+  },
+  "deep_dive": [
+    {
+      "id": "2607.11106v1",
+      "source": "arxiv",
+      "title": "Beyond the Eye: Efficient Multimodal Reasoning via Self-Regulated Implicit Visual Tools",
+      "abstract": "Recent multimodal large language models (MLLMs) have made remarkable progress on fine-grained perception tasks under the \"Thinking with Images\" (TwI) paradigm by iteratively performing various visual tool operations. However, this paradigm relies heavily on frequent external tool calls and repeated image re-encoding, which leads to substantial computational overhead and inference latency. To address these issues, we propose Beyond the Eye (BEE), a novel implicit visual tool paradigm centered on self-regulated capability. BEE directly incorporates visual tool invocation behaviors into the training objective and encourages the model to develop a self-regulated invocation mechanism. This design enables the model to adaptively balance internal knowledge and implicit tools, avoiding redundant tool usage while substantially reducing inference latency. Specifically, BEE involves a two-stage training process: (1) Formalized Chain-of-Thought (CoT) Supervised Fine-tuning (SFT). We construct CoT trajectories with structured tool slots and mixed invocation states. This stage activates the model's implicit tool representations and adaptive switching capability. (2) Self-regulated Reward-Driven Alignment. To address redundant tool usage caused by ambiguous cognitive boundaries, we first introduce the Net Tool Gain (NTG) metric to quantify this phenomenon. Based on this observation, we further propose a self-regulated reward mechanism. This mechanism penalizes ineffective tool dependency and encourages the model to perform knowledge routing, ensuring that implicit tools are invoked only when the model's internal knowledge is insufficient. BEE achieves state-of-the-art performance in fine-grained visual perception while remaining competitive in general reasoning tasks and achieving substantial gains in inference efficiency.",
+      "authors": [
+        "Xiuwei Chen",
+        "Quanlin Chen",
+        "Wentao Hu",
+        "Zisheng Chen",
+        "Kun Xiang",
+        "Zehua Ma",
+        "Mingyang Zhang",
+        "Jianhua Han",
+        "Hanhui Li",
+        "Hang Xu",
+        "Xiaodan Liang"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-07-13T05:32:00+00:00",
+      "link": "https://arxiv.org/pdf/2607.11106v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "Visual chain-of-thought reasoning via self-regulated implicit tools for MLLMs",
+      "llm_evidence_cn": "通过自调节隐式视觉工具实现多模态大模型的视觉链式推理",
+      "llm_evidence": "通过自调节隐式视觉工具实现多模态大模型的视觉链式推理",
+      "canonical_evidence": "通过自调节隐式视觉工具实现多模态大模型的视觉链式推理",
+      "llm_tldr_en": "BEE proposes a self-regulated implicit visual tool paradigm for multimodal LLMs to perform efficient chain-of-thought reasoning on images without heavy external tool calls, reducing latency and computational overhead.",
+      "llm_tldr_cn": "现有多模态大模型在'用图像思考'范式下需要频繁调用外部视觉工具和重复编码，导致巨大计算开销。本文提出BEE，一种自调节隐式视觉工具范式，将工具调用行为融入训练目标，使模型自适应平衡内部能力与外部依赖。在视觉推理任务上，BEE显著降低了推理延迟和计算量，同时保持甚至提升了感知精度。该工作为高效多模态链式推理提供了新思路。",
+      "llm_tldr": "现有多模态大模型在'用图像思考'范式下需要频繁调用外部视觉工具和重复编码，导致巨大计算开销。本文提出BEE，一种自调节隐式视觉工具范式，将工具调用行为融入训练目标，使模型自适应平衡内部能力与外部依赖。在视觉推理任务上，BEE显著降低了推理延迟和计算量，同时保持甚至提升了感知精度。该工作为高效多模态链式推理提供了新思路。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.15591v1",
+      "source": "arxiv",
+      "title": "RecGPT-V3 Technical Report",
+      "abstract": "Large language models (LLMs) are transforming recommender systems from matching co-occurrence patterns in historical behavior toward reasoning about the intent that drives it. RecGPT-V1 pioneered this paradigm on Taobao by centering user understanding, and RecGPT-V2 scaled it via coordinated multi-agent reasoning; both are deployed in production with consistent gains in user experience and commercial outcomes. However, operating RecGPT at scale reveals three challenges: (1) stateless behavior modeling, where each request reprocesses full user history, wasting computation and discarding prior analysis; (2) a tag-to-item information bottleneck, where natural-language tags form a lossy channel between user understanding and item grounding; and (3) inefficient explicit reasoning, whose lengthy chain-of-thought incurs untenable latency and compute overhead.   We present RecGPT-V3, a stateful, hybrid-modal recommender that reasons over natural language for open-world knowledge and Semantic IDs (SIDs) for concrete item grounding. A Memory Hub maintains structured, continually evolving user memory that distills long-horizon behavior into condensed units, cutting user-modeling computation by 55.8%. A Hybrid-modal Foundation Model allows the LLM jointly reason over text tags and SIDs, opening a high-bandwidth channel into the item space. Latent Intent Reasoning internalizes verbose rationales into compact learnable latent tokens that remain decodable into readable explanations, lowering output token cost by 200x. Deployed in Taobao's \"Guess What You Like\" feed, RecGPT-V3 achieves consistent gains in large-scale online A/B tests: IPV +1.28%, CTR +1.00%, TC +1.97%, GMV +3.97%, while cutting end-to-end serving resource consumption by 52.4%.",
+      "authors": [
+        "Bowen Zheng",
+        "Chao Yi",
+        "Dian Chen",
+        "Gaoyang Guo",
+        "Han Zhu",
+        "Jiakai Tang",
+        "Jian Wu",
+        "Mao Zhang",
+        "Wen Chen",
+        "Yifan Lu",
+        "Yujie Luo",
+        "Yuning Jiang",
+        "Zhujin Gao",
+        "Bo Zheng",
+        "Dixuan Wang",
+        "Hao Fang",
+        "Jiancai Liu",
+        "Jing Yu",
+        "Ke Chen",
+        "Kewei Zhu",
+        "Mingke Xu",
+        "Wenjun Yang",
+        "Xunke Xi",
+        "Zile Zhou"
+      ],
+      "primary_category": "cs.IR",
+      "categories": [
+        "cs.IR"
+      ],
+      "published": "2026-07-17T03:25:43+00:00",
+      "link": "https://arxiv.org/pdf/2607.15591v1",
+      "tags": [
+        "keyword:vlm-cot",
+        "query:vlm-cot"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "Large model from Alibaba for recommendation with reasoning",
+      "llm_evidence_cn": "阿里巴巴淘宝出品的大模型推荐系统，涉及多智能体推理",
+      "llm_evidence": "阿里巴巴淘宝出品的大模型推荐系统，涉及多智能体推理",
+      "canonical_evidence": "阿里巴巴淘宝出品的大模型推荐系统，涉及多智能体推理",
+      "llm_tldr_en": "RecGPT-V3 is a large language model from Alibaba deployed in production for recommendation, using multi-agent reasoning to improve user experience and commercial outcomes.",
+      "llm_tldr_cn": "RecGPT-V3是阿里巴巴推出的大语言模型推荐系统，已在淘宝生产环境中部署。该系统通过多智能体协调推理实现从行为匹配到意图理解的转变。然而，大规模运行中面临无状态行为建模、标签-物品信息瓶颈和低效显式推理三大挑战。该技术报告总结了实际部署经验与优化方向。",
+      "llm_tldr": "RecGPT-V3是阿里巴巴推出的大语言模型推荐系统，已在淘宝生产环境中部署。该系统通过多智能体协调推理实现从行为匹配到意图理解的转变。然而，大规模运行中面临无状态行为建模、标签-物品信息瓶颈和低效显式推理三大挑战。该技术报告总结了实际部署经验与优化方向。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "large model by big tech companies",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.14277v1",
+      "source": "arxiv",
+      "title": "Multi-Head Latent Control: A Unified Interface for LLM Agent Decision Making",
+      "abstract": "Large language models are increasingly deployed as agents, but reliable agentic behavior requires more than next-token prediction. At inference time, it is preferred that an agent can decide whether to proceed with its current reasoning, defer to a stronger model, request additional information, invoke external tools, or abstain under the given setup. Existing approaches address these decisions through prompt-level routing, external orchestration, or task-specific fine-tuning, which primarily rely on input-side signals, and are often costly and difficult to maintain as model backbones evolve. We ask whether such control decisions can be inferred directly from a model's latent generation process. We introduce Multi-Head Latent Control, a lightweight layer that reads hidden-state trajectories from a frozen LLM or VLM to produce deployment-time control signals. A Capability Head predicts whether the current model can solve the instance or should defer to a stronger collaborator, while a Resolution Head predicts appropriate resolution decision Clarification, Tool Use, Abstention, or Direct Answering. Both heads are trained only on latent traces from the same frozen LLM backbone, enabling post hoc adaptation without modifying the model. Across language and vision-language settings, Multi-Head Latent Control consistently improves the quality-cost tradeoff of multi-model systems, enabling early handoff from partial generations and more accurate intervention decisions. In routed execution (small + large model), it reduces large-model usage by up to 90.7 percent on AndroidWorld and 27-53 percent on average across benchmarks, while retaining most of large-model performance. Additionally, the learned control signals improve tool-use decision quality, yielding up to +158 percent relative score gain and 65.5 percent fewer missed-required tool calls.",
+      "authors": [
+        "Amirhosein Ghasemabadi",
+        "Ruichen Chen",
+        "Bahador Rashidi",
+        "Di Niu"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-07-15T18:36:54+00:00",
+      "link": "https://arxiv.org/pdf/2607.14277v1",
+      "tags": [
+        "keyword:vlm-cot",
+        "query:vlm-cot"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "Latent control interface for agent reasoning decisions, relevant to chain-of-thought",
+      "llm_evidence_cn": "用于智能体推理决策的潜在控制接口，与链式推理相关",
+      "llm_evidence": "用于智能体推理决策的潜在控制接口，与链式推理相关",
+      "canonical_evidence": "用于智能体推理决策的潜在控制接口，与链式推理相关",
+      "llm_tldr_en": "Multi-Head Latent Control extracts control decisions directly from LLM latent states, enabling efficient reasoning control without external routing or fine-tuning.",
+      "llm_tldr_cn": "大语言模型作为智能体时需要在推理过程中决定继续、求助或使用工具。现有方法依赖提示或外部编排，成本高且难以维护。本文提出多头潜在控制，从模型内部隐状态直接推断控制决策，以轻量方式统一管理推理路径。该方法在多个智能体任务中提升了决策效率与可控性，为链式推理的自动控制提供了新方案。",
+      "llm_tldr": "大语言模型作为智能体时需要在推理过程中决定继续、求助或使用工具。现有方法依赖提示或外部编排，成本高且难以维护。本文提出多头潜在控制，从模型内部隐状态直接推断控制决策，以轻量方式统一管理推理路径。该方法在多个智能体任务中提升了决策效率与可控性，为链式推理的自动控制提供了新方案。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.15374v1",
+      "source": "arxiv",
+      "title": "Reasoning-Guided Part-Level Visual Grounding via Reinforcement Learning",
+      "abstract": "Multimodal large language models (MLLMs) ground whole objects well from free-form language queries, but they struggle when the query names a part rather than the object. We trace this to a missing object-part hierarchy, since parts are localized in the same single step used for objects. We propose Object-Part Hierarchical Reflective Grounding (OP-HRG), a coarse-to-fine reasoning-guided grounding strategy that first localizes the parent object and then the part within it. A self-check then reflects on the result, with an extension to re-encode the predicted crop to inspect the region it is correcting. We introduce a part-aware GRPO framework to train our pipeline with stage-wise rewards. A 4B model trained this way outperforms 7B grounding LLMs and SAM3 across PascalPart, PartImageNet, and InstructPart, and transfers to reasoning segmentation.",
+      "authors": [
+        "Kazi Sajeed Mehrab",
+        "Hani Alomari",
+        "Najibul Haque Sarker",
+        "Chia-Wei Tang",
+        "Zaber Ibn Abdul Hakim",
+        "Anuj Karpatne",
+        "Chris Thomas"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-07-16T18:18:31+00:00",
+      "link": "https://arxiv.org/pdf/2607.15374v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "Reasoning-guided coarse-to-fine visual grounding using hierarchical strategy",
+      "llm_evidence_cn": "采用粗到细的推理引导策略进行部件级视觉定位",
+      "llm_evidence": "采用粗到细的推理引导策略进行部件级视觉定位",
+      "canonical_evidence": "采用粗到细的推理引导策略进行部件级视觉定位",
+      "llm_tldr_en": "Proposes Object-Part Hierarchical Reflective Grounding (OP-HRG) which uses a reasoning-guided coarse-to-fine strategy to localize object parts, outperforming larger grounding models.",
+      "llm_tldr_cn": "多模态大语言模型在对象级视觉定位上表现良好，但难以精确识别部件。本文提出对象-部件分层反思定位方法，先定位父对象再定位部件，并引入自我检查机制。使用强化学习框架训练后，4B模型的性能超过了7B模型和SAM。该工作为精细视觉定位提供了新的推理引导范式。",
+      "llm_tldr": "多模态大语言模型在对象级视觉定位上表现良好，但难以精确识别部件。本文提出对象-部件分层反思定位方法，先定位父对象再定位部件，并引入自我检查机制。使用强化学习框架训练后，4B模型的性能超过了7B模型和SAM。该工作为精细视觉定位提供了新的推理引导范式。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2607.14561v1",
+      "source": "arxiv",
+      "title": "MARS: Multi-hop Adaptive Retrieval and SPARQL Generation for KGQA",
+      "abstract": "Large language models (LLMs) have demonstrated strong reasoning performance, but their tendency to hallucinate limits their reliability in knowledge-intensive tasks requiring up-to-date and grounded information. Combining knowledge graphs (KGs) with LLMs facilitates the use of explicit symbolic knowledge that can be continuously updated without costly fine-tuning, while benefiting from rapidly advancing LLM reasoning. We propose MARS, a scalable knowledge graph question answering (KGQA) approach that requires no model fine-tuning. Rather than relying on open-ended agentic exploration, MARS performs a structured retrieval procedure that links question entities to the KG and iteratively retrieves relevant next-hop information. At each step, MARS decides whether to continue graph traversal or to generate the final SPARQL query, allowing the model to adapt the retrieval depth to the question while keeping the overall pipeline more predictable than fully agentic approaches. We evaluate MARS on three established KGQA benchmarks across several LLMs and settings, including multilingual evaluation, and provide insights through ablation studies and error analysis. Our approach achieves competitive performance relative to state-of-the-art methods while remaining efficient and scalable. The evaluation results, code and resources are publicly available: https://github.com/dice-group/mars-kgqa.",
+      "authors": [
+        "Nikit Srivastava",
+        "Daniel Vollmers",
+        "René Speck",
+        "Nikolaos Karalis",
+        "Hamada M. Zahera",
+        "Axel-Cyrille Ngonga Ngomo"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-07-16T04:40:05+00:00",
+      "link": "https://arxiv.org/pdf/2607.14561v1",
+      "tags": [
+        "keyword:vlm-cot",
+        "query:vlm-cot"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "multi-hop reasoning over knowledge graphs, similar to chain-of-thought",
+      "llm_evidence_cn": "知识图谱多跳推理，类似于思维链",
+      "llm_evidence": "知识图谱多跳推理，类似于思维链",
+      "canonical_evidence": "知识图谱多跳推理，类似于思维链",
+      "llm_tldr_en": "MARS performs structured multi-hop retrieval from KG and generates SPARQL without fine-tuning, achieving strong KGQA by iterative reasoning.",
+      "llm_tldr_cn": "针对大模型在知识密集型任务中的幻觉问题，提出MARS方法，通过结构化多跳检索从知识图谱获取信息，并迭代决定是否扩展检索，最终生成SPARQL查询，无需微调即实现可扩展的知识图谱问答，其多步推理机制与思维链高度类似。",
+      "llm_tldr": "针对大模型在知识密集型任务中的幻觉问题，提出MARS方法，通过结构化多跳检索从知识图谱获取信息，并迭代决定是否扩展检索，最终生成SPARQL查询，无需微调即实现可扩展的知识图谱问答，其多步推理机制与思维链高度类似。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2607.15414v1",
+      "source": "arxiv",
+      "title": "AI Trading: Evaluating Large Language Models for Technical Market Analysis",
+      "abstract": "Large Language Models (LLMs) have emerged as powerful tools for processing the heterogeneous information environments of modern financial markets. This paper presents a systematic, comparative evaluation of five prominent LLMs: GPT-4 Turbo, Claude 3 Opus, Gemini 1.5 Pro, Llama 3 70B, and the domain-specialized FinGPT, with respect to their capacity for technical market analysis. The evaluation spans four structured tasks: candlestick pattern recognition from OHLCV data, directional signal generation (BUY/SELL/HOLD), backtesting of signal quality through a simulated execution pipeline, and financial report comprehension. Our experimental framework employs rigorous quantitative metrics, including Sharpe ratio, maximum drawdown, Sortino ratio, information coefficient, F1-score, and BLEU score. Findings from simulated backtesting indicate that GPT-4 Turbo achieves the highest annualized return and Sharpe ratio among general-purpose models, while FinGPT demonstrates competitive risk-adjusted performance due to domain-specific fine-tuning. Both models outperform a passive S&P 500 benchmark under the tested conditions. The study identifies persistent failure modes across all evaluated models, including numerical hallucination, context-window limitations, and inconsistent performance in sideways market regimes. We conclude that while LLMs hold genuine promise within AI trading systems, robust deployment requires careful task decomposition, rigorous backtesting protocols, and domain-aware fine-tuning strategies.",
+      "authors": [
+        "Geofrey Ntale"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI",
+        "q-fin.CP"
+      ],
+      "published": "2026-07-16T19:38:23+00:00",
+      "link": "https://arxiv.org/pdf/2607.15414v1",
+      "tags": [
+        "query:vlm-cot"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "evaluates multiple big tech LLMs (GPT-4, Claude, Gemini, Llama)",
+      "llm_evidence_cn": "评估了多个大厂出品的LLM（GPT-4, Claude, Gemini, Llama）",
+      "llm_evidence": "评估了多个大厂出品的LLM（GPT-4, Claude, Gemini, Llama）",
+      "canonical_evidence": "评估了多个大厂出品的LLM（GPT-4, Claude, Gemini, Llama）",
+      "llm_tldr_en": "Compares five prominent LLMs for technical market analysis, including GPT-4 Turbo, Claude 3 Opus, Gemini 1.5 Pro, Llama 3 70B, and FinGPT, across four tasks.",
+      "llm_tldr_cn": "该论文系统地比较了GPT-4 Turbo、Claude 3 Opus、Gemini 1.5 Pro、Llama 3 70B和FinGPT五个大厂出品的大型语言模型在技术市场分析中的能力，涵盖K线图识别、信号生成、回测和财报理解四项任务，并采用夏普比率等严格指标评估。该工作展示了不同LLM在金融领域的表现差异，为选择合适模型提供参考。",
+      "llm_tldr": "该论文系统地比较了GPT-4 Turbo、Claude 3 Opus、Gemini 1.5 Pro、Llama 3 70B和FinGPT五个大厂出品的大型语言模型在技术市场分析中的能力，涵盖K线图识别、信号生成、回测和财报理解四项任务，并采用夏普比率等严格指标评估。该工作展示了不同LLM在金融领域的表现差异，为选择合适模型提供参考。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "large model by big tech companies",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}

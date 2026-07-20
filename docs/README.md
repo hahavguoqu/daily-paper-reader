@@ -6,41 +6,38 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-19
-- 运行时间：2026-07-19 20:41:10 UTC
+- 最新运行日期：2026-07-20
+- 运行时间：2026-07-20 21:13:42 UTC
 - 运行状态：成功
-- 本次总论文数：7
-- 精读区：3
-- 速读区：4
+- 本次总论文数：6
+- 精读区：4
+- 速读区：2
 
 ### 今日简报（AI）
-今日精读两篇高分论文（9.0/10）并速读三篇，聚焦推理优化与视觉语言模型。最值得关注的是《Structured Thoughts》提出的推理与上下文修剪新范式，以及《Visual Access Boundaries》揭示的视觉语言模型推理边界问题。后续可重点关注结构化思考在长文本推理中的应用，以及视觉边界对多模态系统可靠性的影响。
-- 详情：[/202607/19/README](/202607/19/README)
+今日推荐6篇论文，精读2篇高分研究，聚焦多模态推理与推荐系统方向。最值得关注的是《Beyond the Eye》提出的自调节隐式视觉工具，以及《RecGPT-V3》在推荐系统上的技术提升。建议优先精读这两篇9分论文，再按需查看速读文献。
+- 详情：[/202607/20/README](/202607/20/README)
 
 ### 精读区论文标签
-1. [Structured Thoughts For Improved Reasoning And Context Pruning](/202607/19/2607.10386v1-structured-thoughts-for-improved-reasoning-and-context-pruning)  
+1. [Beyond the Eye: Efficient Multimodal Reasoning via Self-Regulated Implicit Visual Tools](/202607/20/2607.11106v1-beyond-the-eye-efficient-multimodal-reasoning-via-self-regulated-implicit-visual-tools)  
    标签：评分：9.0/10、query:vlm-cot
-   evidence：直接针对大语言模型中的链式思考推理
-2. [Visual Access Boundaries in Vision-Language Model Reasoning](/202607/19/2607.12815v1-visual-access-boundaries-in-vision-language-model-reasoning)  
+   evidence：通过自调节隐式视觉工具实现多模态大模型的视觉链式推理
+2. [RecGPT-V3 Technical Report](/202607/20/2607.15591v1-recgpt-v3-technical-report)  
    标签：评分：9.0/10、query:vlm-cot
-   evidence：视觉语言模型中的链式思维推理
-3. [Answer-Conditioned Chain-of-Thought Distillation for Few-Shot Industrial Vision with Small VLMs](/202607/19/2607.10666v1-answer-conditioned-chain-of-thought-distillation-for-few-shot-industrial-vision-with-small-vlms)  
+   evidence：阿里巴巴淘宝出品的大模型推荐系统，涉及多智能体推理
+3. [Multi-Head Latent Control: A Unified Interface for LLM Agent Decision Making](/202607/20/2607.14277v1-multi-head-latent-control-a-unified-interface-for-llm-agent-decision-making)  
    标签：评分：8.0/10、query:vlm-cot
-   evidence：针对工业视觉的小VLM的CoT蒸馏；涉及视觉CoT和扎实工程基础
+   evidence：用于智能体推理决策的潜在控制接口，与链式推理相关
+4. [Reasoning-Guided Part-Level Visual Grounding via Reinforcement Learning](/202607/20/2607.15374v1-reasoning-guided-part-level-visual-grounding-via-reinforcement-learning)  
+   标签：评分：8.0/10、query:vlm-cot
+   evidence：采用粗到细的推理引导策略进行部件级视觉定位
 
 ### 速读区论文标签
-1. [Scaling and Stabilizing Large-Scale Embedding-Based Retrieval](/202607/19/2607.10096v1-scaling-and-stabilizing-large-scale-embedding-based-retrieval)  
-   标签：评分：7.0/10、query:vlm-cot
-   evidence：来自沃尔玛的大规模嵌入检索统一流水线
-2. [Implicit Reasoning Steering via Concept Chaining](/202607/19/2607.14242v1-implicit-reasoning-steering-via-concept-chaining)  
-   标签：评分：7.0/10、query:vlm-cot
-   evidence：通过概念链进行隐式推理引导，与思维链相关
-3. [Harnessing LLMs for Reliable Academic Supervision: A Comparative Study](/202607/19/2607.14707v1-harnessing-llms-for-reliable-academic-supervision-a-comparative-study)  
-   标签：评分：7.0/10、query:vlm-cot
-   evidence：在学术监督中使用OpenAI的GPT-5和GPT-4o-mini
-4. [Comparing Semantic Navigation in Humans and Large Language Models using Natural Language Processing](/202607/19/2607.12195v1-comparing-semantic-navigation-in-humans-and-large-language-models-using-natural-language-processing)  
+1. [MARS: Multi-hop Adaptive Retrieval and SPARQL Generation for KGQA](/202607/20/2607.14561v1-mars-multi-hop-adaptive-retrieval-and-sparql-generation-for-kgqa)  
    标签：评分：6.0/10、query:vlm-cot
-   evidence：使用大厂大型语言模型
+   evidence：知识图谱多跳推理，类似于思维链
+2. [AI Trading: Evaluating Large Language Models for Technical Market Analysis](/202607/20/2607.15414v1-ai-trading-evaluating-large-language-models-for-technical-market-analysis)  
+   标签：评分：6.0/10、query:vlm-cot
+   evidence：评估了多个大厂出品的LLM（GPT-4, Claude, Gemini, Llama）
 
 
 <div class="dpr-home-promo-card">
