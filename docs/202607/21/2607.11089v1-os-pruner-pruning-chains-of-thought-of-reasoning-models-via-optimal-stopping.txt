@@ -1,0 +1,732 @@
+Title: OS-Pruner: Pruning Chains-of-Thought of Reasoning Models via Optimal Stopping
+
+URL Source: https://arxiv.org/pdf/2607.11089v1
+
+Published Time: Tue, 14 Jul 2026 02:01:33 GMT
+
+Number of Pages: 18
+
+Markdown Content:
+# OS-Pruner: Pruning Chains-of-Thought of Reasoning Models via Optimal Stopping 
+
+Mohammed Ehab 
+
+MIT 
+
+ehab02@mit.edu 
+
+Aymane El Gadarri 
+
+MIT 
+
+aymelgad@mit.edu 
+
+Vivek Farias 
+
+MIT 
+
+vivekf@mit.edu 
+
+Adam Jozefiak 
+
+MIT 
+
+jozefiak@mit.edu 
+
+Ciamac C. Moallemi 
+
+Columbia Business School 
+
+ciamac@gsb.columbia.edu 
+
+Abstract 
+
+Large Language Models (LLMs) have achieved remarkable success in complex reasoning tasks through Chain-of-Thought (CoT) prompting. However, these models often exhibit "computational overthinking," generating redundant reasoning steps that increase latency and cost without improving accuracy. Recent studies suggest that CoT trajectories can be significantly pruned, yet existing methods often rely on forcing a static thinking budget, heuristic filtering, sub-optimal early exit via classification, or expensive re-training. In this paper, we introduce OS-Pruner, a lightweight plug-in framework that formulates chain-of-thought pruning as an optimal stopping problem. Given a reasoning prefix, OS-Pruner learns whether further reasoning is worth its token cost by optimizing an explicit utility that trades off final-answer accuracy against generated length. Our novel formulation enables the model to dynamically assess the sufficient point of termination for a reasoning chain. OS-Pruner is designed to be lightweight during both training and inference, and to provide users with fine-grained control over the reasoning-effort vs. accuracy trade-off. On diverse reasoning benchmarks and base models, OS-Pruner achieves 20-60% reduction in generation length with minimal accuracy sacrifice. 
+
+1 Introduction 
+
+Chain-of-thought (CoT) reasoning has become a central mechanism for improving the performance of large language models on difficult mathematical, scientific, and symbolic tasks. By generating intermediate reasoning steps before producing a final answer, models can decompose a problem, explore candidate solutions, and recover from local mistakes. This additional test-time computation has proved especially important for recent reasoning models, where longer internal traces often correlate with stronger problem-solving ability [1, 2, 3]. However, longer reasoning is not always better. In practice, reasoning models frequently continue generating after the right solution would have been decoded. They restate previous arguments, verify already-settled conclusions, pursue low-value side calculations, or simply delay producing the final answer. This overthinking behavior increases latency and inference cost without improving accuracy, and sometimes even degrades it. More importantly, the amount of useful reasoning varies sharply across examples: a simple problem may require only a few steps, while a hard problem may benefit from a long search. Recent work has begun to address this inefficiency from several angles. Budget-control methods, such as budget forcing and budget guidance, steer generation toward a target amount of thinking, but the target budget is typically imposed externally rather than chosen from the evolving state of 
+
+> Preprint. arXiv:2607.11089v1 [cs.AI] 13 Jul 2026
+
+the reasoning trace [ 4, 5]. Model-side compression methods, including length-penalized fine-tuning, token skipping, step-entropy compression, and related reinforcement-learning objectives, train models to produce shorter reasoning traces overall [ 6 , 7 , 8, 9]. These approaches can be effective, but they require a costly retraining of the base reasoning model. A third line of work studies early stopping directly, using signals such as answer entropy, answer convergence, hidden-state probes, or verifier models to decide whether the current prefix is already sufficient [ 10 , 11 , 12 , 13 , 14 ]. These methods show that substantial redundancy remains in many CoT traces. Yet most of them reduce stopping to classification or thresholding: a model predicts whether the current state is “confident enough,” and generation stops once a manually chosen threshold is crossed. We argue that CoT pruning is more naturally a sequential decision problem. After each reasoning step, the system must choose between two actions: stop now and produce the final answer, or continue reasoning and pay for more tokens in the hope of improving the answer. This leads to an optimal stopping formulation: a CoT prefix should be extended only when the expected improvement from further reasoning outweighs its additional cost, and terminated once that tradeoff is no longer favorable. We introduce OS-Pruner , a lightweight plug-in framework for stopping chains of thought via optimal stopping. Given an input problem and a partially generated CoT, OS-Pruner learns a stopping policy that estimates whether the model should continue reasoning or terminate and produce the final answer. The policy is trained to maximize an explicit utility: answer accuracy minus a length penalty. A single scalar parameter controls this penalty, allowing users to choose the desired operating point on the accuracy-efficiency frontier. OS-Pruner is designed to be efficient in both training and inference. During preprocessing, we generate reasoning traces with a frozen base model and evaluate what would happen if the trace were stopped after each reasoning step. This produces fine-grained supervision for every prefix by looking at whether it is already sufficient to answer correctly. Because the base model is fixed, these rewards can be precomputed and reused, so training the stopping policy does not require repeated on-policy rollouts. Architecturally, OS-Pruner adds only a small policy head, with light fine-tuning of a small number of final transformer layers. At inference time, the policy is invoked only at reasoning-step boundaries, making inference highly efficient on modern LLM serving systems. We summarize our contributions as follows: • We provide a rigorous formulation for CoT pruning as an optimal stopping problem, with an explicit reward that trades off final answer accuracy against generated length. • We propose OS-Pruner, a lightweight plug-in stopping policy that operates on reasoning prefixes without modifying the frozen base reasoning model. • We show on various mathematical reasoning benchmarks that OS-Pruner substantially reduces reasoning length while preserving accuracy, achieving 20-60% generation-length reduction at low accuracy cost across diverse reasoning models. • We show that even models trained explicitly for brevity still suffer from overthinking, with OS-Pruner delivering a performance gain when appended to a strong model-side method. 
+
+2 Related Work 
+
+Chain of Thought Reasoning and Test-time compute. Chain-of-thought (CoT) prompting has become a standard mechanism for improving the reasoning ability of large language models by externalizing intermediate computations before producing a final answer [ 1]. Follow-up work has shown that sampling multiple reasoning traces and aggregating their answers can further improve performance [ 2]. More recently, reasoning-specialized models such as DeepSeek-R1 have pushed this paradigm further by scaling test-time computation through long, explicit reasoning traces [ 15 ]. These advances suggest that additional reasoning tokens can be valuable, especially on difficult mathematical and scientific problems. However, they also introduce a new efficiency problem: models often continue generating after the answer is already determined, producing redundant verification, repeated derivations, or low-value exploratory steps. Our work addresses this inefficiency by learning when a partially generated reasoning trace is already sufficient for final-answer generation. 2Model-side methods for efficient reasoning. One line of work improves reasoning efficiency by modifying the base model so that it produces shorter CoTs. O1-Pruner introduces length-harmonizing fine-tuning to reduce the CoT overhead while preserving accuracy [ 6], while DRPO decouples length-based rewards for correct and incorrect rollouts to avoid penalizing valid but initially long reasoning trajectories [ 9 ]. Other methods construct compressed reasoning traces for supervised fine-tuning. TokenSkip removes less important tokens from CoT trajectories and trains models to skip redundant parts of the reasoning process [ 7 ]. Step Entropy estimates the informational contribution of reasoning steps and compresses low-value steps with a special skip mechanism [ 8]. A related direction avoids explicit natural-language reasoning altogether by moving some computation into continuous latent states [ 16 , 17 ]. These model-side approaches can substantially reduce average generation length, but they require costly retraining or fine-tuning the generator. On top, they can introduce unexpected behavior and degraded performance for non-reasoning and out-of-distribution tasks (e.g. commonsense questions) as they alter the base model and their generalization behavior is not well-understood. 
+
+Budgeted and prompt-side control. Another family of methods controls reasoning length at inference time through explicit budgets or prompting. Budget forcing, introduced in s1, controls test-time compute by forcing the model either to continue thinking, for example by appending continuation cues, or to terminate once a prescribed budget is reached [ 4 ]. Budget Guidance instead trains a lightweight predictor of remaining reasoning length and uses it to steer next-token generation toward a target budget without fine-tuning the base LLM [ 5 ]. Prompt-based methods such as Chain of Draft encourage models to write shorter intermediate traces by changing the format of reasoning itself [ 18 ]. These approaches make reasoning length more controllable, but the target amount of thinking is typically imposed externally or guided toward a pre-specified budget. OS-Pruner instead chooses the stopping time from the evolving state of the reasoning trace: after each reasoning step, it asks whether continuing is expected to improve the answer enough to justify the additional token cost. This allows reasoning length to vary naturally with both problem difficulty and the information already present in the prefix. 
+
+Early stopping and self-verification. The closest line of work studies whether CoT generation can be stopped before the model emits its full reasoning trace. Training-free methods use signals derived from the model’s current behavior. HALT-CoT stops when the entropy of the answer distribution falls below a threshold [ 10 ]; Think Just Enough uses sequence-level entropy as a confidence signal for reasoning models [ 19 ]. Dynamic Early Exit monitors confidence at reasoning transition points to decide whether to truncate the next segment [ 20 ]. REFRAIN combines reflective-redundancy detection with adaptive thresholding to stop once additional reasoning appears redundant [ 21 ]. These methods demonstrate that substantial redundancy remains in many CoT traces, but they generally rely on heuristic or calibrated thresholds over confidence, entropy, convergence, or redundancy scores. Training-based early-exit methods learn a verifier or probe that predicts whether the current reasoning prefix is sufficient. To the best of our knowledge, all such methods in the literature rely on training a classifier to predict correctness or a proxy thereof, and stop once the classifier confidence exceeds a fixed threshold. Hidden-state probing work shows that reasoning models contain internal signals correlated with answer correctness and train a classifier based on them [ 22 ]. Answer Convergence trains a classifier to predict whether the answer remains stable until the end of the generation [ 11 ]. FlashThink finetunes an external LLM prompted to verify the reasoning completeness to serve as a stopping classifier [13]. 
+
+3 Method 
+
+We propose OS-Pruner , a lightweight, training-based plug-in method for early stopping. OS-Pruner is motivated by the observation that while multiple existing methods approach early stopping by training a classifier to decide when to stop, based on a fixed confidence threshold, the problem is more naturally and optimally framed as an optimal stopping problem. Instead of a classifier, a policy can be trained via reinforcement learning to produce probabilities of continuing only when the expected future improvement in answer quality exceeds the additional token cost. 33.1 Problem Formulation 
+
+Let x denote an input problem. A reasoning LLM autoregressively generates a CoT y = ( y1, . . . , y T )
+
+as a sequence of reasoning steps (e.g. each yi corresponds to a new paragraph). Let y≤i be the prefix consisting of the first i steps. After observing y≤i, a stopping policy may terminate generation of the CoT and force the base model to output the final answer conditioned on this prefix. OS-Pruner learns a parametric stopping policy πθ which is a mapping of the current prefix to a probability of stopping: πθ (y≤i|x) ∈ [0 , 1] . Under this parametrization, the distribution of the stopping time τ is given by: 
+
+P(τ = i) = [ Y
+
+> j<i
+
+1 − πθ (y≤j |x)] · πθ (y≤i|x) (1) To train our policy, we design a reward function for stopping at the ith step. We denote by A(y≤i|x)
+
+the accuracy of the resulting answer (e.g. for numerical problems, 1 if the answer is correct and 0 if not.) And we denote by L(y≤i) the number of tokens generated up to step i. We define that reward as: 
+
+r(y≤i|x) = A(y≤i|x) − λL (y≤i). (2) Conditionally on a problem-CoT pair (x, y ) with T reasoning steps, the expected reward for stopping can be expressed as: 
+
+Rθ (y|x) = 
+
+> T
+
+X
+
+> i=1
+
+[Y
+
+> j<i
+
+1 − πθ (y≤j |x)] · πθ (y≤i|x) · r(y≤i|x), (3) Given a distribution of questions Dx and a fixed LLM policy πLLM (·| x), an optimal stopping policy maximizes the objective: 
+
+J (θ) = Ex∈D x [Ey∼πLLM (·| x)[Rθ (x, y )]] . (4) 
+
+3.2 Interpretation of λ
+
+From an operations perspective, λ can be interpreted as the increase in confidence in accuracy needed to justify paying for one more token. From an optimization perspective, by sweeping over a wide range of values of λ, we trace a frontier of policies trading accuracy for length reduction. The parameter λ allows for fine-grained control over that trade-off. 
+
+4 Value Function View and Classification Sub-Optimality 
+
+The value function view sheds light on the advantage of our optimal stopping formulation. The key distinction between OS-Pruner and confidence-threshold methods is that stopping is not determined solely by whether the current answer is likely to be correct. The policy must compare the value of stopping now with the value of continuing, paying the cost of more tokens to increase confidence in producing a correct answer. Let Vλ(x, y ≤i) denote the optimal expected reward from state (x, y ≤i).It satisfies the Bellman equation 
+
+Vλ(x, y ≤i) = max {A(y≤i | x), Eyi+1 ∼πLLM (.|x,y ≤i)[Vλ(y≤i+1 ) − λ(L(y≤i+1 ) − L(y≤i))) }. (5) The first term is the value of stopping immediately. The second term is the value of generating an extra reasoning step and then acting optimally, which we will call the continuation value Cλ(x, y ≤i).Thus, the optimal stopping policy stops exactly when 
+
+A(y≤i | x) ≥ Cλ(x, y ≤i). (6) In contrast, classification-based correctness methods stop according to the condition 4A(y≤i | x) ≥ γ. (7) As opposed to the fixed threshold γ, continuation value is state dependent. Two partial CoTs with the same correctness can require different decisions if one has promising future reasoning paths and the other does not. Based on that analysis, we show that classification based on correctness can lose arbitrarily large value, even when the threshold γ is chosen optimally: 
+
+Theorem 1 (Threshold classification can have an arbitrarily large gap) . For any λ ∈ (0 , 1) and any 
+
+K > 0, there exists a finite-horizon CoT stopping problem such that, even when A(y≤i | x) is known exactly, 
+
+Vλ(π⋆) > K · sup 
+
+> γ
+
+Vλ(πcls  
+
+> γ
+
+),
+
+where Vλ(π) is the expected reward of policy π, π⋆ is the optimal stopping policy and 
+
+πcls  
+
+> γ
+
+(y≤i | x) = 1{A(y≤i | x) ≥ γ}
+
+is the best fixed-threshold correctness classifier. 
+
+The proof is deferred to Appendix B 
+
+5 Implementation Details 
+
+5.1 Data Preprocessing Stage 
+
+We demonstrate the effectiveness of our method on common math reasoning benchmarks. For a given reasoning model, we start by choosing a dataset of problems with a ground truth answer {(xi, g i)}.We then use vLLM [23] to generate reasoning traces {yi} for each problem in the dataset. For each reasoning trace yi, we manually intervene after each reasoning step, terminate the CoT, and prompt the model to give a final answer. We force the model to give only a final answer with no extra reasoning by prompting it to box its final answer and manually adding a box at the start of the answer block. This prevents a key issue with previous methodologies where the models kept thinking in the answer section [ 24 ], and is crucial to efficiently compute the answers. We then grade the answer against the ground truth using Math-Verify [ 25 ] to compute the accuracy signals. This allows fast-training since the objective’s expectation can be computed exactly, with no need to resample traces as the policy updates. To efficiently compute the rewards, we use SGLang’s fork functionality to make a tree of requests, branching into final answer computation and reasoning continuation after each paragraph. 
+
+5.2 Policy Architecture 
+
+The stopping policy of OS-Pruner is parameterized as a linear head that takes the last hidden state 
+
+hl, which has been found to effectively encode the correctness of a partial CoT [ 22 ], and outputs 
+
+πθ (y|x) = σ(W ⊤hl + b). Leveraging the base model’s pretrained understanding and architecture designed for language processing, we further fine-tune its last n self-attention layers, where n is very small (we choose n = 2 in all our experiments) to keep the policy lightweight. We emphasize that we keep the base reasoning model weights frozen. The finetuned layer and additional linear layer at the end serve as an additional policy head, only invoked at the end of each paragraph at inference time. This is highly efficient on modern LLM serving frameworks such as vLLM, since each paragraph can be processed in parallel as a pre-fill (as opposed to autoregressively), and only n = 2 layers of KV cache have to be recomputed. (Algorithm. 1) We further note the training efficiency of our architecture. Since the base reasoning model is causal, the last hidden state corresponding to a paragraph is not affected by any subsequent tokens. Hence, we can process the entire reasoning trace in one forward pass and apply the linear layer to the relevant hidden states in parallel , allowing us to circumvent processing the reasoning traces one paragraph at a time. 5Algorithm 1 Inference with the Stopping Policy 
+
+Require: Prompt x; base LLM with L layers (last n fine-tuned); linear head (W, b ) 
+
+> 1:
+
+while not stopped do  
+
+> 2:
+
+Generate next token xt+1 ∼ pLLM (· | x1: t) 
+
+> 3:
+
+if xt+1 ends a paragraph then  
+
+> 4:
+
+h ← pre-fill last n layers in parallel from cached layer-(L−n) states  
+
+> 5:
+
+πθ ← σ(W ⊤hl + b) 
+
+> 6:
+
+Stop with probability πθ 
+
+> 7:
+
+end if  
+
+> 8:
+
+end while  
+
+> 9:
+
+Elicit final answer from x1: t
+
+Figure 1: Training dynamics for DeepSeek-R1-Distill-Qwen-7B. The evaluations are conducted on a held-out validation subset of our training data with 500 samples. The baseline length is 5182 tokens. 
+
+5.3 Progressive Training 
+
+We empirically find that for relatively low values of λ, training from scratch gets stuck at a trivial local minimum where the policy continues to the end with very high probability. To address that issue, we start with a moderately high value of λ and progressively anneal it during training at periodic points. In Figure 1, we study the training dynamics of our policies on the DeepSeek-R1-Distill-Qwen-7B model. Dashed lines show the points in training where λ was annealed. Initially, the policy quickly learns to delay stopping and gain a major increase in accuracy. After each anneal, we see a jump in both accuracy and length. Finally, over the course of the training, the gap between accuracy and length diminishes as the λ factor that trades them approaches 0.
+
+6 Experiments 
+
+We evaluate OS-Pruner with three goals. First, we test whether an optimal-stopping policy improves the accuracy-efficiency trade-off over training-based early-exit baselines. Second, we study the main empirical behavior of OS-Pruner across model families and benchmark difficulty levels. Third, we test whether OS-Pruner remains useful when appended to a model that has already been optimized for concise reasoning through a model-side method. 
+
+Models. We experiment with 3 models: • DeepSeek-R1-Distill-Qwen-7B [ 3]: a popular open-weight reasoning model for reasoning and early-stopping benchmarks. • GPT-OSS-20B [ 26 ]: a stronger and more concise larger-scale reasoning model, allowing us to evaluate whether OS-Pruner remains useful when the base model already produces shorter traces. 6• DRPO-7B: obtained from DeepSeek-R1-Distill-Qwen-7B using DRPO [ 9] using their heaviest length penalty. DRPO is a state of the art model-side efficient-reasoning method that substantially reduces overthinking and even improves accuracy. This model allows us to test whether OS-Pruner can still improve upon model-side compression. 
+
+Datasets. We train our policies on the DeepScaleR-Preview-Dataset [ 27 ], consisting of approximately 40000 problems sourced from AIME (1984-2023), AMC (prior to 2023), Omni-MATH [ 28 ], and Still [ 29 ]. We hold out 500 problems for validation. We then evaluate them on held-out mathematical reasoning benchmarks with various levels of difficulty: GSM8K [ 30 ] for easy grade-school arithmetic, MATH-500 [ 31 ] for medium-difficulty competition mathematics, and AIME24/25 (aggregated) for challenging olympiad-style problems. 
+
+Policy training. For each base model, we first generate full reasoning traces on the training set and then construct stopping labels by terminating the trace after each reasoning step and forcing the model to produce only a final answer. We use Math-Verify [ 25 ] to compare extracted answers against ground truth. Following the method described in Section 5, the base reasoning model is kept frozen, only the stopping head and the last two transformer layers used by the policy are fine-tuned. On 4 A100 GPUs, this dataset preparation step takes approximately 4, 2.5, and 1 day for DeepSeek-R1-Distill-Qwen-7B, GPT-OSS-20B, and DRPO-7B respectively. We cap generation at 
+
+15 ,000 tokens and remove training examples whose original trace does not terminate within this budget. For DeepSeek-R1-Distill-Qwen-7B, we train policies with 
+
+λ ∈ { 10 −4, 5×10 −5, 2×10 −5, 10 −5, 5×10 −6, 2×10 −6, 10 −6, 0}.
+
+For GPT-OSS-20B and DRPO-7B, we train policies with 
+
+λ ∈ { 2×10 −4, 10 −4, 5×10 −5, 2×10 −5, 10 −5, 0}.
+
+For optimization, we use AdamW with learning rate 10 −5, (β1, β 2) = (0 .9, 0.999) , and ϵ = 10 −8.
+
+Evaluation. We evaluate accuracy using Pass@1, averaged over 16 sampled solutions for each problem, and measure efficiency using the average number of generated reasoning tokens before final-answer elicitation. To summarize the accuracy–efficiency trade-off with a single scalar, we additionally report the Accuracy Efficiency Score (AES), which is used in the efficient reasoning literature [6, 9, 32]. AES is defined as AES =
+
+α · ∆Length + β · | ∆Acc |, if ∆Acc ≥ 0
+
+α · ∆Length − γ · | ∆Acc |, if ∆Acc < 0, (8) where ∆Length = Length baseline −Length method 
+
+> Length baseline
+
+and ∆Acc = Acc method −Acc baseline  
+
+> Acc baseline
+
+. We use the original α = 1 
+
+and β = 3 values but raise γ to 7 to emphasize the importance of preserving accuracy. For each method, we report the stopping policy with the best AES. For DeepSeek-R1-Distill-Qwen-7B and DRPO-7B, we set temperature = 0 .6 and top-p = 0 .95 . For GPT-OSS-20B, we set temperature = 1 .0 and top-p = 1 .0. Matching training, we cap generation at 
+
+15 ,000 tokens. After stopping, we append a boxed-answer prefix at the start of the answer section to force the model to produce a final answer instead of continuing to reason in the answer section; we ablate this choice in Appendix A. 
+
+Baselines. We compare against three training-based early stopping methods: • Classification Probe[ 22 ]: trains a stopping policy to predict whether the current partial CoT leads to a correct answer; generation stops when the classifier score exceeds a fixed threshold. For fair comparison, we train the classifier with the same architecture as OS-Pruner. • Answer Convergence [ 11 ]: trains a classifier to predict whether the answer produced from the current prefix will remain unchanged until the end of the original trace. While the original paper uses an LSTM for their classifier architecture, we scale it to use the OS-Pruner architecture. • FlashThink [ 13 ]: uses a verifier-style LLM to judge whether the current reasoning is sufficient. Following their experiments, we use the Qwen2.5-7B-Instruct model, but for fairness and training efficiency, we fine-tune only the final two layers of the verifier model rather than the full 7B model used in the original work. 7(a) DeepSeek-R1-Distill-Qwen-7B 
+
+> (b) GPT-OSS-20B
+> (c) DRPO-7B
+
+Figure 2: Pareto Frontiers of Expected Accuracy vs. Length Reduction across various reasoning-heavy datasets and models. We test all baselines with all inference thresholds ∈ [0 .7, 0.75 , 0.8, 0.85 , 0.9] .
+
+6.1 Optimal stopping improves the accuracy efficiency tradeoff 
+
+Figure 2 shows the accuracy-length trade-off for all models and benchmarks. OS-Pruner consistently lies on or near the Pareto frontier, while fixed-threshold early-exit baselines degrade more sharply as the length budget is reduced. In the low accuracy-sacrifice regime (<2%), OS-Pruner reduces reasoning length by roughly 20-60% on most model-dataset pairs while preserving accuracy. The strongest gains occur on easier or medium-difficulty datasets, where overthinking is most prevalent. For example, with DeepSeek-R1-Distill-Qwen-7B, OS-Pruner reduces length by 59.3% on GSM8K and 52.8% on MATH-500 at the best-AES operating point, while changing accuracy by only −0.7
+
+and +2 .7 percentage points, respectively. On AIME, the same policy is more conservative, reducing length by only 6.9% at the best-AES point, which is expected since extra computation is valuable on harder tasks. Table 1 summarizes the best operating point for each method according to the AES. 
+
+7 Discussion 
+
+With the vast variety of efficient reasoning approaches, we conclude by summarizing OS-Pruner’s placement in the literature and relation to previous approaches. Within training-based early stopping methods, we show both theoretically and empirically that our optimal stopping formulation surpasses 8Model / Method GSM8K MATH-500 AIME AVERAGE                                                                                                                                                                                                
+
+> Acc Len AES Acc Len AES Acc Len AES Acc Len AES
+> DeepSeek-R1-Distill-Qwen-7B
+> Baseline 88.7 1219 0.00 77.4 3377 0.00 48.0 9873 0.00 71.4 4823 0.00 Classification Probe 87.5 724 0.34 76.9 2247 0.31 47.9 9846 -0.00 70.8 4272 0.22 Answer Convergence 86.6 708 0.32 76.6 2348 0.26 47.5 9500 0.01 70.2 4185 0.20 FlashThink 87.6 528 0.51 76.5 2027 0.36 45.3 8602 -0.01 69.8 3719 0.29 OS-Pruner 88.0 496 0.56 78.1 1325 0.63 47.1 9190 0.02 71.1 3671 0.40 GPT-OSS-20B
+> Baseline 93.4 278 0.00 92.3 1126 0.00 67.5 6001 0.00 84.4 2468 0.00 Classification Probe 92.4 237 0.10 92.0 1055 0.05 67.4 5958 0.00 83.9 2417 0.05 Answer Convergence 92.3 223 0.14 91.6 1015 0.06 65.8 5723 -0.04 83.2 2321 0.06 FlashThink 92.8 201 0.25 91.9 915 0.17 63.9 5426 -0.09 82.9 2181 0.11 OS-Pruner 92.7 223 0.17 89.4 728 0.21 66.0 5617 -0.01 82.7 2189 0.12 DRPO-7B
+> Baseline 91.5 398 0.00 85.6 1096 0.00 44.4 4359 0.00 73.8 1951 0.00 Classification Probe 90.5 338 0.10 85.8 1009 0.08 44.4 4354 0.00 73.5 1900 0.06 Answer Convergence 90.3 331 0.11 84.6 1004 0.04 44.2 4307 0.00 73.0 1881 0.05 FlashThink 90.7 310 0.18 84.7 924 0.11 43.5 4221 -0.01 73.0 1818 0.09 OS-Pruner 91.0 322 0.17 85.7 807 0.27 36.9 2006 0.17 71.2 1045 0.20
+
+Table 1: Summary of the stopping policy with best AES for each method. In each group, the best result is bolded and the second best is underlined. output-side methods in terms of trading accuracy for efficiency. Training-free approaches, with more handcrafted stopping conditions, can be used to augment our approach, as their stopping criteria can be used as input features in the training of our stopping policies. Budget-based methods solve a different problem within the efficiency framework: given a problem and a fixed constrained budget, maximize the chances of producing a correct answer. Our approach operates in the dynamic reasoning regime where more thinking is decided based on the problem and partial reasoning so far. Finally, while model-side compression methods demonstrate great performance, their learning entangles several behaviors: writing more concisely, changing the search strategy, avoiding dead ends, and deciding when to terminate. Learning to optimally stop only from examples of complete reasoning traces and their final rewards can be difficult. In contrast, our approach features fine-grained reward labeling after each reasoning step and a plug-in policy trained solely with a stopping objective. Our experiments on DRPO-7B demonstrate that our approach can provide additional value when used together with a leading model-side compression method. 
+
+Broader Impact: this work aims to make reasoning language models more efficient by reducing un-necessary chain-of-thought generation while preserving task accuracy. By lowering inference latency and token usage, OS-Pruner can reduce the computational cost and energy footprint of deploying reasoning models, and may make such models more accessible in settings with limited compute budgets. The method also gives practitioners explicit control over the trade-off between reasoning length and accuracy through the stopping-cost parameter λ, which can help adapt deployment to different resource and reliability requirements. Our work can further help democratize artificial intelligence by improving the efficiency and generation quality of smaller open-source models that suffer most from overthinking. 
+
+Limitations & Future Work: while we have demonstrated the success of our approach on mathe-matical reasoning tasks, future work can explore more general tasks such as coding and scientific reasoning. Furthermore, scaling the experiments beyond 20B parameters is crucial to understand if our approach can improve on frontier models. Finally, while we focus our efforts on fair scientific comparison to previous work, exploration along the architecture and input features dimensions can potentially improve our method’s absolute performance. 9References 
+
+[1] Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Brian Ichter, Fei Xia, Ed Chi, Quoc Le, and Denny Zhou. Chain-of-thought prompting elicits reasoning in large language models, 2023. [2] Xuezhi Wang, Jason Wei, Dale Schuurmans, Quoc Le, Ed Chi, Sharan Narang, Aakanksha Chowdhery, and Denny Zhou. Self-consistency improves chain of thought reasoning in language models, 2023. [3] DeepSeek-AI, Daya Guo, Dejian Yang, Haowei Zhang, Junxiao Song, Peiyi Wang, and et al. Zhu. DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning. 
+
+Nature , 645(8081):633–638, September 2025. arXiv:2501.12948 [cs]. [4] Niklas Muennighoff, Zitong Yang, Weijia Shi, Xiang Lisa Li, Li Fei-Fei, Hannaneh Hajishirzi, Luke Zettlemoyer, Percy Liang, Emmanuel Candès, and Tatsunori Hashimoto. s1: Simple test-time scaling, March 2025. arXiv:2501.19393 [cs]. [5] Junyan Li, Wenshuo Zhao, Yang Zhang, and Chuang Gan. Steering LLM Thinking with Budget Guidance, June 2025. arXiv:2506.13752 [cs]. [6] Haotian Luo, Li Shen, Haiying He, Yibo Wang, Shiwei Liu, Wei Li, Naiqiang Tan, Xiaochun Cao, and Dacheng Tao. O1-Pruner: Length-Harmonizing Fine-Tuning for O1-Like Reasoning Pruning, January 2025. arXiv:2501.12570 [cs]. [7] Heming Xia, Chak Tou Leong, Wenjie Wang, Yongqi Li, and Wenjie Li. TokenSkip: Control-lable Chain-of-Thought Compression in LLMs, September 2025. arXiv:2502.12067 [cs]. [8] Zeju Li, Jianyuan Zhong, Ziyang Zheng, Xiangyu Wen, Zhijian Xu, Yingying Cheng, Fan Zhang, and Qiang Xu. Making Slow Thinking Faster: Compressing LLM Chain-of-Thought via Step Entropy, February 2026. arXiv:2508.03346 [cs]. [9] Gang Li, Yan Chen, Ming Lin, and Tianbao Yang. DRPO: Efficient Reasoning via Decoupled Reward Policy Optimization, March 2026. arXiv:2510.04474 [cs]. [10] Yassir Laaouach. HALT-CoT: Model-Agnostic Early Stopping for Chain-of-Thought Reasoning via Answer Entropy. June 2025. [11] Xin Liu and Lu Wang. Answer Convergence as a Signal for Early Stopping in Reasoning, September 2025. arXiv:2506.02536 [cs]. [12] Fuxiang Zhang, Jiacheng Xu, Chaojie Wang, Ce Cui, Yang Liu, and Bo An. Incentivizing llms to self-verify their answers, 2025. [13] Guochao Jiang, Guofeng Quan, Zepeng Ding, Ziqin Luo, Dixuan Wang, and Zheng Hu. FlashThink: An Early Exit Method For Efficient Reasoning, May 2025. arXiv:2505.13949 [cs]. [14] Minjia Mao, Bowen Yin, Yu Zhu, and Xiao Fang. Early stopping chain-of-thoughts in large language models, 2025. [15] Daya Guo, Dejian Yang, Haowei Zhang, Junxiao Song, Peiyi Wang, Qihao Zhu, Runxin Xu, Ruoyu Zhang, Shirong Ma, Xiao Bi, Xiaokang Zhang, Xingkai Yu, Yu Wu, Z. F. Wu, Zhibin Gou, Zhihong Shao, Zhuoshu Li, Ziyi Gao, Aixin Liu, Bing Xue, Bingxuan Wang, Bochao Wu, Bei Feng, Chengda Lu, Chenggang Zhao, Chengqi Deng, Chong Ruan, Damai Dai, Deli Chen, Dongjie Ji, Erhang Li, Fangyun Lin, Fucong Dai, Fuli Luo, Guangbo Hao, Guanting Chen, Guowei Li, H. Zhang, Hanwei Xu, Honghui Ding, Huazuo Gao, Hui Qu, Hui Li, Jianzhong Guo, Jiashi Li, Jingchang Chen, Jingyang Yuan, Jinhao Tu, Junjie Qiu, Junlong Li, J. L. Cai, Jiaqi Ni, Jian Liang, Jin Chen, Kai Dong, Kai Hu, Kaichao You, Kaige Gao, Kang Guan, Kexin Huang, Kuai Yu, Lean Wang, Lecong Zhang, Liang Zhao, Litong Wang, Liyue Zhang, Lei Xu, Leyi Xia, Mingchuan Zhang, Minghua Zhang, Minghui Tang, Mingxu Zhou, Meng Li, Miaojun Wang, Mingming Li, Ning Tian, Panpan Huang, Peng Zhang, Qiancheng Wang, Qinyu Chen, Qiushi Du, Ruiqi Ge, Ruisong Zhang, Ruizhe Pan, Runji Wang, R. J. Chen, R. L. Jin, Ruyi Chen, Shanghao Lu, Shangyan Zhou, Shanhuang Chen, Shengfeng Ye, Shiyu Wang, Shuiping Yu, Shunfeng Zhou, Shuting Pan, S. S. Li, Shuang Zhou, Shaoqing Wu, Tao Yun, Tian Pei, 10 Tianyu Sun, T. Wang, Wangding Zeng, Wen Liu, Wenfeng Liang, Wenjun Gao, Wenqin Yu, Wentao Zhang, W. L. Xiao, Wei An, Xiaodong Liu, Xiaohan Wang, Xiaokang Chen, Xiaotao Nie, Xin Cheng, Xin Liu, Xin Xie, Xingchao Liu, Xinyu Yang, Xinyuan Li, Xuecheng Su, Xuheng Lin, X. Q. Li, Xiangyue Jin, Xiaojin Shen, Xiaosha Chen, Xiaowen Sun, Xiaoxiang Wang, Xinnan Song, Xinyi Zhou, Xianzu Wang, Xinxia Shan, Y. K. Li, Y. Q. Wang, Y. X. Wei, Yang Zhang, Yanhong Xu, Yao Li, Yao Zhao, Yaofeng Sun, Yaohui Wang, Yi Yu, Yichao Zhang, Yifan Shi, Yiliang Xiong, Ying He, Yishi Piao, Yisong Wang, Yixuan Tan, Yiyang Ma, Yiyuan Liu, Yongqiang Guo, Yuan Ou, Yuduan Wang, Yue Gong, Yuheng Zou, Yujia He, Yunfan Xiong, Yuxiang Luo, Yuxiang You, Yuxuan Liu, Yuyang Zhou, Y. X. Zhu, Yanping Huang, Yaohui Li, Yi Zheng, Yuchen Zhu, Yunxian Ma, Ying Tang, Yukun Zha, Yuting Yan, Z. Z. Ren, Zehui Ren, Zhangli Sha, Zhe Fu, Zhean Xu, Zhenda Xie, Zhengyan Zhang, Zhewen Hao, Zhicheng Ma, Zhigang Yan, Zhiyu Wu, Zihui Gu, Zijia Zhu, Zijun Liu, Zilin Li, Ziwei Xie, Ziyang Song, Zizheng Pan, Zhen Huang, Zhipeng Xu, Zhongyu Zhang, and Zhen Zhang. Deepseek-r1 incentivizes reasoning in llms through reinforcement learning. Nature , 645(8081):633–638, 2025. [16] Jeffrey Cheng and Benjamin Van Durme. Compressed Chain of Thought: Efficient Reasoning Through Dense Representations, December 2024. arXiv:2412.13171 [cs]. [17] Shibo Hao, Sainbayar Sukhbaatar, DiJia Su, Xian Li, Zhiting Hu, Jason Weston, and Yuandong Tian. Training Large Language Models to Reason in a Continuous Latent Space, November 2025. arXiv:2412.06769 [cs]. [18] Silei Xu, Wenhao Xie, Lingxiao Zhao, and Pengcheng He. Chain of Draft: Thinking Faster by Writing Less, March 2025. arXiv:2502.18600 [cs]. [19] Aman Sharma and Paras Chopra. Think just enough: Sequence-level entropy as a confidence signal for llm reasoning, 2025. [20] Chenxu Yang, Qingyi Si, Yongjie Duan, Zheliang Zhu, Chenyu Zhu, Qiaowei Li, Minghui Chen, Zheng Lin, and Weiping Wang. Dynamic early exit in reasoning models, 2025. [21] Renliang Sun, Wei Cheng, Dawei Li, Haifeng Chen, and Wei Wang. Stop when enough: Adaptive early-stopping for chain-of-thought reasoning, 2025. [22] Anqi Zhang, Yulin Chen, Jane Pan, Chen Zhao, Aurojit Panda, Jinyang Li, and He He. Reasoning models know when they’re right: Probing hidden states for self-verification, 2025. [23] Woosuk Kwon, Zhuohan Li, Siyuan Zhuang, Ying Sheng, Lianmin Zheng, Cody Hao Yu, Joseph E. Gonzalez, Hao Zhang, and Ion Stoica. Efficient Memory Management for Large Language Model Serving with PagedAttention, September 2023. arXiv:2309.06180 [cs]. [24] Xuechen Zhang, Zijian Huang, Chenshun Ni, Ziyang Xiong, Jiasi Chen, and Samet Oymak. Making Small Language Models Efficient Reasoners: Intervention, Supervision, Reinforcement, May 2025. arXiv:2505.07961 [cs]. [25] Hynek Kydlíˇ cek. Math-Verify: Math Verification Library, April 2026. original-date: 2025-01-17T11:01:36Z. [26] OpenAI, Sandhini Agarwal, Lama Ahmad, Jason Ai, Sam Altman, Andy Applebaum, Edwin Arbus, Rahul K. Arora, Yu Bai, Bowen Baker, Haiming Bao, Boaz Barak, Ally Bennett, Tyler Bertao, Nivedita Brett, Eugene Brevdo, Greg Brockman, Sebastien Bubeck, Che Chang, Kai Chen, Mark Chen, Enoch Cheung, Aidan Clark, Dan Cook, Marat Dukhan, Casey Dvorak, Kevin Fives, Vlad Fomenko, Timur Garipov, Kristian Georgiev, Mia Glaese, Tarun Gogineni, Adam Goucher, Lukas Gross, Katia Gil Guzman, John Hallman, Jackie Hehir, Johannes Heidecke, Alec Helyar, Haitang Hu, Romain Huet, Jacob Huh, Saachi Jain, Zach Johnson, Chris Koch, Irina Kofman, Dominik Kundel, Jason Kwon, Volodymyr Kyrylov, Elaine Ya Le, Guillaume Leclerc, James Park Lennon, Scott Lessans, Mario Lezcano-Casado, Yuanzhi Li, Zhuohan Li, Ji Lin, Jordan Liss, Lily, Liu, Jiancheng Liu, Kevin Lu, Chris Lu, Zoran Martinovic, Lindsay McCallum, Josh McGrath, Scott McKinney, Aidan McLaughlin, Song Mei, Steve Mostovoy, Tong Mu, Gideon Myles, Alexander Neitz, Alex Nichol, Jakub Pachocki, Alex Paino, Dana Palmie, Ashley Pantuliano, Giambattista Parascandolo, Jongsoo Park, Leher 11 Pathak, Carolina Paz, Ludovic Peran, Dmitry Pimenov, Michelle Pokrass, Elizabeth Proehl, Huida Qiu, Gaby Raila, Filippo Raso, Hongyu Ren, Kimmy Richardson, David Robinson, Bob Rotsted, Hadi Salman, Suvansh Sanjeev, Max Schwarzer, D. Sculley, Harshit Sikchi, Kendal Simon, Karan Singhal, Yang Song, Dane Stuckey, Zhiqing Sun, Philippe Tillet, Sam Toizer, Foivos Tsimpourlas, Nikhil Vyas, Eric Wallace, Xin Wang, Miles Wang, Olivia Watkins, Kevin Weil, Amy Wendling, Kevin Whinnery, Cedric Whitney, Hannah Wong, Lin Yang, Yu Yang, Michihiro Yasunaga, Kristen Ying, Wojciech Zaremba, Wenting Zhan, Cyril Zhang, Brian Zhang, Eddie Zhang, and Shengjia Zhao. gpt-oss-120b & gpt-oss-20b Model Card, August 2025. arXiv:2508.10925 [cs]. [27] Michael Luo, Sijun Tan, Justin Wong, Xiaoxiang Shi, William Tang, Manan Roongta, Colin Cai, Jeffrey Luo, Tianjun Zhang, Erran Li, Raluca Ada Popa, and Ion Stoica. Deepscaler: Surpassing o1-preview with a 1.5b model by scaling rl. https://pretty-radio-b75.notion.site/ DeepScaleR-Surpassing-O1-Preview-with-a-1-5B-Model-by-Scaling-RL-19681902c1468005bed8ca30301 
+
+2025. Notion Blog. [28] Bofei Gao, Feifan Song, Zhe Yang, Zefan Cai, Yibo Miao, Qingxiu Dong, Lei Li, Chenghao Ma, Liang Chen, Runxin Xu, Zhengyang Tang, Benyou Wang, Daoguang Zan, Shanghaoran Quan, Ge Zhang, Lei Sha, Yichang Zhang, Xuancheng Ren, Tianyu Liu, and Baobao Chang. Omni-MATH: A Universal Olympiad Level Mathematic Benchmark For Large Language Models, December 2024. arXiv:2410.07985 [cs]. [29] Yingqian Min, Zhipeng Chen, Jinhao Jiang, Jie Chen, Jia Deng, Yiwen Hu, Yiru Tang, Jiapeng Wang, Xiaoxue Cheng, Huatong Song, Wayne Xin Zhao, Zheng Liu, Zhongyuan Wang, and Ji-Rong Wen. Imitate, Explore, and Self-Improve: A Reproduction Report on Slow-thinking Reasoning Systems, December 2024. arXiv:2412.09413 [cs]. [30] Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz Kaiser, Matthias Plappert, Jerry Tworek, Jacob Hilton, Reiichiro Nakano, Christopher Hesse, and John Schulman. Training Verifiers to Solve Math Word Problems, November 2021. arXiv:2110.14168 [cs]. [31] Dan Hendrycks, Collin Burns, Saurav Kadavath, Akul Arora, Steven Basart, Eric Tang, Dawn Song, and Jacob Steinhardt. Measuring Mathematical Problem Solving With the MATH Dataset, November 2021. arXiv:2103.03874 [cs]. [32] Yansong Ning, Wei Li, Jun Fang, Naiqiang Tan, and Hao Liu. Not all thoughts are generated equal: Efficient llm reasoning via multi-turn reinforcement learning, 2025. 
+
+A Ablation of Final Answer Forcing 
+
+We ablate the choice of forcing a final answer by appending a box in the answer section and let the model behave freely. We accumulate the length of the reasoning and answer sections and report our results in Figure. 3. While our main results from Figure 2 transfer seamlessly for GPT-OSS-20B, and while OS-Pruner’s length reduction still significantly exceed the baselines, we observe a weaker ability to control the accuracy-length trade-off and trace a frontier for all the methods tested on DRPO-7B, and more severely, on DeepSeek-R1-Distill-Qwen-7B. We find that to be mainly due to the poor instruction following capabilities of these models. By further investigating the lengths of the reasoning and answer sections separately, we find that when the CoTs are terminated very early, these models compensate by thinking in the answer section, making the trade-off difficult (see App. C). A similar finding was observed in [ 24 ]. In contrast, the GPT-OSS-20B model consistently outputs only a final answer when instructed to do so, even if its thinking is terminated early, due to better instruction tuning. Notably, we observe a higher baseline accuracy on the MATH-500 benchmark. Investigating further, we find that the benchmark includes many problems with non-numerical answers, where the models often only reason enough to produce an answer by thinking further in the answer section. For example, in a problem about polynomial multiplication, DeepSeek-R1-Distill-Qwen-7B writes a reasoning trace reminding itself how to multiply polynomials and how it has to expand and match terms, but does not arrive at the final answer. 12 (a) DeepSeek-R1-Distill-Qwen-7B 
+
+> (b) GPT-OSS-20B
+> (c) DRPO-7B
+
+Figure 3: Pareto Frontiers of Expected Accuracy vs. Length Reduction when the models are allowed to think freely in the answer section. 
+
+B Proof of Theorem 1 
+
+Proof. Fix λ ∈ (0 , 1) and K > 0. Choose 
+
+0 < ε < 1 − λ
+
+2K .
+
+We construct a finite-horizon stopping problem with one decision point followed, if the policy continues, by forced termination. At the first decision point, the process is in one of two states, sg or sb, each with probability 1/2.Both states have zero current reasoning length and the same current correctness estimate: 
+
+L(sg ) = L(sb) = 0 , A(sg ) = A(sb) = ε. 
+
+Thus stopping immediately in either state gives reward ε.If the policy continues from sg , the process generates one additional token and reaches a terminal state tg with correctness A(tg ) = 1 and length L(tg ) = 1 . Hence the reward of continuing from sg is 
+
+A(tg ) − λL (tg ) = 1 − λ. 
+
+Since λ < 1 and ε < 1 − λ, continuing is strictly better than stopping in sg .If the policy continues from sb, the process generates M additional tokens and reaches a terminal state tb with correctness A(tb) = 0 and length L(tb) = M . Hence the utility of continuing from sb is 
+
+A(tb) − λL (tb) = −λM, 
+
+13 which is strictly worse than stopping in sb. Therefore the optimal policy continues in sg and stops in 
+
+sb, giving value 
+
+Vλ(π⋆) = 12 (1 − λ) + 12 ε. 
+
+Now consider any fixed-threshold correctness policy πcls  
+
+> γ
+
+. Since 
+
+A(sg ) = A(sb) = ε, 
+
+the threshold policy must take the same action in both states. If γ ≤ ε, then the policy stops in both states, and its value is 
+
+Vλ(πcls  
+
+> γ
+
+) = ε. 
+
+If γ > ε , then the policy continues in both states, and its value is 
+
+Vλ(πcls  
+
+> γ
+
+) = 12 (1 − λ) + 12 (−λM ) = 1 − λ − λM 
+
+2 .
+
+Choose M large enough that 
+
+1 − λ − λM 
+
+2 ≤ ε, 
+
+for example any integer 
+
+M ≥ 1 − λ − 2ελ .
+
+Then every threshold policy has value at most ε, and the best threshold policy obtains exactly 
+
+sup 
+
+> γ
+
+Vλ(πcls  
+
+> γ
+
+) = ε. 
+
+Therefore, 
+
+Vλ(π⋆)sup γ Vλ(πcls  
+
+> γ
+
+) = 
+
+> 12
+
+(1 − λ) + 12 εε = 1 − λ
+
+2ε + 12 > K, 
+
+by the choice of ε. This proves the claim. 14 C Full Evaluation Tables 
+
+DeepSeek-R1-Distill-Qwen-7B 
+
+Method / Param GSM8K MATH-500 AIME AVERAGE 
+
+Acc Length (Red.) Acc Length (Red.) Acc Length (Red.) Acc Length (Red.) 
+
+Baseline 
+
+N/A 88.7 1219 (0.0%) 77.4 3377 (0.0%) 48.0 9873 (0.0%) 71.4 4823 (0.0%) 
+
+Classification Probe 
+
+γ = 0 .70 85.9 632 (48.2%) 76.9 2247 (33.5%) 40.8 8374 (15.2%) 67.9 3751 (32.3%) 
+
+γ = 0 .75 87.5 724 (40.6%) 77.6 2518 (25.4%) 43.6 9013 (8.7%) 69.6 4085 (24.9%) 
+
+γ = 0 .80 88.2 852 (30.1%) 77.7 2786 (17.5%) 46.0 9438 (4.4%) 70.6 4358 (17.3%) 
+
+γ = 0 .85 88.6 1012 (17.0%) 77.5 3070 (9.1%) 47.4 9713 (1.6%) 71.1 4598 (9.2%) 
+
+γ = 0 .90 88.7 1161 (4.7%) 77.4 3282 (2.8%) 47.9 9846 (0.3%) 71.3 4763 (2.6%) 
+
+Answer Convergence 
+
+γ = 0 .70 82.6 598 (50.9%) 76.6 2348 (30.5%) 43.4 8833 (10.5%) 67.5 3926 (30.6%) 
+
+γ = 0 .75 85.0 648 (46.9%) 77.1 2445 (27.6%) 44.9 9033 (8.5%) 69.0 4042 (27.7%) 
+
+γ = 0 .80 86.6 708 (41.9%) 77.3 2561 (24.2%) 46.1 9179 (7.0%) 70.0 4149 (24.4%) 
+
+γ = 0 .85 87.7 786 (35.5%) 77.2 2681 (20.6%) 46.9 9338 (5.4%) 70.6 4268 (20.5%) 
+
+γ = 0 .90 88.4 898 (26.3%) 77.3 2829 (16.2%) 47.5 9500 (3.8%) 71.1 4409 (15.4%) 
+
+FlashThink 
+
+γ = 0 .70 79.3 409 (66.5%) 71.9 1647 (51.2%) 37.5 7246 (26.6%) 62.9 3101 (48.1%) 
+
+γ = 0 .75 82.5 433 (64.5%) 74.1 1763 (47.8%) 40.4 7658 (22.4%) 65.7 3285 (44.9%) 
+
+γ = 0 .80 84.6 458 (62.4%) 75.6 1888 (44.1%) 42.6 8020 (18.8%) 67.6 3456 (41.7%) 
+
+γ = 0 .85 86.5 488 (59.9%) 76.5 2027 (40.0%) 44.4 8356 (15.4%) 69.1 3624 (38.4%) 
+
+γ = 0 .90 87.6 528 (56.6%) 77.2 2198 (34.9%) 45.3 8602 (12.9%) 70.0 3776 (34.8%) 
+
+OS-Pruner 
+
+λ = 0 88.3 658 (46.0%) 81.3 2114 (37.4%) 47.1 9190 (6.9%) 72.3 3988 (30.1%) 
+
+λ = 1 .0 × 10 −6 88.3 636 (47.8%) 81.3 2064 (38.9%) 46.9 9105 (7.8%) 72.2 3935 (31.5%) 
+
+λ = 2 .0 × 10 −6 88.3 614 (49.6%) 81.2 2023 (40.1%) 46.6 9007 (8.8%) 72.0 3881 (32.8%) 
+
+λ = 5 .0 × 10 −6 88.3 591 (51.5%) 81.1 1961 (41.9%) 46.3 8805 (10.8%) 71.9 3786 (34.7%) 
+
+λ = 1 .0 × 10 −5 88.3 563 (53.8%) 81.0 1887 (44.1%) 45.7 8561 (13.3%) 71.6 3670 (37.1%) 
+
+λ = 2 .0 × 10 −5 88.2 532 (56.3%) 80.7 1776 (47.4%) 44.6 7969 (19.3%) 71.2 3426 (41.0%) 
+
+λ = 5 .0 × 10 −5 88.0 496 (59.3%) 80.1 1593 (52.8%) 41.2 6412 (35.1%) 69.8 2834 (49.0%) 
+
+λ = 1 .0 × 10 −4 87.8 480 (60.6%) 78.1 1325 (60.8%) 33.0 3516 (64.4%) 66.3 1774 (61.9%) 
+
+Table 2: Full results for DeepSeek-R1-Distill-Qwen-7B with forced answer. 15 GPT-OSS-20B 
+
+Method / Param GSM8K MATH-500 AIME AVERAGE 
+
+Acc Length (Red.) Acc Length (Red.) Acc Length (Red.) Acc Length (Red.) 
+
+Baseline 
+
+N/A 93.4 278 (0.0%) 92.3 1126 (0.0%) 67.5 6001 (0.0%) 84.4 2468 (0.0%) 
+
+Classification Probe 
+
+γ = 0 .70 90.4 218 (21.6%) 87.3 907 (19.4%) 59.1 5501 (8.3%) 78.9 2209 (16.4%) 
+
+γ = 0 .75 91.5 227 (18.2%) 89.5 957 (15.0%) 63.5 5647 (5.9%) 81.5 2277 (13.0%) 
+
+γ = 0 .80 92.4 237 (14.5%) 91.0 1004 (10.9%) 65.4 5768 (3.9%) 82.9 2336 (9.8%) 
+
+γ = 0 .85 92.9 249 (10.5%) 92.0 1055 (6.3%) 66.8 5880 (2.0%) 83.9 2395 (6.3%) 
+
+γ = 0 .90 93.2 261 (6.1%) 92.3 1089 (3.3%) 67.4 5958 (0.7%) 84.3 2436 (3.4%) 
+
+Answer Convergence 
+
+γ = 0 .70 91.0 209 (24.6%) 90.5 967 (14.1%) 56.4 5214 (13.1%) 79.3 2130 (17.3%) 
+
+γ = 0 .75 91.7 216 (22.3%) 91.0 990 (12.1%) 59.5 5413 (9.8%) 80.7 2206 (14.7%) 
+
+γ = 0 .80 92.3 223 (19.5%) 91.6 1015 (9.9%) 62.4 5534 (7.8%) 82.1 2257 (12.4%) 
+
+γ = 0 .85 92.7 231 (16.6%) 92.0 1041 (7.5%) 64.2 5634 (6.1%) 83.0 2302 (10.1%) 
+
+γ = 0 .90 93.1 241 (13.3%) 92.2 1065 (5.4%) 65.8 5723 (4.6%) 83.7 2343 (7.8%) 
+
+FlashThink 
+
+γ = 0 .70 91.2 189 (31.8%) 88.5 812 (27.9%) 58.4 5104 (15.0%) 79.4 2035 (24.9%) 
+
+γ = 0 .75 92.1 193 (30.6%) 89.5 831 (26.2%) 60.6 5201 (13.3%) 80.7 2075 (23.4%) 
+
+γ = 0 .80 92.4 196 (29.2%) 90.2 857 (24.0%) 61.9 5278 (12.0%) 81.5 2110 (21.7%) 
+
+γ = 0 .85 92.8 201 (27.5%) 91.2 886 (21.3%) 62.8 5376 (10.4%) 82.3 2155 (19.7%) 
+
+γ = 0 .90 92.9 208 (25.2%) 91.9 915 (18.8%) 63.9 5426 (9.6%) 82.9 2183 (17.8%) 
+
+OS-Pruner 
+
+λ = 0 93.2 246 (11.3%) 92.5 1026 (8.9%) 66.0 5617 (6.4%) 83.9 2296 (8.9%) 
+
+λ = 1 .0 × 10 −5 93.2 246 (11.5%) 92.5 1017 (9.7%) 65.6 5506 (8.2%) 83.7 2256 (9.8%) 
+
+λ = 2 .0 × 10 −5 93.1 239 (13.9%) 92.3 983 (12.7%) 64.1 5265 (12.3%) 83.2 2162 (13.0%) 
+
+λ = 5 .0 × 10 −5 93.1 241 (13.4%) 91.7 916 (18.7%) 60.7 4460 (25.7%) 81.8 1872 (19.3%) 
+
+λ = 1 .0 × 10 −4 92.7 223 (19.8%) 89.4 728 (35.4%) 50.5 2669 (55.5%) 77.6 1206 (36.9%) 
+
+λ = 2 .0 × 10 −4 91.7 214 (23.0%) 83.3 526 (53.3%) 29.4 1067 (82.2%) 68.2 602 (52.9%) 
+
+Table 3: Full results for GPT-OSS-20B with forced answer. 
+
+DRPO-7B 
+
+Method / Param GSM8K MATH-500 AIME AVERAGE 
+
+Acc Length (Red.) Acc Length (Red.) Acc Length (Red.) Acc Length (Red.) 
+
+Baseline 
+
+N/A 91.5 398 (0.0%) 85.6 1096 (0.0%) 44.4 4359 (0.0%) 73.8 1951 (0.0%) 
+
+Classification Probe 
+
+γ = 0 .70 87.2 306 (23.0%) 83.4 937 (14.5%) 42.9 4268 (2.1%) 71.2 1837 (13.2%) 
+
+γ = 0 .75 89.3 322 (19.0%) 84.9 974 (11.1%) 43.7 4300 (1.3%) 72.7 1866 (10.5%) 
+
+γ = 0 .80 90.5 338 (15.0%) 85.8 1009 (8.0%) 44.2 4325 (0.8%) 73.5 1891 (7.9%) 
+
+γ = 0 .85 91.2 357 (10.3%) 85.8 1044 (4.8%) 44.4 4354 (0.1%) 73.8 1918 (5.1%) 
+
+γ = 0 .90 91.4 380 (4.4%) 85.6 1076 (1.9%) 44.4 4356 (0.1%) 73.8 1937 (2.1%) 
+
+Answer Convergence 
+
+γ = 0 .70 84.2 288 (27.7%) 83.1 948 (13.5%) 40.8 4021 (7.8%) 69.4 1752 (16.3%) 
+
+γ = 0 .75 86.9 301 (24.4%) 83.8 977 (10.9%) 41.7 4127 (5.3%) 70.8 1802 (13.6%) 
+
+γ = 0 .80 88.9 315 (20.7%) 84.6 1004 (8.5%) 42.8 4205 (3.5%) 72.1 1841 (10.9%) 
+
+γ = 0 .85 90.3 331 (16.7%) 85.0 1034 (5.7%) 43.8 4261 (2.2%) 73.0 1876 (8.2%) 
+
+γ = 0 .90 91.1 355 (10.7%) 85.3 1064 (3.0%) 44.2 4307 (1.2%) 73.5 1909 (4.9%) 
+
+FlashThink 
+
+γ = 0 .70 88.1 288 (27.7%) 81.6 834 (23.9%) 41.8 4005 (8.1%) 70.5 1709 (19.9%) 
+
+γ = 0 .75 89.3 296 (25.7%) 83.1 865 (21.1%) 42.1 4052 (7.0%) 71.5 1738 (17.9%) 
+
+γ = 0 .80 90.2 303 (23.8%) 84.0 897 (18.2%) 42.5 4120 (5.5%) 72.2 1773 (15.8%) 
+
+γ = 0 .85 90.7 310 (22.0%) 84.7 924 (15.7%) 42.9 4162 (4.5%) 72.8 1799 (14.1%) 
+
+γ = 0 .90 91.0 318 (20.1%) 84.9 958 (12.6%) 43.5 4221 (3.2%) 73.2 1832 (12.0%) 
+
+OS-Pruner 
+
+λ = 0 91.2 331 (16.8%) 87.1 956 (12.8%) 43.1 3870 (11.2%) 73.8 1719 (13.6%) 
+
+λ = 1 .0 × 10 −5 91.2 330 (16.9%) 87.1 952 (13.1%) 42.9 3767 (13.6%) 73.7 1683 (14.5%) 
+
+λ = 2 .0 × 10 −5 91.2 330 (17.1%) 87.0 943 (14.0%) 42.4 3575 (18.0%) 73.6 1616 (16.4%) 
+
+λ = 5 .0 × 10 −5 91.2 326 (18.0%) 86.7 891 (18.7%) 39.8 2819 (35.3%) 72.5 1346 (24.0%) 
+
+λ = 1 .0 × 10 −4 91.0 322 (19.1%) 85.7 807 (26.4%) 36.9 2006 (54.0%) 71.2 1045 (33.2%) 
+
+λ = 2 .0 × 10 −4 90.7 314 (21.0%) 83.0 677 (38.3%) 30.5 1247 (71.4%) 68.1 746 (43.6%) Table 4: Full results for DRPO-7B with forced answer. 16 DeepSeek-R1-Distill-Qwen-7B 
+
+Method / Param GSM8K MATH-500 AIME AVERAGE 
+
+Acc Len (CoT + Ans) (Red.) Acc Len (CoT + Ans) (Red.) Acc Len (CoT + Ans) (Red.) Acc Len (CoT + Ans) (Red.) 
+
+Baseline 
+
+N/A 90.6 1443 (1220+223) (0.0%) 91.8 3759 (3378+381) (0.0%) 46.4 10240 (9874+366) (0.0%) 76.3 5147 (0.0%) 
+
+Classification Probe 
+
+γ = 0 .70 85.2 841 (628+213) (41.7%) 88.5 2741 (2233+508) (27.1%) 46.1 9734 (8355+1379) (4.9%) 73.3 4439 (24.6%) 
+
+γ = 0 .75 85.3 923 (723+201) (36.0%) 89.1 2945 (2508+437) (21.7%) 46.1 9853 (9018+836) (3.8%) 73.5 4574 (20.5%) 
+
+γ = 0 .80 86.0 1047 (847+200) (27.5%) 89.9 3169 (2776+393) (15.7%) 45.9 10018 (9417+600) (2.2%) 73.9 4745 (15.1%) 
+
+γ = 0 .85 87.1 1217 (1008+209) (15.7%) 90.4 3435 (3066+369) (8.6%) 46.4 10133 (9718+415) (1.0%) 74.6 4928 (8.4%) 
+
+γ = 0 .90 89.4 1374 (1156+218) (4.8%) 91.2 3646 (3272+374) (3.0%) 46.0 10237 (9845+392) (0.0%) 75.5 5086 (2.6%) 
+
+Answer Convergence 
+
+γ = 0 .70 84.7 795 (596+199) (44.9%) 89.5 2704 (2341+362) (28.1%) 45.8 9377 (8838+539) (8.4%) 73.4 4292 (27.1%) 
+
+γ = 0 .75 84.9 841 (646+194) (41.7%) 89.7 2782 (2446+336) (26.0%) 46.0 9436 (9024+412) (7.9%) 73.5 4353 (25.2%) 
+
+γ = 0 .80 84.7 895 (707+188) (38.0%) 89.6 2872 (2559+314) (23.6%) 46.5 9529 (9184+345) (6.9%) 73.6 4432 (22.8%) 
+
+γ = 0 .85 85.1 969 (785+184) (32.9%) 89.8 2976 (2676+300) (20.8%) 46.1 9635 (9351+284) (5.9%) 73.7 4527 (19.9%) 
+
+γ = 0 .90 85.2 1077 (892+185) (25.4%) 90.1 3107 (2817+290) (17.3%) 46.1 9742 (9494+248) (4.9%) 73.8 4642 (15.9%) 
+
+FlashThink 
+
+γ = 0 .70 84.3 640 (408+232) (55.7%) 88.2 2344 (1640+704) (37.6%) 46.2 9050 (7226+1824) (11.6%) 72.9 4011 (35.0%) 
+
+γ = 0 .75 84.9 655 (433+222) (54.6%) 88.7 2377 (1759+619) (36.8%) 45.8 9081 (7643+1438) (11.3%) 73.1 4038 (34.2%) 
+
+γ = 0 .80 84.8 669 (459+211) (53.6%) 88.8 2433 (1886+547) (35.3%) 45.7 9054 (8004+1050) (11.6%) 73.1 4052 (33.5%) 
+
+γ = 0 .85 85.0 686 (489+197) (52.5%) 88.6 2506 (2021+486) (33.3%) 45.8 9039 (8343+696) (11.7%) 73.2 4077 (32.5%) 
+
+γ = 0 .90 84.9 722 (527+195) (49.9%) 89.0 2590 (2193+397) (31.1%) 44.8 9116 (8578+538) (11.0%) 72.9 4143 (30.7%) 
+
+OS-Pruner 
+
+λ = 0 84.9 834 (658+177) (42.2%) 88.5 2360 (2127+234) (37.2%) 46.1 9359 (9225+135) (8.6%) 73.2 4185 (29.3%) 
+
+λ = 1 .0 × 10 −6 84.7 818 (642+176) (43.3%) 88.6 2310 (2073+237) (38.5%) 46.1 9274 (9148+126) (9.4%) 73.2 4134 (30.4%) 
+
+λ = 2 .0 × 10 −6 84.7 794 (618+176) (45.0%) 88.9 2268 (2025+243) (39.7%) 46.2 9200 (9058+141) (10.2%) 73.3 4087 (31.6%) 
+
+λ = 5 .0 × 10 −6 84.6 771 (593+178) (46.5%) 88.5 2246 (1980+266) (40.2%) 45.9 9035 (8849+186) (11.8%) 73.0 4017 (32.9%) 
+
+λ = 1 .0 × 10 −5 84.6 748 (566+182) (48.2%) 88.6 2195 (1893+302) (41.6%) 46.1 8905 (8639+266) (13.0%) 73.1 3949 (34.3%) 
+
+λ = 2 .0 × 10 −5 85.0 720 (535+185) (50.1%) 88.4 2155 (1790+364) (42.7%) 45.3 8839 (8109+730) (13.7%) 72.9 3905 (35.5%) 
+
+λ = 5 .0 × 10 −5 85.0 693 (500+194) (51.9%) 88.3 2119 (1617+502) (43.6%) 45.2 8765 (6553+2211) (14.4%) 72.8 3859 (36.7%) 
+
+λ = 1 .0 × 10 −4 85.0 686 (482+204) (52.5%) 88.3 2160 (1347+813) (42.5%) 44.2 8822 (3601+5220) (13.9%) 72.5 3889 (36.3%) 
+
+Table 5: Full results for DeepSeek-R1-Distill-Qwen-7B with free thinking. 
+
+GPT-OSS-20B 
+
+Method / Param GSM8K MATH-500 AIME AVERAGE 
+
+Acc Len (CoT + Ans) (Red.) Acc Len (CoT + Ans) (Red.) Acc Len (CoT + Ans) (Red.) Acc Len (CoT + Ans) (Red.) 
+
+Baseline 
+
+N/A 93.5 284 (279+5) (0.0%) 95.1 1134 (1127+7) (0.0%) 65.4 6008 (6002+6) (0.0%) 84.7 2475 (0.0%) 
+
+Classification Probe 
+
+γ = 0 .70 90.7 224 (218+5) (21.2%) 89.8 905 (891+14) (20.2%) 56.9 5442 (5377+65) (9.4%) 79.1 2190 (16.9%) 
+
+γ = 0 .75 91.9 233 (228+5) (17.8%) 92.0 961 (950+10) (15.3%) 62.3 5644 (5610+34) (6.1%) 82.0 2279 (13.1%) 
+
+γ = 0 .80 92.7 243 (238+5) (14.3%) 93.8 1012 (1003+9) (10.8%) 63.7 5776 (5754+22) (3.9%) 83.4 2344 (9.6%) 
+
+γ = 0 .85 93.1 255 (250+5) (10.1%) 94.5 1058 (1050+8) (6.7%) 65.0 5892 (5877+15) (1.9%) 84.2 2402 (6.2%) 
+
+γ = 0 .90 93.4 266 (261+5) (6.2%) 94.9 1097 (1091+7) (3.2%) 65.6 5967 (5957+10) (0.7%) 84.6 2444 (3.4%) 
+
+Answer Convergence 
+
+γ = 0 .70 90.9 214 (209+5) (24.6%) 93.3 972 (958+14) (14.3%) 56.4 5182 (5104+78) (13.7%) 80.2 2123 (17.5%) 
+
+γ = 0 .75 91.7 221 (215+5) (22.3%) 94.0 991 (980+11) (12.6%) 59.0 5385 (5327+58) (10.4%) 81.5 2199 (15.1%) 
+
+γ = 0 .80 92.3 228 (223+5) (19.6%) 94.4 1018 (1008+10) (10.3%) 61.3 5553 (5505+47) (7.6%) 82.7 2266 (12.5%) 
+
+γ = 0 .85 92.8 236 (231+5) (16.8%) 94.7 1043 (1034+9) (8.0%) 63.1 5643 (5615+27) (6.1%) 83.6 2307 (10.3%) 
+
+γ = 0 .90 93.1 245 (240+5) (13.7%) 95.0 1071 (1061+10) (5.6%) 64.8 5743 (5719+25) (4.4%) 84.3 2353 (7.9%) 
+
+FlashThink 
+
+γ = 0 .70 91.6 195 (190+5) (31.3%) 91.4 823 (810+13) (27.4%) 58.0 5145 (5103+42) (14.4%) 80.3 2054 (24.4%) 
+
+γ = 0 .75 92.4 199 (194+5) (29.9%) 92.5 843 (829+14) (25.7%) 59.3 5201 (5176+25) (13.4%) 81.4 2081 (23.0%) 
+
+γ = 0 .80 92.8 202 (197+5) (28.7%) 93.1 867 (856+11) (23.6%) 61.4 5277 (5267+9) (12.2%) 82.4 2115 (21.5%) 
+
+γ = 0 .85 93.1 207 (202+5) (27.0%) 94.2 890 (880+10) (21.5%) 61.8 5388 (5377+11) (10.3%) 83.0 2162 (19.6%) 
+
+γ = 0 .90 93.2 213 (208+5) (24.9%) 94.6 920 (912+8) (18.9%) 62.9 5437 (5422+15) (9.5%) 83.6 2190 (17.7%) 
+
+OS-Pruner 
+
+λ = 0 93.4 254 (248+5) (10.7%) 95.1 1045 (1038+7) (7.9%) 64.9 5648 (5642+6) (6.0%) 84.5 2316 (8.2%) 
+
+λ = 1 .0 × 10 −5 93.4 254 (249+5) (10.5%) 95.2 1025 (1017+8) (9.6%) 65.1 5552 (5545+6) (7.6%) 84.6 2277 (9.2%) 
+
+λ = 2 .0 × 10 −5 93.4 247 (242+5) (13.0%) 94.9 995 (987+8) (12.3%) 63.6 5334 (5323+11) (11.2%) 84.0 2192 (12.2%) 
+
+λ = 5 .0 × 10 −5 93.3 249 (243+5) (12.4%) 94.5 916 (908+9) (19.2%) 60.4 4401 (4391+10) (26.7%) 82.7 1855 (19.5%) 
+
+λ = 1 .0 × 10 −4 93.1 233 (228+5) (18.0%) 92.5 744 (733+12) (34.4%) 51.0 2885 (2759+126) (52.0%) 78.9 1287 (34.8%) 
+
+λ = 2 .0 × 10 −4 92.6 226 (221+5) (20.4%) 86.6 553 (534+18) (51.3%) 31.9 1329 (1148+182) (77.9%) 70.3 703 (49.8%) Table 6: Full results for GPT-OSS-20B with free thinking. 17 DRPO-7B 
+
+Method / Param GSM8K MATH-500 AIME AVERAGE 
+
+Acc Len (CoT + Ans) (Red.) Acc Len (CoT + Ans) (Red.) Acc Len (CoT + Ans) (Red.) Acc Len (CoT + Ans) (Red.) 
+
+Baseline 
+
+N/A 91.5 430 (399+31) (0.0%) 93.2 1245 (1097+148) (0.0%) 44.3 4624 (4360+264) (0.0%) 76.3 2100 (0.0%) 
+
+Classification Probe 
+
+γ = 0 .70 90.6 362 (306+56) (15.6%) 92.5 1086 (934+151) (12.8%) 44.1 4532 (4255+277) (2.0%) 75.7 1993 (10.1%) 
+
+γ = 0 .75 91.0 366 (323+43) (14.7%) 92.8 1108 (974+134) (11.0%) 44.3 4569 (4301+268) (1.2%) 76.0 2014 (9.0%) 
+
+γ = 0 .80 91.2 375 (339+36) (12.7%) 93.0 1141 (1010+131) (8.4%) 44.3 4594 (4319+275) (0.6%) 76.2 2037 (7.3%) 
+
+γ = 0 .85 91.4 390 (357+33) (9.2%) 93.2 1177 (1044+134) (5.4%) 44.4 4616 (4354+262) (0.2%) 76.3 2061 (4.9%) 
+
+γ = 0 .90 91.5 411 (380+31) (4.3%) 93.2 1216 (1075+142) (2.3%) 44.4 4622 (4357+265) (0.0%) 76.4 2083 (2.2%) 
+
+Answer Convergence 
+
+γ = 0 .70 90.2 358 (288+70) (16.7%) 92.7 1100 (948+152) (11.7%) 44.0 4306 (3997+309) (6.9%) 75.6 1921 (11.8%) 
+
+γ = 0 .75 90.6 358 (301+57) (16.6%) 92.8 1116 (977+139) (10.4%) 44.3 4358 (4124+234) (5.8%) 75.9 1944 (10.9%) 
+
+γ = 0 .80 91.1 362 (316+46) (15.7%) 92.8 1136 (1004+132) (8.7%) 44.1 4421 (4206+215) (4.4%) 76.0 1973 (9.6%) 
+
+γ = 0 .85 91.2 370 (332+38) (13.9%) 92.9 1163 (1034+128) (6.6%) 44.1 4469 (4263+206) (3.3%) 76.1 2001 (8.0%) 
+
+γ = 0 .90 91.4 388 (355+33) (9.7%) 93.1 1198 (1064+134) (3.8%) 44.3 4521 (4305+217) (2.2%) 76.3 2036 (5.2%) 
+
+FlashThink 
+
+γ = 0 .70 90.8 349 (288+62) (18.6%) 92.3 1058 (834+224) (15.1%) 43.9 4252 (3996+256) (8.1%) 75.7 1886 (13.9%) 
+
+γ = 0 .75 91.0 349 (296+53) (18.8%) 92.6 1060 (864+197) (14.8%) 43.9 4295 (4069+226) (7.1%) 75.8 1901 (13.6%) 
+
+γ = 0 .80 91.0 350 (304+46) (18.6%) 92.7 1069 (895+173) (14.2%) 43.6 4308 (4120+187) (6.8%) 75.8 1909 (13.2%) 
+
+γ = 0 .85 91.3 350 (311+39) (18.6%) 92.7 1076 (924+153) (13.5%) 44.0 4352 (4163+189) (5.9%) 76.0 1926 (12.7%) 
+
+γ = 0 .90 91.3 354 (318+35) (17.6%) 92.5 1097 (955+142) (11.9%) 44.2 4406 (4219+187) (4.7%) 76.0 1952 (11.4%) 
+
+OS-Pruner 
+
+λ = 0 91.3 361 (332+29) (15.9%) 92.8 1050 (958+92) (15.7%) 43.6 4127 (3901+226) (10.8%) 75.9 1846 (14.1%) 
+
+λ = 1 .0 × 10 −5 91.3 361 (332+30) (15.9%) 92.8 1045 (954+91) (16.1%) 44.2 4071 (3803+268) (12.0%) 76.1 1826 (14.6%) 
+
+λ = 2 .0 × 10 −5 91.3 360 (331+29) (16.3%) 92.8 1041 (945+96) (16.4%) 43.6 3999 (3636+363) (13.5%) 75.9 1800 (15.4%) 
+
+λ = 5 .0 × 10 −5 91.3 357 (327+30) (16.8%) 92.6 1027 (898+129) (17.5%) 42.5 3806 (2816+991) (17.7%) 75.5 1730 (17.3%) 
+
+λ = 1 .0 × 10 −4 91.3 355 (323+32) (17.2%) 92.3 1032 (810+222) (17.2%) 42.6 3758 (2041+1717) (18.7%) 75.4 1715 (17.7%) 
+
+λ = 2 .0 × 10 −4 91.3 354 (315+38) (17.6%) 92.3 1013 (682+331) (18.6%) 42.1 3353 (1295+2058) (27.5%) 75.2 1573 (21.2%) 
+
+Table 7: Full results for DRPO-7B with free thinking. 18

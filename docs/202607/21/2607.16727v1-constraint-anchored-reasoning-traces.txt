@@ -1,0 +1,1125 @@
+Title: Constraint-Anchored Reasoning Traces
+
+URL Source: https://arxiv.org/pdf/2607.16727v1
+
+Published Time: Tue, 21 Jul 2026 00:31:35 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+# Constraint-Anchored Reasoning Traces 
+
+# Zehua Cheng 
+
+Department of Computer Science University of Oxford United Kingdom zehua.cheng@cs.ox.ac.uk 
+
+# Wei Dai and Jiahao Sun 
+
+FLock.io United Kingdom sun@flock.io 
+
+## Abstract 
+
+Autoregressive multimodal large language models (MLLMs) suffer from error snowballing: a single incorrect inference early in a chain-of-thought (CoT) trace corrupts all downstream reasoning. We find that in state-of-the-art open-source MLLMs, once the first error oc-curs, the reasoning cascades into failure across all remaining steps in 65% of such cases (a metric we term the snowball rate ). Existing mitigations—sampling multiple chains, post-hoc self-verification, or full program synthesis—either lack symbolic grounding, catch er-rors too late, or sacrifice the flexibility of natural language reasoning. We propose Constraint-Anchored Reasoning Traces (CART) ,a neuro-symbolic framework that trains MLLMs to interleave natu-ral language reasoning steps with symbolic constraint assertions: lightweight, machine-checkable statements about visual content (e.g., count(red_objects) = 3 ). A dual-pronged Constraint Prop-agation Module—combining a learned neural grounding head with Boolean Constraint Propagation—continuously verifies these an-chors against extracted visual features and checks their mutual logical consistency. When a contradiction is detected, a backtrack controller halts generation and reverts to the last consistent check-point, preventing error propagation. A variable-frequency emission mechanism allows the model to adaptively control anchor den-sity, avoiding trace bloat. We construct 218K training instances by augmenting GQA, CLEVR-CoGenT, and VCR with ground-truth constraint annotations derived from scene graphs, and fine-tune open-source MLLMs (LLaVA-NeXT, Qwen2-VL) via LoRA. On five benchmarks, CART reduces the snowball rate from 0.65 to 0.14, improves GQA accuracy by +4.6 percentage points over training-only baselines, and achieves 89.1 F1 on POPE—all with at most 18% inference overhead. 
+
+## CCS Concepts 
+
+• Computing methodologies → Knowledge representation and reasoning ; Spatial and physical reasoning .
+
+## Keywords 
+
+multimodal reasoning, chain-of-thought, error correction, neuro-symbolic systems, constraint propagation, visual question answer-ing, large language models  
+
+> Permission to make digital or hard copies of all or part of this work for personal or classroom use is granted without fee provided that copies are not made or distributed for profit or commercial advantage and that copies bear this notice and the full citation on the first page. Copyrights for components of this work owned by others than the author(s) must be honored. Abstracting with credit is permitted. To copy otherwise, or republish, to post on servers or to redistribute to lists, requires prior specific permission and/or a fee. Request permissions from permissions@acm.org.
+> ACM MM 2026, Dublin, Ireland
+> ©2026 Copyright held by the owner/author(s). Publication rights licensed to ACM. ACM ISBN 978-x-xxxx-xxxx-x/YYYY/MM https://doi.org/XXXXXXX.XXXXXXX
+
+ACM Reference Format: 
+
+Zehua Cheng and Wei Dai and Jiahao Sun. 2026. Constraint-Anchored Reasoning Traces. In Proceedings of The 34th ACM International Conference on Multimedia (ACM MM 2026). ACM, New York, NY, USA, 15 pages. https: //doi.org/XXXXXXX.XXXXXXX 
+
+## 1 Introduction 
+
+Multimodal large language models (MLLMs) have demonstrated remarkable capabilities across vision-language tasks, yet their au-toregressive generation paradigm harbors a critical structural vul-nerability: error snowballing . When a model commits an incorrect inference early in a chain-of-thought (CoT) reasoning trace, every subsequent step conditions on this erroneous prefix, causing down-stream reasoning to cascade into compounding failures [ 27 , 32 ]. In compositional visual question answering—where answering a single question may require counting objects, identifying spatial relations, and reasoning about attributes—a single misidentified object can corrupt the entire deductive chain without external cor-rection. Existing approaches to mitigate reasoning errors in MLLMs fall into three broad categories, each with fundamental shortcomings. 
+
+Sampling-based methods [26 , 28 ] generate multiple candidate chains and select answers by majority vote or heuristic scoring, but provide no mechanism to identify which step failed or why —they merely hope that the correct chain appears among the samples. Post-hoc self-verification [20 , 23 ] prompts the model to critique its own out-put, but this verbal self-assessment lacks grounding in the visual input; the same model that produced the error is unlikely to reli-ably detect it through introspection alone. Program synthesis [ 6 , 24 ]sidesteps natural language reasoning entirely by generating exe-cutable code, achieving strong symbolic guarantees but sacrificing the interpretability and flexibility of natural language traces—a critical limitation when the reasoning domain is not reducible to a fixed API. We observe that what is needed is a principled middle ground : a framework that preserves the flexibility of natural language reason-ing while injecting verifiable symbolic checkpoints that can catch errors as they occur and trigger corrective action before they propa-gate. To this end, we propose Constraint-Anchored Reasoning Traces (CART) , a framework that trains MLLMs to interleave standard reasoning steps with symbolic constraint assertions —lightweight, machine-checkable statements about visual content (e.g., count(red_objects) = 3 , left_of(dog, cat) = True ). A dedicated Constraint Propagation Module (CPM) continuously verifies these anchors against extracted visual features via a neural grounding head and checks their mutual logical consistency via Boolean Constraint Propagation (BCP). When a contradiction is arXiv:2607.16727v1 [cs.AI] 18 Jul 2026 ACM MM 2026, October 2026, Dublin, Ireland Cheng et al. 
+
+detected—either between an anchor and the image or among ac-cumulated anchors—generation halts and a backtrack controller 
+
+reverts the trace to the last consistent checkpoint, preventing error propagation. A key design insight of CART is variable-frequency anchor emis-sion : rather than rigidly alternating between reasoning steps and constraints, the model learns to emit zero, one, or multiple anchors after each step, with an explicit null token when no meaningful constraint applies. This adaptive density avoids both the trace bloat of forced emissions and the under-constraining of sparse ones. We train CART by augmenting existing visual reasoning datasets (GQA [ 10 ], CLEVR-CoGenT [ 11 ], VCR [ 31 ]) with ground-truth con-straint annotations derived from scene graphs and structured pro-grams, yielding 218K training instances. Fine-tuning is performed via LoRA on open-source MLLMs (LLaVA-NeXT [ 15 ], Qwen2-VL [ 25 ]), jointly optimizing a task loss, a constraint grounding loss, and a novel backtrack-aware loss that teaches the model to recover from simulated errors. Our contributions are summarized as follows: 
+
+• We formalize the error snowballing problem in autoregres-sive multimodal reasoning and propose CART, a neuro-symbolic framework that interleaves natural language reasoning with verifiable symbolic constraint anchors and a runtime con-straint propagation module. 
+
+• We introduce a variable-frequency anchor emission mecha-nism, a dual-pronged verification engine combining neural visual grounding with symbolic Boolean Constraint Propaga-tion, and a backtrack controller with formal error-reduction guarantees (Theorem 2). 
+
+• We define three novel diagnostic metrics—snowball rate, constraint violation rate, and error attribution precision— that directly measure error propagation behavior beyond standard end-task accuracy. 
+
+• Extensive experiments on five benchmarks (GQA, CLEVR-CoGenT, VCR, MM-Vet, POPE) demonstrate that CART achieves state-of-the-art accuracy while reducing the snowball rate from 0.65 to 0.14, with only 10–18% inference overhead. 
+
+## 2 Related Work 
+
+Chain-of-thought reasoning in MLLMs. Chain-of-thought prompt-ing [ 27 ] and its variants have become the de facto approach for elic-iting multi-step reasoning from large language models. Zero-shot CoT [ 12 ] and few-shot prompting strategies improve performance on arithmetic and commonsense benchmarks, while multimodal extensions [ 18 , 33 ] adapt these techniques to vision-language tasks. However, standard CoT provides no mechanism to detect or cor-rect intermediate errors. Tree-of-Thoughts [ 28 ] explores multiple reasoning branches via breadth-first or depth-first search with LLM-based evaluation, but the evaluator shares the same failure modes as the generator. Self-Consistency [ 26 ] marginalizes over sampled chains by majority voting, improving robustness statistically but offering no per-chain error correction. DDCoT [ 34 ] decomposes questions into sub-questions for divide-and-conquer reasoning but still relies on the model’s internal representations for correctness. CART differs from all of these by introducing externally verifiable 
+
+symbolic checkpoints that ground intermediate reasoning in the visual input, enabling targeted correction rather than statistical aggregation. 
+
+Neuro-symbolic visual reasoning. The integration of sym-bolic reasoning with neural perception has a rich history in vi-sual question answering. Neural Module Networks [ 1 , 9] compose differentiable modules according to syntactic parses of questions, while NS-VQA [ 29 ] uses a scene parser to construct symbolic rep-resentations for program execution. More recently, VisProg [ 6]and ViperGPT [ 24 ] leverage LLMs to generate executable Python programs that invoke specialized vision modules. Faithful CoT [ 19 ]translates reasoning chains into symbolic programs for verifica-tion. These fully symbolic approaches achieve strong guarantees on structured benchmarks like CLEVR but struggle with the ambiguity and open-ended nature of real-world visual reasoning (e.g., VCR), where rigid program templates cannot capture the full spectrum of deductive strategies. CART occupies a complementary niche: it retains natural language as the primary reasoning medium while selectively injecting symbolic assertions at points where visual grounding can be verified, preserving flexibility where needed and enforcing precision where possible. 
+
+Error correction and self-refinement. Several recent works address the brittleness of autoregressive reasoning through itera-tive refinement. Reflexion [ 23 ] maintains an episodic memory of verbal self-reflections to improve subsequent attempts, while Self-Refine [ 20 ] iterates between generation and self-critique within a single inference pass. In the visual domain, visual verification approaches [ 3] prompt MLLMs to re-examine the image after gen-erating an answer. However, these methods rely on the model’s own internal representations for error detection—the same repre-sentations that produced the error. CART introduces a partially external verification loop: the neural grounding head is anchored to independently extracted visual evidence (region features from a frozen Grounding DINO [ 16 ] detector) rather than relying solely on the generator’s own attention over the image, and BCP provides a non-differentiable, sound consistency check over the accumulated anchors. We note that the grounding head is not fully independent of the generator—it also consumes the anchor’s LLM hidden-state embedding (§3.2.2)—but grounding the check in external visual features and a symbolic consistency test still mitigates the purely self-referential failure mode of methods that verify using only the generator’s internal representations. 
+
+## 3 Methodology 
+
+We present Constraint-Anchored Reasoning Traces (CART) ,a framework that augments autoregressive multimodal reasoning with interleaved symbolic constraint assertions and a runtime con-straint propagation module capable of detecting inconsistencies and triggering targeted backtracking. We detail the formulation, architecture, theoretical guarantees, and training procedure below. 
+
+## 3.1 Problem Formulation 
+
+Let I denote the space of images and Q the space of natural-language questions. A multimodal large language model (MLLM) 
+
+M𝜃 parameterized by 𝜃 produces, given an image 𝐼 ∈ I and ques-tion 𝑞 ∈ Q , an answer 𝑎 via an autoregressive chain-of-thought (CoT) trace r = (𝑟 1, 𝑟 2, . . . , 𝑟 𝑇 ), where each 𝑟 𝑡 is a reasoning step Constraint-Anchored Reasoning Traces ACM MM 2026, October 2026, Dublin, Ireland 
+
+Figure 1: Overview of the CART framework. Given an image and question, the MLLM generates interleaved reasoning steps and symbolic constraint anchors. The Constraint Propagation Module (CPM) verifies each anchor via a neural grounding head and Boolean Constraint Propagation. When a violation is detected, the backtrack controller reverts to the last consistent checkpoint and resumes generation with a <RETRY> token. 
+
+(a span of tokens). The final answer 𝑎 = 𝑓 ans (r) is extracted from the terminal step. We denote the visual feature bank extracted by the MLLM’s frozen vision encoder as V = 𝜙 (𝐼 ) ∈ R𝑁 ×𝑑 𝑣 , where 
+
+𝑁 is the number of spatial tokens and 𝑑 𝑣 is the per-token feature dimension. 
+
+Error snowballing. We define an error event at step 𝑡 as 
+
+𝑒 𝑡 = ⊮[sem (𝑟 𝑡 ) ≠ sem (𝑟 ∗ 
+
+> 𝑡
+
+)] , where sem (·) extracts the semantic proposition of a step and 𝑟 ∗ 
+
+> 𝑡
+
+is the ground-truth counterpart. The 
+
+snowball rate S is the conditional probability that all subsequent steps are erroneous given a first error: 
+
+S = P
+
+h 𝑇 Ù 
+
+> 𝑡 ′=𝑡 +1
+
+{𝑒 𝑡 ′ = 1} 𝑒 𝑡 = 1, ∀𝑡 ′′ <𝑡 𝑒 𝑡 ′′ = 0
+
+i
+
+.
+
+Standard autoregressive generation exhibits high S because the model conditions on its own (erroneous) prefix with no corrective mechanism. 
+
+Objective. We seek to learn parameters 𝜃 ∗ and a constraint-checking mechanism C that jointly minimize task loss while reduc-ing S:
+
+𝜃 ∗ = arg min  
+
+> 𝜃
+
+Ltask (𝜃 )
+
+| {z }
+
+> answer accuracy
+
++𝜆 𝑐 Lcst (𝜃 )
+
+| {z }
+
+> constraint grounding
+
++𝜆 𝑏 Lbt (𝜃 )
+
+| {z }
+
+> backtrack policy
+
+,
+
+(1) where 𝜆 𝑐 , 𝜆 𝑏 > 0 are balancing coefficients. Each loss term is defined in Appendix D. 
+
+## 3.2 Constraint-Anchored Reasoning Traces 
+
+CART introduces three interlocking components: (i) variable-frequency anchor-interleaved generation , (ii) a constraint propagation module (CPM) , and (iii) a backtrack controller . We describe each in turn and justify every design choice. 
+
+3.2.1 Variable-Frequency Anchor-Interleaved Generation. We aug-ment the reasoning trace vocabulary with a distinguished set of 
+
+constraint anchors . Formally, an anchor 𝑐 is a symbolic assertion drawn from a domain-specific constraint language L𝑐 :
+
+𝑐 = pred (arg 1, . . . , arg 𝑘 ) ⊲⊳ 𝑣, ⊲⊳ ∈ {=, ≠, <, >, ≤, ≥} ,
+
+where pred is a visual predicate (e.g., count , color , spatial_rel ), 
+
+arg 𝑖 are grounded entity references, and 𝑣 is a value. Examples in-clude count(red_objects) = 3 and left_of(dog, cat) = True .The language L𝑐 is intentionally kept lightweight—propositional with bounded-arity predicates and finite domains—so that checking is efficient (see Proposition 1). 
+
+Variable-frequency emission . Rather than enforcing a rigid one-to-one alternation between reasoning steps and anchors, we allow the model to emit zero, one, or multiple anchors after any reasoning step. Anchors are delineated by <CON> and </CON> de-limiter tokens; the model may emit multiple such delimited spans consecutively, or none at all. When no meaningful constraint ap-plies to a reasoning step, the model emits an explicit <NULL_CON/> ACM MM 2026, October 2026, Dublin, Ireland Cheng et al. 
+
+token. Formally, the mixed trace has the structure: 
+
+r =  𝑟 1, c1, 𝑟 2, c2, . . . , 𝑟 𝑇 , c𝑇 
+
+,
+
+where c𝑡 ∈ L ∗ 
+
+> 𝑐
+
+∪ { <NULL_CON/> } denotes a possibly-empty se-quence of anchors following step 𝑟 𝑡 . Let A = {( 𝑡, 𝑗 ) : 𝑐 𝑡,𝑗 ∈
+
+c𝑡 , 𝑐 𝑡,𝑗 ≠ <NULL_CON/> } index all non-null anchor emissions across the trace. Justification. Variable-frequency emission avoids two fail-ure modes of rigid alternation: (a) inflating the trace with vacuous anchors for steps that admit no verifiable visual constraint (degrad-ing generation quality), and (b) under-constraining steps where multiple independent visual facts are established. The <NULL_CON/> 
+
+token is necessary because simply omitting the anchor field would create an ambiguous parse: the delimiter-based parser cannot distin-guish “no anchor emitted” from “anchor emission failed.” Training the model on traces with varying anchor density (including ex-plicit nulls) teaches it to self-assess which steps warrant symbolic checkpoints. 
+
+3.2.2 Entity Grounding Mechanism. Anchors reference entities by natural-language name strings (e.g., ‘dog‘, ‘red cylinder‘). Resolving these strings to image regions is essential for the visual grounding check. We use Grounding DINO [ 16 ] as a frozen, off-the-shelf entity grounding module. Specifically: 
+
+• For each anchor 𝑐 𝑡,𝑗 with entity arguments (arg 1, . . . , arg 𝑘 ),each argument string is passed to Grounding DINO along with the image 𝐼 , producing a set of candidate bounding boxes with confidence scores. 
+
+• The top-1 box per argument (confidence threshold ≥ 0.3) is projected onto the spatial token grid of the vision encoder, yielding a subset of spatial token indices R𝑖 ⊆ { 1, . . . , 𝑁 } for each arg 𝑖 .
+
+• RoI-Align [ 7 ] extracts region-level visual features v𝑖 = MeanPool ({ V𝑛 :
+
+𝑛 ∈ R 𝑖 }) ∈ R𝑑 𝑣 for each argument. 
+
+• If Grounding DINO fails to detect a named entity (confidence below threshold for all candidates), we fall back to full-image mean pooling v𝑖 = MeanPool (V) ∈ R𝑑 𝑣 and flag the anchor as weakly grounded .
+
+Grounding accuracy. We evaluated the Grounding DINO entity localization on a held-out set of 2,000 anchor-entity pairs manu-ally annotated with ground-truth bounding boxes. At IoU ≥ 0.5,grounding accuracy is 89.3% (GQA/CLEVR entities) and 82.7% 
+
+(VCR entities, which include more complex referring expressions). The fallback to full-image pooling is triggered for 6.2% of entities overall. 
+
+Justification. Using a dedicated open-vocabulary detector rather than the MLLM’s own attention maps provides more reliable spa-tial localization. Attention-based grounding in MLLMs has been shown to be diffuse and unreliable for fine-grained spatial reason-ing. Grounding DINO’s open-vocabulary capability handles the diverse entity descriptions generated by the LLM without requiring a fixed object taxonomy. 
+
+3.2.3 Constraint Propagation Module. The CPM acts as an external verifier. Its neural component (𝑔 𝜓 ) is trained end-to-end while its symbolic component (BCP) is always a non-differentiable hard combinatorial check, used identically during training (for computing grounding labels and detecting synthetic violations) and 
+
+Algorithm 1 CART Inference 
+
+Require: Image 𝐼 , question 𝑞 , model 𝑀 𝜃 , grounding head 𝑔 𝜓 , BCP, GroundingDINO, threshold 𝜏 𝑣 , max retries 𝐵 
+
+Ensure: Answer 𝑎  
+
+> 1:
+
+𝑉 ← 𝜙 (𝐼 ); Σ ← ∅ ; trace ← [] ; retries ← 0 
+
+> 2:
+
+while not END_TOKEN and retries ≤ 𝐵 do  
+
+> 3:
+
+𝑟 𝑡 ← 𝑀 𝜃 .gen_step (trace , 𝐼, 𝑞 ) 
+
+> 4:
+
+𝐶 𝑡 ← 𝑀 𝜃 .gen_anchors (trace + [ 𝑟 𝑡 ], 𝐼, 𝑞 ) 
+
+> 5:
+
+if 𝐶 𝑡 = <NULL_CON/> or malformed then  
+
+> 6:
+
+trace ← trace + [ 𝑟 𝑡 , <NULL_CON/> ]; continue  
+
+> 7:
+
+end if  
+
+> 8:
+
+all_ok ← True  
+
+> 9:
+
+for 𝑐 ∈ 𝐶 𝑡 do  
+
+> 10:
+
+𝑣 𝑐 ← RoI_Pool (𝑉 , GroundingDINO (𝑐. entities , 𝐼 ))  
+
+> 11:
+
+𝑝 𝑣𝑖𝑠 ← 𝑔 𝜓 ([ 𝑣 𝑐 ; LLM_hid (𝑐, trace )])  
+
+> 12:
+
+if 𝑝 𝑣𝑖𝑠 < 𝜏 𝑣 or ¬BCP (Σ ∪ { 𝑐 }) then ⊲ Check visual & logical validity  
+
+> 13:
+
+all_ok ← False; break  
+
+> 14:
+
+end if  
+
+> 15:
+
+end for  
+
+> 16:
+
+if all_ok then  
+
+> 17:
+
+Σ ← Σ ∪ 𝐶 𝑡 ; trace ← trace + [ 𝑟 𝑡 , 𝐶 𝑡 ] 
+
+> 18:
+
+else ⊲ Violation → backtrack  
+
+> 19:
+
+if Σ = ∅ then trace ← [ <RETRY> ] 
+
+> 20:
+
+else  
+
+> 21:
+
+Revert Σ and trace to most recent anchor 𝑐 𝑙𝑎𝑠𝑡 ∈ Σ 
+
+> 22:
+
+trace ← trace + [ <RETRY> ] 
+
+> 23:
+
+end if  
+
+> 24:
+
+retries ← retries + 1 
+
+> 25:
+
+end if  
+
+> 26:
+
+end while  
+
+> 27:
+
+if retries > 𝐵 and trace incomplete then ⊲ Retry budget exhausted  
+
+> 28:
+
+𝑎 ← valid (𝑓 ans (trace )) ? 𝑓 ans (trace ) : 𝑀 𝜃 .fallback (𝐼, 𝑞 ) 
+
+> 29:
+
+else  
+
+> 30:
+
+𝑎 ← 𝑓 ans (trace ) 
+
+> 31:
+
+end if  
+
+> 32:
+
+return 𝑎 
+
+at inference (as a hard gate in Algorithm 1). The CPM maintains a constraint store Σ𝑡 = {𝑐 𝑡 ′,𝑗 : (𝑡 ′, 𝑗 ) ∈ A , 𝑡 ′ ≤ 𝑡 } that grows as non-null anchors are emitted. 
+
+Visual grounding check. Each non-null anchor 𝑐 𝑡,𝑗 is verified against the visual feature bank V via a lightweight grounding head 𝑔 𝜓 . The input to 𝑔 𝜓 is the concatenation of (i) the region-level visual feature v𝑐 ∈ R𝑑 𝑣 , obtained by mean-pooling the RoI-Aligned features across all entity arguments of the anchor (as described in 
+
+§ 3.2.2), and (ii) a text embedding h𝑐 ∈ R𝑑 𝑡 of the anchor string, taken from the last hidden layer of the LLM at the </CON> token position. The grounding head is a 2-layer MLP: 
+
+𝑔 𝜓 (𝑐, V) = 𝜎  W2 GELU (LN (W1 [v𝑐 ; h𝑐 ] + b1)) + b2
+
+,
+
+with weight matrices W1 ∈ R512 × ( 𝑑 𝑣 +𝑑 𝑡 ) , W2 ∈ R1×512 , layer normalization (LN), and sigmoid output 𝜎 . Concretely, for LLaVA-NeXT-13B : 𝑑 𝑣 = 1024 (CLIP ViT-L/14), 𝑑 𝑡 = 5120 (LLaMA-2-13B), Constraint-Anchored Reasoning Traces ACM MM 2026, October 2026, Dublin, Ireland 
+
+so the input dimension is 6144 ; for Qwen2-VL-7B : 𝑑 𝑣 = 1408 (ViT-bigG), 𝑑 𝑡 = 4096 (Qwen-7B), input dimension 5504 . Total grounding head parameters: 3.2M (LLaVA-NeXT) / 2.9M (Qwen-VL). The grounding head outputs 𝑝 vis (𝑐 𝑡,𝑗 | 𝐼 ) = 𝑔 𝜓 (𝑐 𝑡,𝑗 , V) ∈ [ 0, 1].If 𝑝 vis (𝑐 𝑡,𝑗 | 𝐼 ) < 𝜏 𝑣 , the anchor is flagged as visually violated .
+
+Mutual consistency check. We additionally perform Boolean Constraint Propagation (BCP) over Σ𝑡 ∪ { 𝑐 𝑡,𝑗 }. Because L𝑐 is propositional with finite domains, checking satisfiability of the accumulated constraint set is tractable. We convert Σ𝑡 ∪ { 𝑐 𝑡,𝑗 } into a conjunction of literals and apply unit propagation; if the empty clause is derived, a logical contradiction is detected. BCP is a purely symbolic, non-differentiable procedure and never receives gradients. 
+
+Justification. The two-pronged check (neural grounding + sym-bolic BCP) is complementary: the grounding head catches factual errors about the image that BCP alone cannot detect (since BCP only checks inter-constraint consistency), while BCP catches logi-cal contradictions that the grounding head might miss due to soft thresholding. Keeping BCP non-differentiable preserves its sound-ness guarantee. 
+
+3.2.4 Backtrack Controller. When the CPM flags a violation at an-chor 𝑐 𝑡,𝑗 , the backtrack controller halts autoregressive generation and reverts the trace to the most recent consistent checkpoint .Formally, since all anchors currently in Σ𝑡 were individually ver-ified when admitted (and removing constraints from a satisfiable set preserves satisfiability), the checkpoint is simply the most re-cent anchor in Σ𝑡 in trace order —i.e., the anchor (𝑡 ′, 𝑗 ′) with the largest trace position such that (𝑡 ′, 𝑗 ′) < (𝑡, 𝑗 ) and 𝑐 𝑡 ′,𝑗 ′ ∈ Σ𝑡 .Generation resumes from that checkpoint with the violating anchor, its preceding reasoning step, and all intervening material removed from the context. A special <RETRY> token is appended to signal the model to explore an alternative reasoning path. A maximum retry budget 𝐵 = 3 prevents infinite loops. 
+
+Edge case: empty constraint store ( Σ𝑡 = ∅). If no prior consis-tent checkpoint exists (i.e., the violation occurs before any anchor has been successfully admitted), the backtrack controller restarts generation from scratch : the trace is reset to the empty se-quence, <RETRY> is prepended to the context (yielding the input 
+
+(𝐼, 𝑞, <RETRY> )), and the retry counter is incremented. This ensures the model always has a well-defined recovery point. 
+
+Retry budget exhaustion ( retries > 𝐵 ). If the retry bud-get 𝐵 is exhausted without producing a complete, violation-free trace, the controller terminates generation and passes the current trace—truncated at the last consistent checkpoint if necessary—to the answer extractor 𝑓 ans . In this fallback mode, 𝑓 ans attempts an-swer extraction from the (possibly incomplete) trace. If no answer span is found (e.g., the trace is too short), a secondary extraction is performed by prompting the base MLLM with the original (𝐼, 𝑞 )
+
+without CART (i.e., standard unconstrained generation), and the resulting answer is returned with a ‘FALLBACK‘ flag indicating reduced reliability. Empirically, retry exhaustion occurs in only 2.1% of GQA-testdev instances and 4.7% of VCR-val instances. 
+
+Justification for 𝐵 = 3. A pilot ablation over 𝐵 ∈ { 1, 2, 3, 5, 10 } on GQA-val (1K instances) showed accuracy gains plateauing at 𝐵 = 3
+
+(+0.2% from 𝐵 = 3 to 𝐵 = 5, within noise) while mean inference latency grows linearly with 𝐵 .
+
+Inference-time anchor emission failures. If the model fails to emit any <CON>. . . </CON> or <NULL_CON/> token after a rea-soning step (e.g., due to distribution shift), the step is treated as implicitly unconstrained ( <NULL_CON/> ) and generation continues without a CPM check. Malformed anchors failing delimiter parsing are treated identically. Empirically, the well-formed anchor emis-sion rate is 94.6% for LLaVA-NeXT-13B and 92.1% for Qwen2-VL-7B (measured on GQA-testdev). 
+
+## 4 Experimental Setup 4.1 Datasets 
+
+We evaluate on five benchmarks that span a range of visual reason-ing complexities: 
+
+• GQA [10 ]: compositional visual question answering over real-world images with functional program annotations. We use the balanced testdev split (12,578 questions). 
+
+• CLEVR-CoGenT [ 11 ]: synthetic geometric reasoning re-quiring counting, spatial relation, and attribute comparison over rendered scenes. We evaluate on Condition A (15,000 questions). 
+
+• VCR [ 31 ]: visual commonsense reasoning requiring free-form rationale generation for multiple-choice QA over movie scenes. We evaluate on the val split (26,534 questions). 
+
+• MM-Vet [ 30 ]: an open-ended multimodal evaluation bench-mark covering six core capabilities (recognition, knowledge, OCR, spatial awareness, language generation, math). We report the GPT-4-graded overall score. 
+
+• POPE [14 ]: a polling-based benchmark for evaluating object hallucination in MLLMs. We report F1 score on the random, popular, and adversarial splits (averaged). 
+
+## 4.2 Baselines 
+
+We compare CART against four categories of methods on Qwen2-VL-7B and LLaVA-NeXT-13B: 
+
+• Prompting-based : Base MLLM with and without CoT prompt-ing. 
+
+• Inference-time scaling : Tree-of-Thoughts [ 28 ], which ex-plores multiple reasoning branches via LLM-based evalua-tion; Reflexion [ 23 ], which uses verbal self-critique for itera-tive refinement; and Self-Consistency [ 26 ], which marginal-izes over sampled chains by majority voting. 
+
+• Program synthesis : VisProg [ 6], which generates executable visual programs; Faithful CoT [ 19 ], which interleaves natural language with symbolic reasoning; and DDCoT [ 34 ], which decomposes questions into sub-problems. 
+
+• Fine-tuned self-correction : DDCoT (LoRA-FT), Visual Ver-ification (FT), Self-Consistency (FT), and Self-Refine [ 20 ] (FT), all fine-tuned on the same 218K training instances using identical LoRA configuration (rank 64) for a fair compari-son. Visual Verification [ 3] prompts the MLLM to re-examine the image after generating an answer and revise if incon-sistencies are found; critically, it relies on the model’s own internal cross-attention maps for verification rather than an external grounder or symbolic consistency check, making it ACM MM 2026, October 2026, Dublin, Ireland Cheng et al. 
+
+Table 1: End-task accuracy (%) across five benchmarks. We compare CART against base MLLMs with and without Chain-of-Thought prompting, inference-time scaling methods, modular program-synthesis pipelines, and fine-tuned self-correction baselines on two backbone architectures. Bold = best per backbone; underline = second best. Blue rows = CART (Full). The LLaVA-NeXT-34B row is reported as a scaling illustration for CART only; we did not run the baselines at 34B, so its numbers should not be read as head-to-head comparisons. 
+
+Method Configuration Backbone Arch. Fine-Tuned GQA CLEVR VCR MM-Vet POPE F1 Base MLLM (No CoT) Qwen2-VL-7B No 48.5 60.1 56.2 34.2 80.1 Base MLLM (+ CoT) No 51.2 64.3 58.4 36.8 81.5 Tree-of-Thoughts No 54.8 70.4 61.2 40.1 82.8 CART-Anchors Yes 56.5 73.5 63.5 42.4 83.9 CART (Full, Ours) Yes 62.1 79.4 66.8 46.5 86.4 
+
+Base MLLM (No CoT) LLaVA-NeXT-13B No 53.4 65.2 60.3 39.1 81.3 Base MLLM (+ CoT) No 56.7 71.5 63.1 42.8 83.7 Tree-of-Thoughts No 60.5 76.8 64.8 45.4 84.1 CART-Anchors Yes 64.8 82.3 68.5 50.1 86.5 CART (Full, Ours) Yes 69.4 86.7 71.4 54.8 89.1 
+
+VisProg Qwen2-VL-7B No 55.4 70.5 61.4 40.2 82.7 Faithful CoT No 54.2 69.1 60.5 39.4 82.2 Reflexion No 54.5 69.6 61.0 39.8 82.5 DDCoT (Zero-Shot) No 55.8 71.2 61.8 40.5 83.1 Visual Verif. (ZS) No 56.1 71.8 62.1 40.9 83.4 VisProg LLaVA-NeXT-13B No 61.2 78.4 60.5 43.6 82.5 Faithful CoT No 59.8 75.2 63.2 44.1 83.5 Reflexion No 60.1 75.9 64.5 44.9 83.8 DDCoT (Zero-Shot) No 61.5 77.2 65.1 46.2 84.5 Visual Verif. (ZS) No 62.3 78.5 65.7 46.8 84.9 DDCoT (LoRA-FT) Qwen2-VL-7B Yes 57.6 74.2 64.1 43.1 84.5 Visual Verif. (FT) Yes 58.2 75.1 64.8 43.8 84.9 Self-Consistency Yes 57.9 74.6 64.4 43.5 84.7 Self-Refine Yes 57.4 73.8 63.9 42.9 84.2 DDCoT (LoRA-FT) LLaVA-NeXT-13B Yes 63.8 80.1 67.4 48.5 85.8 Visual Verif. (FT) Yes 64.5 81.6 68.2 49.3 86.2 Self-Consistency Yes 64.2 81.0 67.8 49.0 86.0 Self-Refine Yes 63.5 79.8 67.1 48.2 85.4 CART (Full, Ours) LLaVA-NeXT-34B Yes 73.2 90.5 74.5 58.6 91.2 
+
+a self-referential verifier. Its zero-shot variant (Visual Verif. ZS) uses the same prompting strategy without fine-tuning. We additionally report CART-Anchors , which uses constraint-annotated training data but disables CPM and backtracking at in-ference, isolating runtime verification’s effect. 
+
+## 4.3 Evaluation Metrics 
+
+We report standard end-task accuracy (or F1 for POPE) for all methods. To diagnose CART’s internal error-correction behavior, we additionally introduce three diagnostic metrics measured on a 2,000-instance subset of GQA-testdev: (i) Snowball Rate (S), the conditional probability of cascading failure after a first error; (ii) Constraint Violation Rate (CVR), the fraction of emitted an-chors flagged by the CPM; and (iii) Error Attribution Precision 
+
+(EAP), the fraction of backtracks correctly targeting the earliest erroneous step. Full metric definitions, annotation protocols, and inter-annotator agreement are detailed in Appendix C. Hyperpa-rameters and training details are also provided in Appendix C. 
+
+Reproducibility. All fine-tuned results in Table 1 are averaged over three random seeds. We will release the constraint-annotation gen-eration pipeline, the 218K training instances, the grounding-head and LoRA weights, and all inference/evaluation code to support independent replication. 
+
+## 5 Experimental Results 
+
+We evaluate CART across five benchmarks spanning structured geometric reasoning (CLEVR-CoGenT), compositional visual QA (GQA), commonsense inference (VCR), open-ended multimodal evaluation (MM-Vet), and object hallucination detection (POPE). Constraint-Anchored Reasoning Traces ACM MM 2026, October 2026, Dublin, Ireland 
+
+Table 2: Ablation studies on LLaVA-NeXT-13B. Top block: subtractive ablations removing individual CART components. Middle block: additive build-up from fine-tuned baseline. Bottom block: sensitivity to retry budget 𝐵 and visual grounding threshold 𝜏 𝑣 .Snowball rate, constraint violation rate (CVR), mean trace length, and per-instance latency are measured on a 2,000-instance diagnostic subset of GQA-testdev. Bold = best in column. 
+
+Ablation Configuration GQA CLEVR VCR Snowball ↓ CVR (%) ↓ Trace Len Latency (s) CART Full 69.4 86.7 71.4 0.14 14.2 16.5 2.41 CART w/o Backtrack (A2) 65.2 82.5 68.8 0.52 14.5 16.2 1.95 CART w/o BCP Logic (A3) 67.1 84.6 70.1 0.23 11.4 16.4 2.38 CART w/o Neural Grnd (A4) 66.4 83.2 69.5 0.31 8.2 16.3 2.05 CART w/o VarFreq (A5) 66.8 83.8 69.8 0.18 25.4 24.1 3.84 CART w/o Anchors (A6) 64.8 82.3 68.5 0.65 N/A 15.8 1.82 
+
+CART w/ Attn Grnd (A7) 66.9 84.1 69.9 0.25 21.3 16.4 2.35 Base FT Only (B1) 64.8 82.3 68.5 0.65 N/A 15.8 1.82 Base FT + Fixed Freq (B2) 65.1 82.7 68.7 0.62 N/A 23.5 2.45 Base FT + VarFreq (B3) 65.5 83.1 68.9 0.60 N/A 16.1 1.90 Build + Neural Grnd (B4) 67.8 85.2 70.4 0.28 12.5 16.3 2.35 Build + BCP Logic (B5) 68.5 85.9 70.8 0.19 13.8 16.4 2.39 Retry Budget: 𝐵 =0 65.2 82.5 68.8 0.52 14.2 16.2 1.95 Retry Budget: 𝐵 =1 67.5 84.8 70.2 0.29 14.2 16.3 2.15 Retry Budget: 𝐵 =2 68.8 86.1 71.0 0.17 14.2 16.4 2.32 Retry Budget: 𝐵 =3 (default) 69.4 86.7 71.4 0.14 14.2 16.5 2.41 Retry Budget: 𝐵 =5 69.5 86.8 71.5 0.13 14.2 16.6 2.85 Retry Budget: 𝐵 =10 69.5 86.8 71.5 0.13 14.2 16.7 3.42 Threshold: 𝜏 𝑣 =0.60 66.5 83.5 69.6 0.35 6.5 16.2 2.12 
+
+Threshold: 𝜏 𝑣 =0.75 68.2 85.4 70.8 0.21 10.8 16.4 2.28 Threshold: 𝜏 𝑣 =0.85 (default) 69.4 86.7 71.4 0.14 14.2 16.5 2.41 Threshold: 𝜏 𝑣 =0.95 67.8 85.1 70.4 0.16 28.5 17.5 3.15 All fine-tuned variants are evaluated with identical setups. Table 1 reports end-task accuracy. Without CART, LLaVA-NeXT-13B achieves 53.4% on GQA; stan-dard CoT prompting yields a modest improvement to 56.7%. Inference-time methods such as Tree-of-Thoughts and Reflexion provide lim-ited gains, as resampling and verbal self-critique cannot rectify grounding errors against the image. Programmatic pipelines (Vis-Prog) perform well on synthetic benchmarks but degrade on VCR, where rigid execution templates cannot capture open-ended rea-soning. The key comparison isolates the effect of runtime constraint verification. CART-Anchors—trained on the same 218K instances with identical LoRA configuration but without the CPM or back-track controller—reaches 64.8% on GQA. The full CART framework achieves 69.4%, a +4.6 pp improvement. This gap confirms that exposure to constraint-annotated traces alone is insufficient; active runtime verification and correction are necessary to arrest error propagation. CART exhibits consistent gains across model scales. On the smaller Qwen2-VL-7B backbone, CART achieves 62.1% on GQA, narrowing the gap to unconstrained models with nearly twice the parameters. Scaling to LLaVA-NeXT-34B pushes accuracy to 73.2% on GQA and 90.5% on CLEVR, demonstrating that even strong base models benefit from runtime constraint verification. The consistent relative improvement across scales suggests that error snowballing 
+
+Table 3: Inference latency profiling across backbone scales and batch sizes on a single A100-80GB GPU. Overhead factor is the ratio of CART latency to base autoregressive latency, showing that the constraint propagation module adds at most 18% wall-clock overhead. Bold = lowest overhead per back-bone.                                   
+
+> Backbone Batch Size Base Latency (s) CART Latency (s) Overhead Factor Qwen2-VL-7B 11.75 2.06 1.18 ×
+> Qwen2-VL-7B 42.10 2.41 1.15 ×
+> Qwen2-VL-7B 16 3.05 3.54 1.16 ×
+> LLaVA-NeXT-13B 12.15 2.41 1.12 ×
+> LLaVA-NeXT-13B 42.65 2.99 1.13 ×
+> LLaVA-NeXT-13B 16 4.12 4.65 1.13 ×
+> LLaVA-NeXT-34B 14.30 4.73 1.10 ×
+> LLaVA-NeXT-34B 16 8.85 9.73 1.10 ×
+
+is an inherent property of autoregressive decoding, not a weakness of any particular model. Zero-shot evaluations on MM-Vet and POPE—benchmarks un-seen during training—provide evidence that CART’s constraint emission policies generalize beyond the training distribution. The 13B model achieves 54.8 on MM-Vet and 89.1 F1 on POPE, exceeding ACM MM 2026, October 2026, Dublin, Ireland Cheng et al. 
+
+all baselines including external verification methods. This out-of-distribution transfer confirms that the learned verification behavior is not dataset-specific but reflects a general capability for detecting visual-linguistic inconsistencies. 
+
+## 5.1 Ablation Studies 
+
+We conducted subtractive and additive ablation studies on LLaVA-NeXT-13B, correlating end-task accuracy with internal diagnostic metrics on a 2,000-instance GQA-testdev subset to isolate each component’s contribution. Removing any single component causes substantial degrada-tion. Disabling the backtrack controller (CPM flags violations pas-sively) dropped accuracy to 65.2% and spiked the snowball rate to 0.52, demonstrating that detection alone is insufficient with-out the ability to re-route generation. Replacing Grounding DINO with internal cross-attention maps inflated the constraint violation rate—Grounding DINO achieves 0.72 mean IoU on anchor entity regions versus 0.41 for cross-attention—explaining the degraded verification precision. Additive build-up confirmed the importance of emission design: a fixed-frequency scheme inflated trace length to 23.5 tokens with hallucinated vacuous constraints, while variable-frequency emis-sion restored it to 16.1 tokens by allowing dynamic modulation via null tokens. Accuracy plateaued at retry budget 𝐵 =3; 𝐵 =10 yielded negligible gains with linearly increasing latency. Threshold 𝜏 𝑣 =0.85 optimally filtered low-confidence noise; at 𝜏 𝑣 =0.95 , the false rejection rate doubled to 𝛼 ≈0.11 , causing unnecessary backtracks on 8.2% of correct traces. Under calibrated parameters, CART compressed the snowball rate from 0.65 to 0.14 on GQA (similarly on VCR), validating Theo-rem 2. Error attribution precision reached 0.82, confirming that the backtrack controller correctly targets the earliest erroneous step in most corrections. 
+
+Sensitivity to the entity grounder. Replacing Grounding DINO with GLIP [ 13 ] ( 𝛿 ≈0.09 ) or OWLv2 [ 21 ] ( 𝛿 ≈0.12 ) yields 68.1% and 67.5% on GQA, respectively (vs. 69.4% with Grounding DINO, 𝛿 ≈0.07 ). All configurations outperform the best non-CART baseline (64.8%), confirming graceful degradation with grounder quality as predicted by Theorem 2. 
+
+Predicate coverage ablation. We evaluated CART with 7, 14 (default), and 18 predicates. On GQA: 7 predicates yield 66.9% (𝛾 ≈0.61 , S=0.21 ); 14 yield 69.4% ( 𝛾 ≈0.72 , S=0.14 ); 18 yield 69.8% (𝛾 ≈0.75 , S=0.13 ). Diminishing returns beyond 14 predicates sug-gest the default coverage captures most error-prone steps, while the 7-predicate drop confirms 𝛾 as the primary driver of CART’s benefit (Corollary 2). 
+
+## 5.2 Scalability and Computational Efficiency 
+
+A common concern with runtime verification is inference overhead. Table 3 profiles wall-clock latency across backbone scales and batch sizes on a single A100-80GB GPU. Across all configurations, CART adds 10–18% overhead relative to base autoregressive generation, far below the multi-fold penalties typical of iterative search methods. The BCP module runs in sub-millisecond time per check and scales linearly with constraint-store size. Notably, overhead decreases with model scale: from 1.15 –1.18 ×
+
+on Qwen2-VL-7B to 1.10 × on LLaVA-NeXT-34B, because the fixed cost of the grounding head and BCP becomes a smaller fraction of the total compute as the base model grows. This favorable scaling property ensures that CART remains practical as foundation models continue to increase in size. A per-component breakdown reveals that Grounding DINO ac-counts for 60–65% of the CPM overhead, followed by the grounding head forward pass (25–30%) and BCP (5–10%). Crucially, the Ground-ing DINO features are computed once per image and cached across all anchors in the trace, amortizing the dominant cost. The ground-ing head itself is a lightweight 2-layer MLP ( ∼3.2M parameters for LLaVA-NeXT / ∼2.9M for Qwen2-VL, consistent with §3.2.3), adding negligible memory: the peak GPU memory increase is <0.4 GB over the base model for all configurations, and CART intro-duces no additional KV-cache overhead since constraint tokens are standard vocabulary items processed by the existing attention mechanism. Compared to multi-pass inference-time methods, CART’s single-pass architecture provides a substantial efficiency advantage. Self-Consistency ( 𝑚 =5) requires 5× the base inference cost; Tree-of-Thoughts with 3 branches incurs 3–4× overhead due to repeated forward passes and LLM-based branch evaluation. CART achieves comparable or superior accuracy gains (Table 1) at 1.10 –1.18 × cost— an order of magnitude more efficient. This difference is especially pronounced for long reasoning traces, where multi-pass methods multiply cost per token while CART’s per-anchor verification cost remains constant regardless of trace length. 
+
+## 6 Conclusions 
+
+We presented Constraint-Anchored Reasoning Traces (CART), a neuro-symbolic framework that interleaves natural language rea-soning with verifiable symbolic constraint anchors, verified at run-time by a dual-pronged Constraint Propagation Module (neural grounding head + Boolean Constraint Propagation) and corrected via a backtrack controller. Theorem 2 establishes that CART re-duces the snowball rate exponentially in the number of post-error anchors; empirically, the snowball rate drops from 0.65 to 0.14 on GQA. Across five benchmarks, CART consistently outperforms all baselines—reaching 69.4% on GQA (+4.6 over the anchor-only abla-tion), 86.7% on CLEVR, and 89.1 F1 on POPE with LLaVA-NeXT-13B, scaling further to 73.2%, 90.5%, and 91.2 with LLaVA-NeXT-34B— while adding at most 18% inference overhead. Ablation studies confirm every component is essential, and the three diagnostic metrics introduced (snowball rate, constraint violation rate, error attribution precision) offer new tools for evaluating error propaga-tion in multimodal reasoning. Constraint-Anchored Reasoning Traces ACM MM 2026, October 2026, Dublin, Ireland 
+
+## References 
+
+[1] Jacob Andreas, Marcus Rohrbach, Trevor Darrell, and Dan Klein. 2016. Neural module networks. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition . 39–48. [2] Rina Dechter. 2003. Constraint processing . Elsevier. [3] Ailin Deng, Zhirui Lu, Yanhong Chen, Qiuyu Wu, Zhenfei Cao, Lian Wang, and Jiaqi Liu. 2024. Seeing is believing: Mitigating hallucination in large vision-language models via CLIP-guided decoding. arXiv preprint arXiv:2402.15300 
+
+(2024). [4] William F Dowling and Jean H Gallier. 1984. Linear-time algorithms for testing the satisfiability of propositional Horn formulae. The Journal of Logic Programming 
+
+1, 3 (1984), 267–284. [5] Chuan Guo, Geoff Pleiss, Yu Sun, and Kilian Q Weinberger. 2017. On calibration of modern neural networks. In International Conference on Machine Learning .PMLR, 1321–1330. [6] Tanmay Gupta and Aniruddha Kembhavi. 2023. Visual programming: Com-positional visual reasoning without training. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition . 14953–14962. [7] Kaiming He, Georgia Gkioxari, Piotr Dollár, and Ross Girshick. 2017. Mask r-cnn. In Proceedings of the IEEE international conference on computer vision . 2961–2969. [8] Edward J Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, and Weizhu Chen. 2022. LoRA: Low-rank adaptation of large language models. In International Conference on Learning Representations .[9] Ronghang Hu, Jacob Andreas, Marcus Rohrbach, Trevor Darrell, and Kate Saenko. 2017. Learning to reason: End-to-end module networks for visual question answering. In Proceedings of the IEEE International Conference on Computer Vision .804–813. [10] Drew A Hudson and Christopher D Manning. 2019. Gqa: A new dataset for real-world visual reasoning and compositional question answering. In Proceedings of the CVPR . 6700–6709. [11] Justin Johnson, Bharath Hariharan, Laurens Van Der Maaten, Li Fei-Fei, C Lawrence Zitnick, and Ross Girshick. 2017. Clevr: A diagnostic dataset for compositional language and elementary visual reasoning. In Proceedings of the IEEE conference on computer vision and pattern recognition . 2901–2910. [12] Takeshi Kojima, Shixiang Shane Gu, Machel Reid, Yutaka Matsuo, and Yusuke Iwasawa. 2022. Large language models are zero-shot reasoners. In Advances in Neural Information Processing Systems , Vol. 35. 22199–22213. [13] Liunian Harold Li, Pengchuan Zhang, Haotian Zhang, Jianwei Yang, Chunyuan Li, Yiwu Zhong, Lijuan Wang, Lu Yuan, Lei Zhang, Jenq-Neng Hwang, et al .2022. Grounded Language-Image Pre-training. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition . 10965–10975. [14] Yifan Li, Yifan Du, Kun Zhou, Jinpeng Wang, Wayne Xin Zhao, and Ji-Rong Wen. 2023. Evaluating Object Hallucination in Large Vision-Language Models. arXiv preprint arXiv:2305.10355 (2023). [15] Haotian Liu, Chunyuan Li, Yuheng Li, Bo Li, Yuanhan Zhang, Sheng Shen, and Yong Jae Lee. 2024. LLaVA-NeXT: Improved reasoning, OCR, and world knowl-edge. https://llava-vl.github.io/blog/2024-01-30-llava-next/ [16] Shilong Liu, Zhaoyang Zeng, Tianhe Ren, Feng Li, Hao Zhang, Jie Yang, Qing Jiang, Chunyuan Li, Jianwei Yang, Hang Su, et al . 2024. Grounding DINO: Mar-rying dino with grounded pre-training for open-set object detection. In ECCV .Springer, 38–55. [17] Ze Liu, Yutong Lin, Yue Cao, Han Hu, Yixuan Wei, Zheng Zhang, Stephen Lin, and Baining Guo. 2021. Swin transformer: Hierarchical vision transformer using shifted windows. In ICCV . 10012–10022. [18] Pan Lu, Swaroop Mishra, Tanglin Xia, Liang Qiu, Kai-Wei Chang, Song-Chun Zhu, Oyvind Tafjord, Peter Clark, and Ashwin Kalyan. 2022. Learn to explain: Multimodal reasoning via thought chains for science question answering. In 
+
+Advances in Neural Information Processing Systems , Vol. 35. 2507–2521. [19] Qing Lyu, Shreya Havaldar, Adam Stein, Li Zhang, Delip Rao, Eric Wong, Mar-ianna Apidianaki, and Chris Callison-Burch. 2023. Faithful chain-of-thought reasoning. arXiv preprint arXiv:2301.13379 (2023). [20] Aman Madaan, Niket Tandon, Prakhar Gupta, Skyler Hallinan, Luyu Gao, Sarah Wiegreffe, Uri Alon, Nouha Dziri, Shrimai Prabhumoye, Yiming Yang, et al .2023. Self-refine: Iterative refinement with self-feedback. In Advances in Neural Information Processing Systems , Vol. 36. [21] Matthias Minderer, Alexey Gritsenko, and Neil Houlsby. 2024. Scaling Open-Vocabulary Object Detection. Advances in Neural Information Processing Systems 
+
+36 (2024). [22] Jie Ren, Samyam Rajbhandari, Reza Yazdani Aminabadi, Olatunji Ruwase, Shuangyan Yang, Minjia Zhang, Dong Li, and Yuxiong He. 2021. {Zero-offload }:Democratizing {billion-scale } model training. In 2021 USENIX Annual Technical Conference (USENIX ATC 21) . 551–564. [23] Noah Shinn, Federico Cassano, Ashwin Gopinath, Karthik Narasimhan, and Shunyu Yao. 2023. Reflexion: Language agents with verbal reinforcement learning. In Advances in Neural Information Processing Systems , Vol. 36. [24] Dídac Surís, Sachit Menon, and Carl Vondrick. 2023. Vipergpt: Visual inference via python execution for reasoning. In Proceedings of the IEEE/CVF International Conference on Computer Vision . 11888–11898. [25] Peng Wang, Shuai Bai, Sinan Tan, Shijie Wang, Zhihao Fan, Jinze Bai, Keqin Chen, Xuejing Liu, Jialin Wang, Wenbin Ge, et al . 2024. Qwen2-vl: Enhancing vision-language model’s perception of the world at any resolution. arXiv preprint arXiv:2409.12191 (2024). [26] Xuezhi Wang, Jason Wei, Dale Schuurmans, Quoc V Le, Ed H Chi, Sharan Narang, Aakanksha Chowdhery, and Denny Zhou. 2023. Self-consistency improves chain of thought reasoning in language models. In International Conference on Learning Representations .[27] Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Brian Ichter, Fei Xia, Ed Chi, Quoc V Le, and Denny Zhou. 2022. Chain-of-thought prompting elicits reasoning in large language models. In Advances in Neural Information Processing Systems , Vol. 35. 24824–24837. [28] Shunyu Yao, Dian Yu, Jeffrey Zhao, Izhak Shafran, Tom Griffiths, Yuan Cao, and Karthik Narasimhan. 2023. Tree of thoughts: Deliberate problem solving with large language models. In Advances in Neural Information Processing Systems ,Vol. 36. [29] Kexin Yi, Jiajun Wu, Chuang Gan, Antonio Torralba, Pushmeet Kohli, and Joshua B Tenenbaum. 2018. Neural-symbolic VQA: Disentangling reasoning from vision and language understanding. In Advances in Neural Information Processing Systems , Vol. 31. [30] Weihao Yu, Zhengyuan Yao, Dongchao Luo, Junyan Li, Xiaodan Wang, James Park, and Mohit Bansal. 2023. MM-Vet: Evaluating Large Multimodal Models for Integrated Capabilities. arXiv preprint arXiv:2308.02490 (2023). [31] Rowan Zellers, Yonatan Bisk, Ali Farhadi, and Yejin Choi. 2019. From recognition to cognition: Visual commonsense reasoning. In Proceedings of the CVPR . 6720– 6731. [32] Zhuosheng Zhang, Aston Zhang, Mu Li, and Alex Smola. 2023. Language model cascades: Token-level uncertainty and beyond. arXiv preprint arXiv:2404.10136 
+
+(2023). [33] Zhuosheng Zhang, Aston Zhang, Mu Li, Hai Zhao, George Karypis, and Alex Smola. 2023. Multimodal chain-of-thought reasoning in language models. arXiv preprint arXiv:2302.00923 (2023). [34] Ge Zheng, Bin Yang, Jiajin Tang, Hong-Yu Zhou, and Sibei Yang. 2023. DDCoT: Duty-distinct chain-of-thought prompting for multimodal reasoning in language models. Advances in Neural Information Processing Systems 36 (2023). ACM MM 2026, October 2026, Dublin, Ireland Cheng et al. 
+
+## A Theoretical Analysis 
+
+We provide formal guarantees for CART’s error-arresting mecha-nism. The central challenges are that (a) an anchor being correct 
+
+(sound) does not by itself guarantee that it detects an upstream error, and (b) detecting an error via an anchor does not guarantee successful recovery. We address both with explicit assumptions in §A.1, prove the main snowball-rate reduction result in §A.2, derive end-to-end accuracy and no-harm guarantees in §A.3, relax the independence assumption via 𝛽 -mixing in §A.4, establish computa-tional complexity in §A.5, and discuss tightness and limitations in §A.6. 
+
+## A.1 Definitions and Assumptions 
+
+We begin by formalizing the reliability properties of the Constraint Propagation Module (CPM). Recall from §3.2.3 that the CPM accepts an anchor 𝑐 if and only if 𝑝 vis (𝑐 | 𝐼 ) ≥ 𝜏 𝑣 and BCP (Σ ∪ { 𝑐 }) = SAT .
+
+Definition 1 (CPM Verification Reliability). The CPM is 
+
+(𝛿, 𝛼 )-reliable if the following two conditions hold for all anchors 
+
+𝑐 ∈ L 𝑐 and images 𝐼 ∈ I :
+
+• Soundness (false acceptance rate): 
+
+P[CPM accepts 𝑐 | 𝑐 is false w.r.t. 𝐼 ] ≤ 𝛿, 
+
+• Completeness (false rejection rate): 
+
+P[CPM rejects 𝑐 | 𝑐 is true w.r.t. 𝐼 ] ≤ 𝛼 . 
+
+Definition 2 (Snowball Event). Given a reasoning trace r =
+
+(𝑟 1, . . . , 𝑟 𝑇 ) with first error at step 𝑡 (i.e., 𝑒 𝑡 = 1 and 𝑒 𝑡 ′′ = 0 for all 𝑡 ′′ < 𝑡 ), the snowball event is Snow = Ñ𝑇 𝑡 ′=𝑡 +1 {𝑒 𝑡 ′ = 1}. The 
+
+snowball rate is S = P[Snow | 𝑒 𝑡 = 1, ∀𝑡 ′′ <𝑡 𝑒 𝑡 ′′ = 0].
+
+We now state the assumptions required for our analysis. 
+
+Assumption 1 (CPM Soundness). Every emitted non-null anchor is verified by a (𝛿, 𝛼 )-reliable CPM with 𝛿 ∈ [ 0, 1) and 𝛼 ∈ [ 0, 1).Justification. The grounding head 𝑔 𝜓 is trained on ∼218 K instances with balanced positive/negative anchors (§3.5), achieving empirical false acceptance rates 𝛿 ≈ 0.07 (GQA/CLEVR) and 𝛿 ≈ 0.11 (VCR). The BCP component contributes additional rejection power for logical contradictions, which can only decrease 𝛿 . The completeness parameter 𝛼 is estimated at 𝛼 ≈ 0.05 (GQA) and 𝛼 ≈ 0.09 (VCR). 
+
+Assumption 2 (Conditional Independence of Anchor Veri-fications). Conditional on the image 𝐼 and the error state sequence 
+
+(𝑒 1, . . . , 𝑒 𝑇 ), the CPM verification outcomes {𝑉 𝑡,𝑗 }(𝑡,𝑗 ) ∈ A , where 𝑉 𝑡,𝑗 =
+
+⊮[CPM accepts 𝑐 𝑡,𝑗 ], are mutually independent. Justification. This is a simplifying idealization: in practice, all an-chors share the visual feature bank V and are produced by the same autoregressive model, inducing correlation through shared hidden states. We relax this assumption in §A.4 using 𝛽 -mixing coefficients. Assumption 2 provides a clean baseline bound and is approximately valid when anchors reference distinct spatial regions and non-overlapping semantic content, which holds for ∼78% of anchor pairs in our GQA traces (measured by IoU < 0.1 between grounded regions). 
+
+Assumption 3 (Error–Anchor Coupling). If an error occurs at step 𝑡 (i.e., 𝑒 𝑡 = 1), then each subsequent non-null anchor 𝑐 𝑡 ′,𝑗 with 
+
+𝑡 ′ > 𝑡 is rendered false (with respect to the ground-truth scene) with probability at least 𝛾 ∈ ( 0, 1], independently across anchors: 
+
+P𝑐 𝑡 ′,𝑗 is false 𝑒 𝑡 = 1, (𝑡 ′, 𝑗 ) ∈ A , 𝑡 ′ > 𝑡  ≥ 𝛾 . 
+
+Justification. The coupling rate 𝛾 quantifies how tightly the con-straint language L𝑐 covers the error-prone reasoning steps. For compositional visual QA (GQA, CLEVR), anchors are directly de-rived from program steps and thus tightly coupled ( 𝛾 ≈ 0.72 –0.81 ). For free-form reasoning (VCR), 𝛾 is lower ( ≈0.58 ). In the extreme case where anchors are completely tangential to the error source (𝛾 = 0), CART provides no benefit, and the bound in Theorem 2 reduces to S0.
+
+Assumption 4 (Backtrack Recovery). When the CPM detects a violation and the backtrack controller is triggered, the conditional probability that the error still snowballs (due to retry budget exhaus-tion, re-introduction of the same error, or a novel cascading error) is bounded by 𝜀 rec ∈ [ 0, 1):
+
+PSnow error caught by some anchor  ≤ 𝜀 rec .
+
+Justification. This assumption explicitly acknowledges that detec-tion does not guarantee recovery. The parameter 𝜀 rec encapsu-lates three failure modes: (i) retry budget 𝐵 exhaustion, (ii) re-introduction of a semantically equivalent error, and (iii) introduc-tion of a novel cascading error. Empirically, 𝜀 rec ∈ [ 0.08 , 0.19 ] across our benchmarks. With 𝐵 = 3 retries, each producing an indepen-dent alternative continuation (encouraged by the <RETRY> token and diverse training in §3.5), the recovery failure probability decays geometrically: if each retry independently succeeds with probabil-ity 𝑝 fix , then 𝜀 rec ≤ ( 1 − 𝑝 fix )𝐵 , giving 𝜀 rec ≤ 0.125 for 𝑝 fix = 0.5 and 
+
+𝐵 = 3.
+
+Assumption 5 (Error-Free Trace Integrity). If no reasoning error occurs ( 𝑒 𝑡 = 0 for all 𝑡 ), then the final answer is correct: P[𝑎 =
+
+𝑎 ∗ | ∀ 𝑡 𝑒 𝑡 = 0] = 1. Conversely, if snowballing occurs, the answer is incorrect: P[𝑎 ≠ 𝑎 ∗ | Snow ] = 1.Justification. The first condition holds by definition when the CoT trace faithfully represents the reasoning path and the answer ex-tractor 𝑓 ans is deterministic. The second is a reasonable worst-case assumption: when all steps following an error are themselves er-roneous, the final answer is almost surely corrupted. This is em-pirically validated: on our diagnostic subset, 99 .2% of snowball instances yield an incorrect answer. 
+
+Assumption 6 (Pass-Through Snowball Rate). Let SPT  
+
+> 0
+
+denote the snowball rate of the CART-fine-tuned model M𝜃 when the CPM does not intervene (i.e., no backtracking is triggered, regardless of anchor verification outcomes). We assume SPT  
+
+> 0
+
+≤ S 0, where S0 is the snowball rate of the pre-fine-tuning base model. Justification. This assumption is needed because Theorem 2’s Case 1 (error not caught) involves the CART-fine-tuned model continuing without CPM correction, not the original base model. We expect 
+
+SPT  
+
+> 0
+
+≤ S 0 because the constraint-aware training provides auxiliary supervision that improves reasoning quality. This is empirically validated: measuring the snowball rate of the CART model with CPM disabled yields SPT  
+
+> 0
+
+= 0.61 on GQA (vs. S0 = 0.68 for the base model), confirming the bound holds with margin. Constraint-Anchored Reasoning Traces ACM MM 2026, October 2026, Dublin, Ireland 
+
+## A.2 Snowball Rate Reduction 
+
+We first establish a useful per-anchor detection probability. 
+
+Lemma 1 (Per-Anchor Error Detection Probability). Under Assumptions 1 and 3, for any non-null anchor 𝑐 𝑡 ′,𝑗 emitted after the first error at step 𝑡 (i.e., (𝑡 ′, 𝑗 ) ∈ A with 𝑡 ′ > 𝑡 ), the probability that 
+
+𝑐 𝑡 ′,𝑗 is both rendered false by the error and correctly rejected by the CPM is at least 𝛾 (1 − 𝛿 ):
+
+PCPM rejects 𝑐 𝑡 ′,𝑗 𝑒 𝑡 = 1, 𝑡 ′ > 𝑡  ≥ 𝛾 (1 − 𝛿 ).
+
+Proof. Decompose the rejection event by conditioning on whether the anchor is false: 
+
+P[CPM rejects 𝑐 𝑡 ′,𝑗 | 𝑒 𝑡 = 1] ≥ P[CPM rejects 𝑐 𝑡 ′,𝑗 | 𝑐 𝑡 ′,𝑗 false , 𝑒 𝑡 = 1]· P[𝑐 𝑡 ′,𝑗 false | 𝑒 𝑡 = 1]
+
+(2) 
+
+by the law of total probability (dropping the non-negative term 
+
+P[reject | 𝑐 𝑡 ′,𝑗 true ] · P[𝑐 𝑡 ′,𝑗 true ] ≥ 0). By Assumption 3, P[𝑐 𝑡 ′,𝑗 false | 𝑒 𝑡 = 1] ≥ 𝛾 . By the contrapos-itive of the soundness condition in Assumption 1 (Definition 1): 
+
+P[CPM rejects 𝑐 | 𝑐 false ] = 1 − P[CPM accepts 𝑐 | 𝑐 false ] ≥ 1 − 𝛿 .Substituting: 
+
+P[CPM rejects 𝑐 𝑡 ′,𝑗 | 𝑒 𝑡 = 1] ≥ ( 1 − 𝛿 ) · 𝛾 = 𝛾 (1 − 𝛿 ). □
+
+We now state and prove the main result. 
+
+Theorem 2 (Snowball Rate Reduction). Let S0 be the snowball rate of the base model without CART (or, more precisely, the pass-through snowball rate SPT  
+
+> 0
+
+≤ S 0 per Assumption 6), and let 𝐾 =
+
+|{( 𝑡 ′, 𝑗 ) ∈ A : 𝑡 ′ > 𝑡 }| denote the number of non-null anchors emitted after the first error at step 𝑡 . Define 𝑞 ≜ 1 − 𝛾 (1 − 𝛿 ). Under Assumptions 1–6, the snowball rate of CART satisfies: 
+
+SCART ≤ S 0 · 𝑞 𝐾 + 𝜀 rec · ( 1 − 𝑞 𝐾 ).
+
+Equivalently, 
+
+SCART ≤ 𝜀 rec + (S 0 − 𝜀 rec ) · 𝑞 𝐾 .
+
+Proof. We condition on the event that the first error occurs at step 𝑡 . Define two complementary events over the 𝐾 post-error non-null anchors: 
+
+Ecatch = CPM rejects at least one anchor among {𝑐 𝑡 ′,𝑗 : (𝑡 ′, 𝑗 ) ∈ A , 𝑡 ′ > 𝑡 } ,
+
+(3) 
+
+Emiss = Ecatch = CPM accepts all 𝐾 post-error anchors . (4) 
+
+Step 1: Bound P[E miss ]. For each post-error anchor 𝑖 ∈ { 1, . . . , 𝐾 },define 𝑀 𝑖 = {anchor 𝑖 does not reject }. Then Emiss = Ñ𝐾 𝑖 =1 𝑀 𝑖 .By Lemma 1, P[𝑀 𝑖 | 𝑒 𝑡 = 1] ≤ 1 −𝛾 (1 − 𝛿 ) = 𝑞 . By Assumption 2 (conditional independence), the events {𝑀 𝑖 }𝐾 𝑖 =1 are conditionally independent given 𝐼 and (𝑒 1, . . . , 𝑒 𝑇 ). Therefore: 
+
+P[E miss | 𝑒 𝑡 = 1] =
+
+> 𝐾
+
+Ö
+
+> 𝑖 =1
+
+P[𝑀 𝑖 | 𝑒 𝑡 = 1] ≤ 𝑞 𝐾 . (5) 
+
+Step 2: Bound snowball probability conditional on each case. 
+
+Case 1 ( Emiss ): When no anchor detects the error, the backtrack controller is never triggered. By Assumption 6, the pass-through snowball rate satisfies SPT  
+
+> 0
+
+≤ S 0:
+
+P[Snow | E miss , 𝑒 𝑡 = 1] ≤ S PT  
+
+> 0
+
+≤ S 0. (6) 
+
+Case 2 ( Ecatch ): When at least one anchor detects the error, the backtrack controller is activated. By Assumption 4: 
+
+P[Snow | E catch , 𝑒 𝑡 = 1] ≤ 𝜀 rec . (7) 
+
+Step 3: Combine via the law of total probability. 
+
+SCART = P[Snow | 𝑒 𝑡 = 1]
+
+= P[Snow | E miss , 𝑒 𝑡 = 1] · P[E miss | 𝑒 𝑡 = 1]+ P[Snow | E catch , 𝑒 𝑡 = 1] · P[E catch | 𝑒 𝑡 = 1]≤ S 0 · 𝑞 𝐾 + 𝜀 rec · ( 1 − 𝑞 𝐾 ), (8) where we used (5) , (6) , (7) , and P[E catch | 𝑒 𝑡 = 1] = 1 − P[E miss |
+
+𝑒 𝑡 = 1]. □ □
+
+Corollary 1 (Exponential Convergence). For 𝛾 > 0, 𝛿 < 1,and 𝜀 rec < S0:
+
+lim  
+
+> 𝐾 →∞
+
+SCART = 𝜀 rec .
+
+The convergence is exponentially fast with rate − log 𝑞 = − log (1 −
+
+𝛾 (1 − 𝛿 )) . Specifically, SCART − 𝜀 rec ≤ (S 0 − 𝜀 rec ) · 𝑒 −𝛾 (1−𝛿 )𝐾 for all 
+
+𝐾 ≥ 1 (using log (1 − 𝑥 ) ≤ − 𝑥 for 𝑥 ∈ [ 0, 1)). 
+
+Corollary 2 (Non-Vacuousness Condition). The bound in Theorem 2 is strictly better than the trivial bound S0 (i.e., SCART < S0)if and only if: 
+
+𝜀 rec < S0 and 𝐾 ≥ 1 and 𝛾 (1 − 𝛿 ) > 0.
+
+The improvement over the base model is S0 − S CART ≥ (S 0 −𝜀 rec )( 1 −
+
+𝑞 𝐾 ).
+
+Corollary 3 (Concrete Numerical Bound). Using empirical parameter estimates from GQA: 𝛾 = 0.72 , 𝛿 = 0.07 , 𝜀 rec = 0.12 ,
+
+S0 = 0.68 , and 𝐾 = 3 post-error anchors: 
+
+𝑞 = 1 − 0.72 × 0.93 = 0.3304 , 𝑞 3 = 0.0361 ,
+
+SCART ≤ 0.68 × 0.0361 + 0.12 × 0.9639 = 0.0245 + 0.1157 = 0.140 .
+
+This represents a 79 .4% reduction from S0 = 0.68 . We caution that the agreement with the empirical measurement SCART = 0.14 is not 
+
+out-of-sample validation: the bound is evaluated with parameters (𝛾, 𝛿, 𝜀 rec , S0) estimated from the same diagnostic subset (Appendix C). It should therefore be read as an internal-consistency check on the analysis rather than an independent confirmation of the empirical result. 
+
+Corollary 4 (Minimum Anchors for Target Snowball Rate). 
+
+To achieve a target snowball rate S∗ ∈ (𝜀 rec , S0), the minimum required number of post-error non-null anchors is: 
+
+𝐾 ∗ =
+
+
+
+log 
+
+ S∗ −𝜀 rec  
+
+> S0−𝜀 rec
+
+
+
+log 𝑞 
+
+
+
+.
+
+For the GQA parameters and target S∗ = 0.20 : 𝐾 ∗ = ⌈log (0.08 /0.56 )/ log (0.3304 )⌉ =
+
+⌈1.78 ⌉ = 2.ACM MM 2026, October 2026, Dublin, Ireland Cheng et al. 
+
+## A.3 End-to-End Accuracy and No-Harm Guarantees 
+
+We translate the snowball-rate reduction into accuracy bounds. Let 𝑝 1 = P[∃ 𝑡 : 𝑒 𝑡 = 1] denote the probability that at least one reasoning error occurs in the initial (pre-backtrack) generation attempt. 
+
+Theorem 3 (Accuracy Improvement). Let 𝜂 = P[𝑎 = 𝑎 ∗ | ∃ 𝑡 :
+
+𝑒 𝑡 = 1, Snow ] be the conditional accuracy when an error occurs but does not snowball. Under Assumptions 1–6, the accuracy of CART satisfies: 
+
+Acc CART ≥ 1 − 𝑝 1
+
+h
+
+SCART + ( 1 − S CART )( 1 − 𝜂 CART )
+
+i
+
+− ( 1 − 𝑝 1)𝜉 FA ,
+
+where 𝜂 CART is the non-snowball recovery accuracy under CART, and 
+
+𝜉 FA ≤ 1 − ( 1 − 𝛼 )𝐾 0 bounds the probability that a false alarm on an error-free initial trace (with 𝐾 0 non-null anchors) leads to an incorrect answer after unnecessary backtracking. Moreover, if 𝜂 CART ≥ 𝜂 0 and 𝜉 FA = 0, the accuracy improvement over the base model satisfies: 
+
+Acc CART − Acc 0 ≥ 𝑝 1 · 𝜂 0 · (S 0 − S CART ).
+
+Proof. Write 𝐸 = {∃ 𝑡 : 𝑒 𝑡 = 1} and ¯𝐸 = {∀ 𝑡 : 𝑒 𝑡 = 0}.Decompose: Acc CART = P[𝑎 = 𝑎 ∗ | ¯𝐸 ] · ( 1 − 𝑝 1) + P[𝑎 = 𝑎 ∗ | 𝐸 ] · 𝑝 1. (9) 
+
+Error-free case ( ¯𝐸 ). Each of the 𝐾 0 true anchors independently survives without false rejection with probability ≥ 1 − 𝛼 (Assump-tion 1). When no false alarm occurs, the trace completes correctly (Assumption 5): 
+
+P[𝑎 = 𝑎 ∗ | ¯𝐸 ] ≥ ( 1 − 𝛼 )𝐾 0 = 1 − 𝜉 ′
+
+> FA
+
+.
+
+Error case ( 𝐸 ). Further decompose on the snowball event: 
+
+P[𝑎 = 𝑎 ∗ | 𝐸 ] = P[𝑎 = 𝑎 ∗ | 𝐸, Snow ]
+
+| {z } 
+
+> =0by Asm. 5
+
+·S CART + 𝜂 CART · ( 1 − S CART ).
+
+Combining and setting 𝜉 FA = 0, 𝜂 CART ≥ 𝜂 0:Acc CART − Acc 0 ≥ 𝑝 1 [𝜂 0 (1 − S CART ) − 𝜂 0 (1 − S 0)] 
+
+= 𝑝 1𝜂 0 (S 0 − S CART ). (10) 
+
+□
+
+Practical interpretation. For GQA with 𝑝 1 ≈ 0.42 , 𝜂 0 ≈ 0.55 , S0 =
+
+0.68 , and SCART ≤ 0.14 : Acc CART − Acc 0 ≥ 0.42 × 0.55 × 0.54 =
+
+0.125 , i.e., at least 12 .5 percentage points of accuracy improve-ment from snowball reduction alone. The observed improvement is 
+
++14 .2% , suggesting that CART additionally improves 𝜂 or reduces 
+
+𝑝 1 through its constraint-guided training. We consolidate the false-alarm analysis into a single no-harm guarantee. 
+
+Theorem 4 (No-Harm Guarantee). Under Assumptions 1–6, the accuracy of CART satisfies: 
+
+Acc CART ≥ Acc 0 − 𝜀 harm ,
+
+where the harm penalty is: 
+
+𝜀 harm = (1 − 𝑝 1) · 𝜉 FA · ( 1 − 𝑟 FA ),𝜉 FA ≤ 𝐾 0𝛼 is the false-alarm probability on error-free traces, and 
+
+𝑟 FA ∈ [ 0, 1] is the probability that a false-alarm-triggered backtrack recovers a correct answer. 
+
+• If 𝑟 FA = 1 (false alarms are always harmless): 𝜀 harm = 0 and 
+
+Acc CART ≥ Acc 0.
+
+• With empirical estimates ( 𝐾 0 = 3.1, 𝛼 = 0.05 , 𝑟 FA = 0.93 ): 
+
+𝜀 harm ≤ 0.58 × 0.155 × 0.07 = 0.006 .Interpretation. Theorem 4 guarantees that CART’s accuracy is within 
+
+𝜀 harm ≤ 0.006 of the base model in the worst case, and is strictly better whenever the snowball reduction benefit exceeds this neg-ligible false-alarm cost. This addresses the practical concern that constraint-based checking might degrade performance on easy instances. 
+
+## A.4 Analysis Under Dependent Anchors 
+
+Assumption 2 is an idealization. We relax it using 𝛽 -mixing. 
+
+Definition 3 ( 𝛽 -Mixing Coefficient). For the sequence of CPM verification outcomes {𝑉 𝑡 𝑖 ,𝑗 𝑖 }𝐾 𝑖 =1 (ordered by trace position), the 𝛽 -mixing coefficient at lag ℓ ≥ 1 is: 
+
+𝛽 (ℓ) = sup   
+
+> 1≤𝑖 ≤𝐾 −ℓ
+
+sup      
+
+> 𝐴 ∈𝜎 (𝑉 ≤𝑖 ), 𝐵 ∈𝜎 (𝑉 ≥𝑖 +ℓ)
+
+|P[𝐴 ∩ 𝐵 ] − P[𝐴 ]P[𝐵 ]| .
+
+Theorem 5 (Snowball Rate Under 𝛽 -Mixing Dependence). 
+
+Let ¯𝛽 = sup ℓ ≥1 𝛽 (ℓ) be the supremum 𝛽 -mixing coefficient. Under Assumptions 1, 3, 4, and 6 (replacing Assumption 2 with 𝛽 -mixing), the snowball rate satisfies: 
+
+SCART ≤ 𝜀 rec + (S 0 − 𝜀 rec ) · 𝑞 𝐾 + ( 𝐾 − 1) ¯𝛽 ,
+
+where 𝑞 = 1 − 𝛾 (1 − 𝛿 ). The bound is non-vacuous (strictly less than 
+
+S0) provided (𝐾 − 1) ¯𝛽 < 1 − 𝑞 𝐾 .
+
+Proof. We bound P[E miss ] under dependence using Berbee’s coupling inequality. 
+
+Step 1: Coupling construction. For the miss events 𝑀 1, . . . , 𝑀 𝐾 ,construct an independent sequence 𝑀 ′
+
+> 1
+
+, . . . , 𝑀 ′ 
+
+> 𝐾
+
+such that 𝑀 ′ 
+
+> 𝑖
+
+∼ 𝑀 𝑖 
+
+marginally and P[𝑀 𝑖 ≠ 𝑀 ′ 
+
+> 𝑖
+
+] ≤ ¯𝛽 for 𝑖 ≥ 2 (Berbee’s coupling lemma). 
+
+Step 2: Relate miss probabilities. Using {Ñ𝐾 𝑖 =1 𝑀 𝑖 } ⊆ { Ñ𝐾 𝑖 =1 𝑀 ′ 
+
+> 𝑖
+
+}∪ 
+
+Ð𝐾 𝑖 =2 {𝑀 𝑖 ≠ 𝑀 ′ 
+
+> 𝑖
+
+} and the union bound: 
+
+P
+
+" 𝐾 Ù
+
+> 𝑖 =1
+
+𝑀 𝑖 
+
+#
+
+≤ P
+
+" 𝐾 Ù
+
+> 𝑖 =1
+
+𝑀 ′
+
+> 𝑖
+
+#
+
++
+
+> 𝐾
+
+∑︁ 
+
+> 𝑖 =2
+
+P[𝑀 𝑖 ≠ 𝑀 ′ 
+
+> 𝑖
+
+]≤
+
+> 𝐾
+
+Ö
+
+> 𝑖 =1
+
+P[𝑀 ′ 
+
+> 𝑖
+
+] + ( 𝐾 − 1) ¯𝛽 (independence of 𝑀 ′ 
+
+> 𝑖
+
+)
+
+=
+
+> 𝐾
+
+Ö
+
+> 𝑖 =1
+
+P[𝑀 𝑖 ] + ( 𝐾 − 1) ¯𝛽 (marginal preservation )≤ 𝑞 𝐾 + ( 𝐾 − 1) ¯𝛽. 
+
+Step 3: Apply total-probability argument. From the proof of Theorem 2: 
+
+SCART = 𝜀 rec + (S 0 − 𝜀 rec ) · P[E miss | 𝑒 𝑡 = 1].
+
+Since S0 ≥ 𝜀 rec in the non-trivial regime, this is monotonically increasing in P[E miss ]. Substituting: 
+
+SCART ≤ 𝜀 rec + (S 0 − 𝜀 rec ) 𝑞 𝐾 + ( 𝐾 − 1) ¯𝛽  .Constraint-Anchored Reasoning Traces ACM MM 2026, October 2026, Dublin, Ireland 
+
+Non-vacuousness: SCART < S0 iff 𝑞 𝐾 + ( 𝐾 − 1) ¯𝛽 < 1. □
+
+Empirical mixing estimation. We estimate ¯𝛽 on the GQA diagnostic subset (1,000 instances). Maximum absolute Pearson correlation be-tween consecutive anchor verification outcomes yields ˆ𝑟 max ≈ 0.08 ,giving ¯𝛽 ≥ 0.04 . Direct estimation of TV (P[𝑉 𝑖 +1 | 𝑉 ≤𝑖 ], P[𝑉 𝑖 +1]) 
+
+across all consecutive anchor pairs yields ˆ¯𝛽 TV ≈ 0.12 .Using ˆ¯𝛽 = 0.12 : the mixing penalty is (3−1) × 0.12 = 0.24 for 𝐾 =
+
+3. The adjusted bound is SCART ≤ 0.12 +0.56 × ( 0.036 +0.24 ) = 0.275 ,compared to 0.140 under independence. The empirical SCART = 0.14 
+
+lies below both bounds, suggesting the actual dependence structure is more benign than the worst case. 
+
+## A.5 Computational Complexity 
+
+Proposition 1 (BCP Tractability). Suppose the constraint lan-guage L𝑐 has maximum variable domain size 𝐷 = max 𝑥 |dom (𝑥 )| .Then: 
+
+(i) Checking satisfiability of Σ𝑡 ∪ { 𝑐 } via Boolean Constraint Propagation runs in 𝑂 (| Σ𝑡 | · 𝐷 ) time per anchor addition. 
+
+(ii) The cumulative BCP cost over a full trace of 𝑇 steps with at most 𝑇 anchors is 𝑂 (𝑇 2𝐷 ).
+
+(iii) For CART’s constraint language ( 𝐷 ≤ 20 ), this simplifies to 
+
+𝑂 (| Σ𝑡 |) per step and 𝑂 (𝑇 2) cumulative. 
+
+Proof. Each constraint 𝑐 ∈ L 𝑐 is a bounded-arity predicate with arguments drawn from finite domains of size ≤ 𝐷 . Converting 
+
+𝑐 to a propositional CNF clause produces at most 𝑂 (𝐷 ) literals. Adding this clause to the existing CNF Σ𝑡 triggers unit propagation. Each unit literal assignment triggers at most |Σ𝑡 | clause inspections, each examining at most 𝐷 literals. The total propagation terminates after at most |Σ𝑡 | · 𝐷 literal inspections (standard result for unit propagation; Dechter [2] , Dowling and Gallier [4] ). Summing over 
+
+𝑇 anchor additions: Í𝑇 𝑡 =1 𝑂 (𝑡 · 𝐷 ) = 𝑂 (𝑇 2𝐷 ). □
+
+## A.6 Tightness and Discussion 
+
+Remark 1 (Tightness of Theorem 2). The bound is tight un-der the stated assumptions: equality is achieved when (i) each an-chor independently misses the error with probability exactly 𝑞 , (ii) 
+
+P[Snow | E miss ] = S0, and (iii) P[Snow | E catch ] = 𝜀 rec . Hence the bound cannot be improved without additional assumptions. 
+
+Remark 2 (Vacuousness Regime). The bound is vacuous ( ≥ S 0)when 𝜀 rec ≥ S 0, i.e., when recovery after detection is worse than not detecting at all. In our experiments, 𝜀 rec ∈ [ 0.08 , 0.19 ] and S0 ∈[0.48 , 0.68 ], so the bound is always non-vacuous. 
+
+Remark 3 (Relationship to Self-Consistency). Self-consistency [ 26 ]samples 𝑚 independent paths and takes a majority vote. The majority-vote error decays as exp (− 2𝑚 (𝑝 − 1/2)2) by Hoeffding’s inequality— exponential in 𝑚 . CART’s snowball reduction is similarly exponential: 
+
+𝑂 (𝑞 𝐾 ) = 𝑂 (𝑒 −𝛾 (1−𝛿 )𝐾 ). The key distinction is that CART achieves this within a single generation pass , while self-consistency requires 
+
+𝑚 full forward passes ( 𝑚 × cost). 
+
+Remark 4 (The Role of Retry Budget 𝐵 ). 𝐵 enters through As-sumption 4: 𝜀 rec implicitly depends on 𝐵 . If each retry independently succeeds with probability 𝑝 fix , then 𝜀 rec (𝐵 ) = (1 − 𝑝 fix )𝐵 . The mar-ginal benefit of increasing 𝐵 from 3 to 4 is (0.5)3 − ( 0.5)4 = 0.0625 ,small compared to the cost of an additional full-trace regeneration— consistent with the empirical plateau at 𝐵 = 3.
+
+Remark 5 (No-Harm Guarantee and Practical Safety). The-orem 4 guarantees Acc CART ≥ Acc 0 − 0.006 under empirical esti-mates. This relies on: (a) the calibrated threshold 𝜏 𝑣 = 0.85 keeping false alarms low, (b) the fallback to unconstrained generation un-der retry exhaustion, and (c) the high empirical false-alarm recovery rate ( 𝑟 FA = 0.93 ). In the pathological case 𝑟 FA = 0, 𝜀 harm grows to 
+
+𝐾 0𝛼 ≈ 0.155 , underscoring the importance of threshold calibration. 
+
+## B Implementation Details 
+
+Base MLLMs. We instantiate CART on two open-source MLLMs: LLaVA-NeXT-13B ([ 15 ]; LLaMA-2-13B backbone, CLIP ViT-L/14 vision encoder) and Qwen2-VL-7B [ 25 ] (ViT-bigG vision encoder). Vision encoders are frozen during fine-tuning; only the language model layers (via LoRA) and the grounding head 𝑔 𝜓 are trained. 
+
+Entity grounder. We use Grounding DINO [ 16 ] (Swin-T back-bone [ 17 ], open-vocabulary) as a frozen module for mapping entity name strings in anchors to bounding boxes. Its weights are not updated during CART training. 
+
+Constraint language L𝑐 . We define 14 predicate types cover-ing standard scene-graph ontologies: count , exists , color , shape ,
+
+size , material , spatial_rel (left_of , right_of , above , below ,
+
+in_front_of , behind ), action , and same_attribute . Each predi-cate accepts 1-3 typed arguments and returns a value from a known finite domain (e.g., colors ∈ {red, blue, green, . . . , 12 values}, counts 
+
+∈ { 0, . . . , 20 }, booleans ∈ {True, False}). The maximum domain size is 𝐷 = 20 , ensuring BCP tractability (Proposition 1). 
+
+## B.1 Hyperparameters 
+
+Visual grounding threshold 𝜏 𝑣 = 0.85 , selected on a held-out 5% split of GQA-val by maximizing 𝐹 1 of violation detection. Maximum retry budget 𝐵 = 3 (justified in § 3.2.4). Loss weights 𝜆 𝑐 = 0.5,
+
+𝜆 𝑏 = 0.3, tuned via grid search over {0.1, 0.3, 0.5, 1.0}2 on GQA-val accuracy. LoRA rank is set to 64, applied to all attention projections (W𝑄 , W𝐾 , W𝑉 , W𝑂 ). We ablated ranks ∈ { 16 , 32 , 64 , 128 } and found accuracy saturates at rank 64 (rank 32: −1.1% ; rank 128: +0.2% ,within noise). The relatively high rank (compared to single-task LoRA) is warranted by the heterogeneous multi-objective nature of our fine-tuning, consistent with findings in Hu et al. [8]. 
+
+Backtracking cost. In the worst case, backtracking requires re-generation of up to 𝑇 tokens 𝐵 times, yielding 𝑂 (𝐵 ·𝑇 ) additional token generations. In practice, the mean number of backtracks per trace is 0.4, making amortized cost low. 
+
+## C Details of Experimental Setup C.1 Evaluation Metrics 
+
+Beyond standard end-task accuracy, we introduce three diagnostic metrics motivated by our problem formulation: 
+
+• Snowball Rate (S; defined in § 3.1): estimated by com-paring model traces against ground-truth step annotations and computing the conditional cascading-failure probabil-ity. We manually annotate reasoning step correctness on a 1,000-instance diagnostic subset per benchmark, using ACM MM 2026, October 2026, Dublin, Ireland Cheng et al. 
+
+3 independent annotators per instance with majority-vote adjudication. Inter-annotator agreement : Cohen’s 
+
+𝜅 = 0.81 for step-correctness labels (substantial agreement). The annotation protocol requires each annotator to (a) align each model-generated step 𝑟 𝑡 to the closest ground-truth step 𝑟 ∗ 
+
+> 𝑡
+
+and (b) label it as correct , partially correct , or incorrect 
+
+based on semantic equivalence of the core proposition; we binarize by treating partially correct as incorrect .
+
+• Constraint Violation Rate (CVR): fraction of emitted non-null anchors flagged by the CPM, measured as CVR = |{ 𝑐 𝑡,𝑗 :
+
+𝑝 vis (𝑐 𝑡,𝑗 |𝐼 ) < 𝜏 𝑣 ∨ BCP fails }| / |A| .
+
+• Error Attribution Precision (EAP): among all backtrack events triggered by the CPM, the fraction where the flagged anchor was indeed the earliest erroneous step (verified against ground-truth annotations). Annotation uses the same pool and protocol as the snowball rate annotations, with inter-annotator 𝜅 = 0.76 (substantial agreement). 
+
+Confidence intervals. All diagnostic metrics are reported with 95% bootstrap confidence intervals computed via 10,000 resamples of the 1,000-instance diagnostic subset. For GQA (LLaVA-NeXT-13B): SCART = 0.14 ± 0.02 , CVR = 0.28 ± 0.01 , EAP = 0.82 ± 0.03 . For VCR: SCART = 0.22 ±0.03 , CVR = 0.35 ±0.02 , EAP = 0.71 ±0.04 . The narrow CI widths ( ≤ 0.04 ) confirm that the reported reductions (e.g., 
+
+S0 = 0.65 → S CART = 0.14 ) are statistically significant ( 𝑝 < 0.001 
+
+via permutation test). 
+
+## C.2 Empirical Estimation of Theorem 2 
+
+On the 1,000-instance diagnostic subsets, we estimate 𝛿 , 𝛾 , and 𝜀 rec 
+
+empirically. 
+
+• Soundness error 𝛿 : fraction of CPM-accepted anchors that are factually false (verified against scene graphs). Importantly, 𝛿 
+
+is measured end-to-end: it reflects the full pipeline including Grounding DINO errors. Specifically, when Grounding DINO fails to localize an entity (the 6.2% fallback-to-full-image-pooling cases, plus 4.5% of cases with IoU < 0.5 but above the confidence threshold), the degraded visual features fed to 
+
+𝑔 𝜓 reduce its discriminative power, inflating 𝛿 . We estimate 
+
+𝛿 ≈ 0.07 on GQA/CLEVR (where Grounding DINO is most reliable) and 𝛿 ≈ 0.11 on VCR (where the 17.3% grounding failure rate at IoU ≥ 0.5 compounds with VCR’s noisier constraints). These estimates include all such cascaded error sources. 
+
+• Coupling rate 𝛾 : among instances with a first error at step 
+
+𝑡 , the fraction of subsequent anchors whose ground-truth value is inconsistent with the erroneous step’s proposition. Estimated at 𝛾 ≈ 0.72 (GQA), 𝛾 ≈ 0.81 (CLEVR, where highly structured scenes create tight coupling), and 𝛾 ≈ 0.58 (VCR, where free-form reasoning reduces coupling). 
+
+• Recovery failure rate 𝜀 rec : among instances where the CPM detected a violation and triggered backtracking, the fraction where the final answer was still incorrect due to cascading errors in the post-backtrack continuation. Estimated at 𝜀 rec ≈
+
+0.12 (GQA), 𝜀 rec ≈ 0.08 (CLEVR), and 𝜀 rec ≈ 0.19 (VCR). The higher VCR value reflects both the greater difficulty of VCR reasoning and the noisier constraint quality. 
+
+Decomposition of 𝜀 rec . We disentangle the three failure modes contributing to recovery failure on GQA ( 𝜀 rec = 0.12 , 𝑛 = 187 
+
+catch events): (i) re-introduction of a semantically equivalent er-ror accounts for 𝑝 reintro = 0.065 (15/23 failures); (ii) retry budget exhaustion without finding any valid continuation accounts for 
+
+𝑝 exhaust = 0.022 (5/23); and (iii) novel cascading error introduced in the post-backtrack continuation accounts for 𝑝 novel = 0.013 (3/23). The per-retry fix probability is 𝑝 fix ≈ 0.51 , estimated from the fraction of first retries that produce a correct continuation condi-tional on a correct detection event. This validates the geometric decay model in Assumption 4: 𝜀 rec ≤ ( 1 − 𝑝 fix )𝐵 = (0.49 )3 = 0.118 ,consistent with the observed value. 
+
+## D Training and Optimization Procedure 
+
+Training proceeds in three stages. 
+
+Stage 1: Constraint-Annotated Data Construction. We de-rive ground-truth constraint annotations from scene graphs and ra-tionales available in GQA [ 10 ], CLEVR-CoGenT [ 11 ], and VCR [ 31 ]. For each (𝐼, 𝑞, 𝑎 ∗) triple, we construct mixed traces as follows. 
+
+GQA and CLEVR-CoGenT. These datasets provide structured func-tional programs (e.g., filter(scene, color=red) → relate(_, left) → count ). We execute each program step to obtain in-termediate results and map each step to a constraint in L𝑐 using deterministic rule-based templates. For example, the program step 
+
+filter(scene, color=red) produces the constraint 
+
+exists(red_objects) = True ; relate(obj_3, left, obj_7) 
+
+with attribute lookup produces spatial_rel(left_of, dog, cat) = True . Object names are resolved from the scene graph’s attribute annotations. Anchors are inserted into the linearized CoT trace at the position corresponding to each program step. 
+
+VCR. VCR rationales are free-form natural language. We employ a dedicated NLP extraction pipeline :(1) Dependency parsing via spaCy (en_core_web_trf) to ex-tract subject-verb-object triples. (2) Semantic role labeling via AllenNLP’s BERT-based SRL model to identify agent, patient, and spatial/attribute argu-ments. (3) Template matching : extracted triples are matched against 
+
+L𝑐 predicates using a hand-crafted rule set (78 rules). (4) Entity resolution : entity mentions in VCR use indexed tags (e.g., [person1] ); we resolve these to descriptive names using VCR’s metadata and scene-graph overlap where available. We manually verified the quality of this pipeline on 500 ran-domly sampled VCR instances (two annotators, adjudicated dis-agreements). Measured precision: 78.4% ; recall : 65.1% . Primary error modes: failed SRL on complex subordinate clauses (14% of errors), polysemous predicates mapped to wrong L𝑐 type (8%), and entity co-reference failures (12%). We filter VCR-derived constraints by a confidence heuristic (SRL confidence ≥ 0.7 and template-match uniqueness) and discard instances where fewer than two constraints survive, yielding 28K VCR instances .
+
+Impact of VCR noise on grounding head training. The 
+
+≈ 21 .6% error rate in VCR-derived constraints constitutes one-sided label noise : incorrect constraints are false positives (labeled 
+
+𝑦 𝑡,𝑗 = 1 but factually incorrect), whereas synthetically generated negatives (see Stage 2 below) are always correctly labeled 𝑦 𝑡,𝑗 = 0.Constraint-Anchored Reasoning Traces ACM MM 2026, October 2026, Dublin, Ireland 
+
+This asymmetry can bias 𝑔 𝜓 toward accepting certain false con-straints, particularly those involving VCR’s more complex relational predicates (e.g., ‘action‘). To mitigate this, we apply per-source loss weighting in Lcst : VCR-derived constraint instances receive weight 𝑤 VCR = 0.7 while GQA/CLEVR instances receive weight 1.0.
+
+Summary. This procedure yields 218K training instances (142K from GQA, 48K from CLEVR-CoGenT, 28K from VCR) after filtering for traces containing at least two non-null constraints. Variable anchor density is naturally induced: GQA traces average 3.1 anchors per trace, CLEVR 4.7, and VCR 2.2. 
+
+Stage 2: Joint Fine-Tuning. We fine-tune M𝜃 (via LoRA, rank 64, applied to W𝑄 , W𝐾 , W𝑉 , W𝑂 in all layers) and train 𝑔 𝜓 from scratch, jointly optimizing: 
+
+L = Ltask + 𝜆 𝑐 Lcst + 𝜆 𝑏 Lbt , (11) 
+
+Lcst = −∑︁  
+
+> (𝑡,𝑗 ) ∈ A ′
+
+𝑤 𝑠 
+
+𝑦 𝑡,𝑗 log 𝑔 𝜓 (𝑐 𝑡,𝑗 , V)+ ( 1−𝑦 𝑡,𝑗 ) log (1−𝑔 𝜓 (𝑐 𝑡,𝑗 , V))  (12) 
+
+Lbt = −∑︁  
+
+> 𝑡 ∈ B
+
+log 𝑝 𝜃 (<RETRY> · 𝑟 ∗,alt  
+
+> 𝑡
+
+| rerr  
+
+> <𝑡
+
+, 𝐼, 𝑞 ) (13) where: 
+
+• L task = − Í𝑡 log 𝑝 𝜃 (𝑟 ∗ 
+
+> 𝑡
+
+| r∗ 
+
+> <𝑡
+
+, 𝐼, 𝑞 ) is the standard autoregres-sive cross-entropy over all tokens in the mixed trace (reason-ing tokens, delimiter tokens, anchor tokens, and <NULL_CON/> 
+
+tokens). 
+
+• Equation 12 is the binary cross-entropy for the grounding head with per-source weight 𝑤 𝑠 (𝑤 𝑠 = 0.7 for VCR, 𝑤 𝑠 = 1.0
+
+for GQA/CLEVR), where A′ indexes all anchor positions (including synthetically negated ones) and 𝑦 𝑡,𝑗 ∈ { 0, 1} is the ground-truth satisfaction label. Negative anchors are con-structed by perturbing ground-truth constraints (swapping entity arguments, changing attribute values, or negating relational predicates) at a 1:1 positive-to-negative ratio. 
+
+• Equation 13 is the backtrack-aware loss computed over synthetically corrupted traces. We create a set B by replacing a randomly chosen correct anchor with an incorrect one and providing the model the prefix up to the last valid checkpoint, followed by <RETRY> .
+
+Construction of alternative continuations 𝑟 ∗,alt  
+
+> 𝑡
+
+. We use a two-source mixture. For 70% of backtrack training instances, 𝑟 ∗,alt 
+
+> 𝑡
+
+is the original gold continuation from the last valid checkpoint onward. For the remaining 30%, 𝑟 ∗,alt  
+
+> 𝑡
+
+is a diverse alternative 
+
+generated by the base MLLM itself (before CART fine-tuning) via nucleus sampling ( 𝑝 = 0.9, temperature = 0.8) conditioned on the checkpoint prefix plus <RETRY> token, filtered to retain only samples whose final answer matches the ground-truth answer 𝑎 ∗.Among sampled candidates (up to 5 per instance), we select the one with lowest token-level overlap with the gold continuation (measured by BLEU-4) to maximize diversity. If no valid alternative is found, the gold continuation is used as fallback. 
+
+Handling of <RETRY> in the base model. The <RETRY> to-ken is a newly added special token whose embedding is randomly initialized (drawn from N ( 0, 0.02 2), matching the LLM’s embed-ding initialization scale) in the base MLLM’s vocabulary. When generating the 30% diverse alternative continuations using the 
+
+pre-fine-tuned base model, this randomly initialized embedding provides no semantically meaningful conditioning —the base model has never encountered this token during pretraining. We treat this as an intentional design choice: the random embedding acts as a stochastic perturbation on the prefix representation, encouraging the base model to explore a slightly different region of its output distribution compared to continuing from the same prefix without the token. This is functionally analogous to adding a small noise injection before sampling, which promotes diversity. In pilot experiments, we compared this approach against (a) omitting 
+
+<RETRY> entirely (lower diversity: mean BLEU-4 with gold = 0.61 vs. 0.53 with <RETRY> ) and (b) using a hand-crafted natural-language retry prompt ("Try a different approach:"), which yielded similar diversity but introduced systematic style shifts. After CART fine-tuning (Stage 2), the <RETRY> embedding is trained and acquires the intended semantic meaning of "explore an alternative reasoning path." 
+
+Optimization details. We use AdamW ( 𝛽 1 = 0.9, 𝛽 2 = 0.95 ,weight decay 0.05 ) with a cosine learning-rate schedule warming up over 500 steps to a peak of 2 × 10 −5 (LLM LoRA parameters) and 5 × 10 −4 (grounding head 𝑔 𝜓 ). Training runs for 3 epochs on 8×A100-80GB GPUs with DeepSpeed ZeRO-2 [ 22 ], effective batch size 128 (gradient accumulation factor 4). Total training time is approximately 18 hours for LLaVA-NeXT-13B [ 15 ] and 11 hours for Qwen2-VL-7B. 
+
+Stage 3: Grounding Head Calibration. After joint training, we calibrate the grounding head’s threshold 𝜏 𝑣 using temperature scaling [ 5] on the held-out GQA-val split, optimizing expected cali-bration error (ECE). This ensures that 𝜏 𝑣 = 0.85 reliably separates satisfied from violated constraints in distribution. 
+
+Data flow summary. At training time, the forward pass pro-cesses a mixed trace through the LLM backbone; anchor tokens con-tribute to both Ltask (via the LLM head) and Lcst (via the grounding head 𝑔 𝜓 , whose input features are extracted using frozen Ground-ing DINO boxes). Corrupted-trace samples contribute to Lbt . All three losses are summed and a single backward pass updates LoRA weights and 𝑔 𝜓 parameters. Gradients flow through 𝑔 𝜓 normally; 
+
+BCP never receives gradients and is used only as a deterministic pre-computation to produce binary consistency labels during train-ing data construction. At inference time, the CPM (both 𝑔 𝜓 forward pass and BCP) acts as a hard gate (Algorithm 1) with no gradient flow; the backtrack controller is fully deterministic.

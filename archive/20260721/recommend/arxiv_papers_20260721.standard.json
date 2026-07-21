@@ -1,0 +1,199 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-07-21T20:18:43.541580+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 4,
+    "deep_cap": 6,
+    "deep_selected": 4,
+    "quick_candidates": 1,
+    "quick_skim_target": 11,
+    "quick_selected": 1
+  },
+  "deep_dive": [
+    {
+      "id": "2607.11089v1",
+      "source": "arxiv",
+      "title": "OS-Pruner: Pruning Chains-of-Thought of Reasoning Models via Optimal Stopping",
+      "abstract": "Large Language Models (LLMs) have achieved remarkable success in complex reasoning tasks through Chain-of-Thought (CoT) prompting. However, these models often exhibit \"computational overthinking,\" generating redundant reasoning steps that increase latency and cost without improving accuracy. Recent studies suggest that CoT trajectories can be significantly pruned, yet existing methods often rely on forcing a static thinking budget, heuristic filtering, sub-optimal early exit via classification, or expensive re-training. In this paper, we introduce OS-Pruner, a lightweight plug-in framework that formulates chain-of-thought pruning as an optimal stopping problem. Given a reasoning prefix, OS-Pruner learns whether further reasoning is worth its token cost by optimizing an explicit utility that trades off final-answer accuracy against generated length. Our novel formulation enables the model to dynamically assess the sufficient point of termination for a reasoning chain. OS-Pruner is designed to be lightweight during both training and inference, and to provide users with fine-grained control over the reasoning-effort vs. accuracy trade-off. On diverse reasoning benchmarks and base models, OS-Pruner achieves 20-60\\% reduction in generation length with minimal accuracy sacrifice.",
+      "authors": [
+        "Mohammed Ehab",
+        "Aymane El Gadarri",
+        "Vivek F. Farias",
+        "Adam Jozefiak",
+        "Ciamac C. Moallemi"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-07-13T04:57:22+00:00",
+      "link": "https://arxiv.org/pdf/2607.11089v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "directly targets pruning chain-of-thought reasoning in large models",
+      "llm_evidence_cn": "直接针对大模型中思维链推理的剪枝",
+      "llm_evidence": "直接针对大模型中思维链推理的剪枝",
+      "canonical_evidence": "直接针对大模型中思维链推理的剪枝",
+      "llm_tldr_en": "OS-Pruner formulates chain-of-thought pruning as an optimal stopping problem to reduce redundant reasoning steps without retraining.",
+      "llm_tldr_cn": "本文提出OS-Pruner，将思维链推理剪枝建模为最优停止问题，避免静态预算或启发式方法。该轻量插件框架学习判断推理前缀是否值得继续生成，从而减少冗余步骤，降低延迟和成本。实验表明该方法在保持精度的同时显著提升了推理效率。",
+      "llm_tldr": "本文提出OS-Pruner，将思维链推理剪枝建模为最优停止问题，避免静态预算或启发式方法。该轻量插件框架学习判断推理前缀是否值得继续生成，从而减少冗余步骤，降低延迟和成本。实验表明该方法在保持精度的同时显著提升了推理效率。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.16727v1",
+      "source": "arxiv",
+      "title": "Constraint-Anchored Reasoning Traces",
+      "abstract": "Autoregressive multimodal large language models (MLLMs) suffer from error snowballing: a single incorrect inference early in a chainof-thought (CoT) trace corrupts all downstream reasoning. We find that in state-of-the-art open-source MLLMs, once the first error occurs, the reasoning cascades into failure across all remaining steps in 65% of such cases (a metric we term the snowball rate). Existing mitigations-sampling multiple chains, post-hoc self-verification, or full program synthesis-either lack symbolic grounding, catch errors too late, or sacrifice the flexibility of natural language reasoning. We propose Constraint-Anchored Reasoning Traces (CART), a neuro-symbolic framework that trains MLLMs to interleave natural language reasoning steps with symbolic constraint assertions: lightweight, machine-checkable statements about visual content (e.g., count(red_objects) = 3). A dual-pronged Constraint Propagation Module-combining a learned neural grounding head with Boolean Constraint Propagation-continuously verifies these anchors against extracted visual features and checks their mutual logical consistency. When a contradiction is detected, a backtrack controller halts generation and reverts to the last consistent checkpoint, preventing error propagation. A variable-frequency emission mechanism allows the model to adaptively control anchor density, avoiding trace bloat. We construct 218K training instances by augmenting GQA, CLEVR-CoGenT, and VCR with ground-truth constraint annotations derived from scene graphs, and fine-tune open-source MLLMs (LLaVA-NeXT, Qwen2-VL) via LoRA. On five benchmarks, CART reduces the snowball rate from 0.65 to 0.14, improves GQA accuracy by +4.6 percentage points over trainingonly baselines, and achieves 89.1 F1 on POPE-all with at most 18% inference overhead.",
+      "authors": [
+        "Zehua Cheng",
+        "Wei Dai",
+        "Jiahao Sun"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.CV"
+      ],
+      "published": "2026-07-18T09:24:45+00:00",
+      "link": "https://arxiv.org/pdf/2607.16727v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "addresses CoT error snowballing in multimodal LLMs with constraint anchoring",
+      "llm_evidence_cn": "针对多模态大模型链式思维错误雪崩提出约束锚定",
+      "llm_evidence": "针对多模态大模型链式思维错误雪崩提出约束锚定",
+      "canonical_evidence": "针对多模态大模型链式思维错误雪崩提出约束锚定",
+      "llm_tldr_en": "Proposes CART, a neuro-symbolic framework that interleaves natural language reasoning with symbolic constraint assertions to mitigate error snowballing in MLLM chain-of-thought.",
+      "llm_tldr_cn": "针对多模态大语言模型链式思维中早期错误导致后续推理全部失败的问题，提出约束锚定推理轨迹（CART），训练模型在自然语言推理步骤中穿插符号约束断言，实现错误检测与修正。在开源MLLM上雪崩率达65%，CART有效降低了错误级联。",
+      "llm_tldr": "针对多模态大语言模型链式思维中早期错误导致后续推理全部失败的问题，提出约束锚定推理轨迹（CART），训练模型在自然语言推理步骤中穿插符号约束断言，实现错误检测与修正。在开源MLLM上雪崩率达65%，CART有效降低了错误级联。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.17946v1",
+      "source": "arxiv",
+      "title": "A Geometric Perspective on Stabilizing Value Conflict Resolution",
+      "abstract": "Large Language Models (LLMs) often struggle to navigate value conflicts when trained with the compressed scalar rewards of Reinforcement Learning from Human Feedback (RLHF). To address this challenge, we investigate how chain-of-thought (CoT) reasoning can help improve performance in this domain. Geometrically, we show that CoT correlates with further smoothing the model's loss landscape in its sharpest direction, helping resolve the optimization instability of traditional scalar rewards. We also demonstrate via relevant downstream benchmarks that value conflict-focused CoT may generalize to different kinds of moral reasoning, demonstrating that this CoT has the potential to be an effective mechanism for better moral reasoning. To capitalize on this potential, we create a new value conflict-focused CoT design that further smooths the sharpest direction of the loss landscape and increases moral reasoning performance. This finding shows that explicitly modifying and improving the design of reasoning dynamics offers a promising avenue for improving model performance on user requests with complex value conflicts, advancing pluralistic alignment in LLMs.",
+      "authors": [
+        "Saket Reddy",
+        "Andy Liu"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI"
+      ],
+      "published": "2026-07-20T13:46:47+00:00",
+      "link": "https://arxiv.org/pdf/2607.17946v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "chain-of-thought reasoning for value conflict resolution",
+      "llm_evidence_cn": "链式思考推理用于价值冲突解决",
+      "llm_evidence": "链式思考推理用于价值冲突解决",
+      "canonical_evidence": "链式思考推理用于价值冲突解决",
+      "llm_tldr_en": "This paper investigates how chain-of-thought reasoning helps stabilize value conflict resolution in LLMs, showing geometrically that CoT smooths the loss landscape and demonstrating generalization to moral reasoning.",
+      "llm_tldr_cn": "大型语言模型在基于人类反馈的强化学习训练中常面临价值冲突的优化不稳定性。本文从几何视角出发，研究链式思考（CoT）推理如何缓解这一问题。作者发现CoT推理能进一步平滑损失景观的尖锐方向，从而稳定优化过程。在相关下游基准上，针对价值冲突的CoT推理还能泛化到不同类型的道德推理任务。这项工作为理解CoT机制提供了新的几何解释，并展示了其在实际对齐中的潜力。",
+      "llm_tldr": "大型语言模型在基于人类反馈的强化学习训练中常面临价值冲突的优化不稳定性。本文从几何视角出发，研究链式思考（CoT）推理如何缓解这一问题。作者发现CoT推理能进一步平滑损失景观的尖锐方向，从而稳定优化过程。在相关下游基准上，针对价值冲突的CoT推理还能泛化到不同类型的道德推理任务。这项工作为理解CoT机制提供了新的几何解释，并展示了其在实际对齐中的潜力。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.17884v1",
+      "source": "arxiv",
+      "title": "ST-Veto: Spatio-Temporal Token Veto for Diffusion MLLMs via Taylor Prediction and Visual Grounding",
+      "abstract": "Vision Language Models (VLMs) achieve strong reasoning with Chain-of-Thought (CoT) prompting but incur high sequential-generation cost, error accumulation, and limited self-correction. Diffusion Multimodal Large Language Models (dMLLMs) unmask tokens in an order-agnostic process, improving efficiency and enabling iterative refinement, yet their reasoning and how to enhance it remain underexplored. We propose a training-free method, Spatio-Temporal Token Veto (ST-Veto), which leverages the ability to observe all token positions at each diffusion step. Rather than relying only on current-step confidence, ST-Veto vetoes temporally unstable tokens via second-order Taylor prediction of confidence dynamics and filters weakly grounded tokens using image-attention mass, swapping them with safer candidates. Across multiple dMLLMs and multimodal reasoning benchmarks, ST-Veto consistently outperforms standard decoding policies and prior VLM reasoning methods, improving accuracy by up to 9% with no additional training or generation cost. Analyses show that ST-Veto steers generation toward higher-confidence, better-grounded paths.",
+      "authors": [
+        "Keuntae Kim",
+        "Beomseok Lee",
+        "Hyunwoo Kim",
+        "Yong Suk Choi"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-07-20T12:35:05+00:00",
+      "link": "https://arxiv.org/pdf/2607.17884v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "improves reasoning in diffusion MLLMs with CoT background",
+      "llm_evidence_cn": "在扩散多模态大模型中改进推理，涉及链式思维",
+      "llm_evidence": "在扩散多模态大模型中改进推理，涉及链式思维",
+      "canonical_evidence": "在扩散多模态大模型中改进推理，涉及链式思维",
+      "llm_tldr_en": "Proposes ST-Veto, a training-free method that uses Taylor prediction and visual grounding to veto unstable tokens, enhancing reasoning in diffusion MLLMs and addressing CoT limitations.",
+      "llm_tldr_cn": "针对视觉语言模型链式思维推理的高计算成本和错误累积问题，提出ST-Veto方法，通过二阶泰勒预测和视觉定位在扩散步骤中筛除不稳定令牌，无需训练即可提升推理效率与自纠正能力。实验表明该方法有效减少了错误传播。",
+      "llm_tldr": "针对视觉语言模型链式思维推理的高计算成本和错误累积问题，提出ST-Veto方法，通过二阶泰勒预测和视觉定位在扩散步骤中筛除不稳定令牌，无需训练即可提升推理效率与自纠正能力。实验表明该方法有效减少了错误传播。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2607.18199v1",
+      "source": "arxiv",
+      "title": "PPL-Factory: Task-Aware and Budget-Aware Data Selection from Language Modeling to Reasoning",
+      "abstract": "Not all training samples contribute equally to large language model fine-tuning. Selecting informative training samples can reduce the computational cost while preserving downstream performance. Many existing data selection methods rely on indirect heuristics, such as data quality, diversity or reasoning trace length. However, the effectiveness of these fixed criteria is task-dependent and difficult to generalize across diverse downstream tasks. Perplexity-based data selection provides a simple and model-aware solution to estimate the sample difficulty, but existing approaches typically score the entire training sequence and ignore the difference in learning objectives of language modeling and reasoning tasks. In this paper, we propose PPL-Factory, a simple and interpretable data selection framework that combines task-aware perplexity-based scores and data budget-aware selection criteria. Experiments on GSM8K demonstrate that PPL-Factory outperforms other state-of-the-art data selection methods using only $1\\%$ of the training set. With $10\\%$ of the data, PPL-Factory exceeds full-data fine-tuning accuracy by 0.9 on GSM8K and 4.8 on MATH. Overall, our results demonstrate that task-aware and budget-aware perplexity-based selection provides an effective and applicable approach for efficient fine-tuning.",
+      "authors": [
+        "Hang Zhang",
+        "Warren J. Gross"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL",
+        "cs.LG"
+      ],
+      "published": "2026-07-20T17:38:38+00:00",
+      "link": "https://arxiv.org/pdf/2607.18199v1",
+      "tags": [
+        "keyword:vlm-cot",
+        "query:vlm-cot"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "data selection method for reasoning tasks in LLMs",
+      "llm_evidence_cn": "为大语言模型推理任务提供数据选择方法",
+      "llm_evidence": "为大语言模型推理任务提供数据选择方法",
+      "canonical_evidence": "为大语言模型推理任务提供数据选择方法",
+      "llm_tldr_en": "Proposes PPL-Factory, a task-aware and budget-aware data selection framework for LLM fine-tuning, focusing on reasoning tasks and using perplexity-based scoring.",
+      "llm_tldr_cn": "针对大语言模型微调中数据样本重要性不均的问题，提出PPL-Factory框架，基于困惑度进行任务感知和预算感知的数据选择，区分语言建模与推理目标，减少计算成本同时保持下游性能。",
+      "llm_tldr": "针对大语言模型微调中数据样本重要性不均的问题，提出PPL-Factory框架，基于困惑度进行任务感知和预算感知的数据选择，区分语言建模与推理目标，减少计算成本同时保持下游性能。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}

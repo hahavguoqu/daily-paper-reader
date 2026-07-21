@@ -6,38 +6,35 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-20
-- 运行时间：2026-07-20 21:13:42 UTC
+- 最新运行日期：2026-07-21
+- 运行时间：2026-07-21 20:21:27 UTC
 - 运行状态：成功
-- 本次总论文数：6
+- 本次总论文数：5
 - 精读区：4
-- 速读区：2
+- 速读区：1
 
 ### 今日简报（AI）
-今日推荐6篇论文，精读2篇高分研究，聚焦多模态推理与推荐系统方向。最值得关注的是《Beyond the Eye》提出的自调节隐式视觉工具，以及《RecGPT-V3》在推荐系统上的技术提升。建议优先精读这两篇9分论文，再按需查看速读文献。
-- 详情：[/202607/20/README](/202607/20/README)
+今日聚焦推理模型的思维链优化与约束锚定，精读两篇高分论文。最值得关注的方向是最优停止剪枝（OS-Pruner）和约束锚定推理轨迹，分别以9.0分提出高效压缩与可控生成策略。建议读者优先精读这两篇，深入理解如何通过停止机制减少冗余推理步骤，并利用约束锚定提升模型输出可靠性。
+- 详情：[/202607/21/README](/202607/21/README)
 
 ### 精读区论文标签
-1. [Beyond the Eye: Efficient Multimodal Reasoning via Self-Regulated Implicit Visual Tools](/202607/20/2607.11106v1-beyond-the-eye-efficient-multimodal-reasoning-via-self-regulated-implicit-visual-tools)  
+1. [OS-Pruner: Pruning Chains-of-Thought of Reasoning Models via Optimal Stopping](/202607/21/2607.11089v1-os-pruner-pruning-chains-of-thought-of-reasoning-models-via-optimal-stopping)  
    标签：评分：9.0/10、query:vlm-cot
-   evidence：通过自调节隐式视觉工具实现多模态大模型的视觉链式推理
-2. [RecGPT-V3 Technical Report](/202607/20/2607.15591v1-recgpt-v3-technical-report)  
+   evidence：直接针对大模型中思维链推理的剪枝
+2. [Constraint-Anchored Reasoning Traces](/202607/21/2607.16727v1-constraint-anchored-reasoning-traces)  
    标签：评分：9.0/10、query:vlm-cot
-   evidence：阿里巴巴淘宝出品的大模型推荐系统，涉及多智能体推理
-3. [Multi-Head Latent Control: A Unified Interface for LLM Agent Decision Making](/202607/20/2607.14277v1-multi-head-latent-control-a-unified-interface-for-llm-agent-decision-making)  
+   evidence：针对多模态大模型链式思维错误雪崩提出约束锚定
+3. [A Geometric Perspective on Stabilizing Value Conflict Resolution](/202607/21/2607.17946v1-a-geometric-perspective-on-stabilizing-value-conflict-resolution)  
+   标签：评分：9.0/10、query:vlm-cot
+   evidence：链式思考推理用于价值冲突解决
+4. [ST-Veto: Spatio-Temporal Token Veto for Diffusion MLLMs via Taylor Prediction and Visual Grounding](/202607/21/2607.17884v1-st-veto-spatio-temporal-token-veto-for-diffusion-mllms-via-taylor-prediction-and-visual-grounding)  
    标签：评分：8.0/10、query:vlm-cot
-   evidence：用于智能体推理决策的潜在控制接口，与链式推理相关
-4. [Reasoning-Guided Part-Level Visual Grounding via Reinforcement Learning](/202607/20/2607.15374v1-reasoning-guided-part-level-visual-grounding-via-reinforcement-learning)  
-   标签：评分：8.0/10、query:vlm-cot
-   evidence：采用粗到细的推理引导策略进行部件级视觉定位
+   evidence：在扩散多模态大模型中改进推理，涉及链式思维
 
 ### 速读区论文标签
-1. [MARS: Multi-hop Adaptive Retrieval and SPARQL Generation for KGQA](/202607/20/2607.14561v1-mars-multi-hop-adaptive-retrieval-and-sparql-generation-for-kgqa)  
+1. [PPL-Factory: Task-Aware and Budget-Aware Data Selection from Language Modeling to Reasoning](/202607/21/2607.18199v1-ppl-factory-task-aware-and-budget-aware-data-selection-from-language-modeling-to-reasoning)  
    标签：评分：6.0/10、query:vlm-cot
-   evidence：知识图谱多跳推理，类似于思维链
-2. [AI Trading: Evaluating Large Language Models for Technical Market Analysis](/202607/20/2607.15414v1-ai-trading-evaluating-large-language-models-for-technical-market-analysis)  
-   标签：评分：6.0/10、query:vlm-cot
-   evidence：评估了多个大厂出品的LLM（GPT-4, Claude, Gemini, Llama）
+   evidence：为大语言模型推理任务提供数据选择方法
 
 
 <div class="dpr-home-promo-card">
