@@ -1,0 +1,176 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-07-22T20:06:42.601779+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 4,
+    "deep_cap": 6,
+    "deep_selected": 4,
+    "quick_candidates": 0,
+    "quick_skim_target": 11,
+    "quick_selected": 0
+  },
+  "deep_dive": [
+    {
+      "id": "2607.18532v1",
+      "source": "arxiv",
+      "title": "Reasoning Fine-Tuning Induces Persistent Latent Policy States",
+      "abstract": "Reasoning-specialized language models show large performance gains over base models, yet the internal changes responsible for improved multi-step reasoning remain poorly understood. It is unclear whether reasoning fine-tuning improves local token-level competence or globally reorganizes how models structure inference over time. We address this question by modeling Chain-of-Thought reasoning as a switching dynamical system (SDS), in which internal representations evolve under discrete latent policy states. Our framework combines time-aware contrastive representation learning with discrete regime discovery to recover latent policies from activation trajectories. Across four benchmarks and model scales from 1.5B to 32B parameters, reasoning-fine-tuned models exhibit richer latent-policy organization than their base counterparts, characterized by more differentiated transition structure and model-dependent changes in state utilization, persistence, and mixing. The recovered regimes exhibit functional specialization aligned with distinct reasoning stages, and extensive controls confirm that their structure is not explained by correctness, representation learning, or modeling priors, but depends on the coherent temporal organization of reasoning trajectories. Causal interventions further show that the regimes are functionally meaningful: state-swap ablations reduce one-step predictive fit, while transplanting reasoning dynamics into base models improves performance on challenging reasoning problems. Finally, SDS-guided pruning of failure-prone reasoning prefixes outperforms self-consistency in 11 of 12 model-dataset settings, with gains of up to 12.5 percentage points. Together, our results suggest that reasoning fine-tuning globally reorganizes latent dynamics, offering a new lens for mechanistic analysis and process-level control of reasoning models.",
+      "authors": [
+        "Abir Harrasse",
+        "Michael Lan",
+        "Hunar Batra",
+        "Fateme Hashemi Chaleshtori",
+        "Chaithanya Bandi"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-07-20T21:56:22+00:00",
+      "link": "https://arxiv.org/pdf/2607.18532v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "directly analyzes Chain-of-Thought reasoning in LLMs as switching dynamical system",
+      "llm_evidence_cn": "直接将大模型中的思维链推理建模为切换动态系统进行分析",
+      "llm_evidence": "直接将大模型中的思维链推理建模为切换动态系统进行分析",
+      "canonical_evidence": "直接将大模型中的思维链推理建模为切换动态系统进行分析",
+      "llm_tldr_en": "Models Chain-of-Thought reasoning as a switching dynamical system, revealing that reasoning fine-tuning induces persistent latent policy states across model scales from 1.5B to 32B parameters.",
+      "llm_tldr_cn": "该研究将大语言模型的思维链推理建模为切换动态系统，发现推理微调能够诱导出持久的潜在策略状态。通过在四个基准测试和1.5B到32B参数规模上的实验，揭示了推理微调在全局层面重组推理结构，而非仅仅提升局部词元能力。该框架结合时间感知对比表示学习和离散状态发现，为理解多步推理机制提供了新视角。",
+      "llm_tldr": "该研究将大语言模型的思维链推理建模为切换动态系统，发现推理微调能够诱导出持久的潜在策略状态。通过在四个基准测试和1.5B到32B参数规模上的实验，揭示了推理微调在全局层面重组推理结构，而非仅仅提升局部词元能力。该框架结合时间感知对比表示学习和离散状态发现，为理解多步推理机制提供了新视角。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.18413v1",
+      "source": "arxiv",
+      "title": "Convolution for Large Language Models",
+      "abstract": "Large language models (LLMs) largely rely on Transformers, where self-attention provides global token interaction but does not explicitly encode the locality of natural language. We study whether lightweight depthwise convolutions can supply this local inductive bias without materially increasing model size. Our macro-level ablation compares convolution at 17 locations in a Qwen3 Transformer block and finds the best results when convolution is applied to the projected queries, keys, and values before attention. A subsequent micro-level study favors a residual depthwise convolution with kernel size $k=3$, without additional normalization or activation. Across Qwen3 models and several pre-training data budgets, this design improves the average accuracy on seven downstream benchmarks while adding less than $0.01\\%$ parameters. A representation-level case study further suggests that the convolution makes repeated token IDs more sensitive to their immediate context. These results support depthwise convolution as a lightweight complement to self-attention for modeling short-range token interactions.",
+      "authors": [
+        "Yuchuan Tian",
+        "Yingte Shu",
+        "Wei He",
+        "Shuo Zhang",
+        "Tianchen Zhao",
+        "Chao Xu",
+        "Xinghao Chen",
+        "Yunhe Wang",
+        "Hanting Chen",
+        "Yu Wang"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-07-20T18:02:25+00:00",
+      "link": "https://arxiv.org/pdf/2607.18413v1",
+      "tags": [
+        "keyword:vlm-cot",
+        "query:vlm-cot"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "proposes convolution improvement on Qwen3, a large model by Alibaba (big tech)",
+      "llm_evidence_cn": "在阿里大模型Qwen3上提出卷积改进",
+      "llm_evidence": "在阿里大模型Qwen3上提出卷积改进",
+      "canonical_evidence": "在阿里大模型Qwen3上提出卷积改进",
+      "llm_tldr_en": "Studies lightweight depthwise convolutions in Qwen3 Transformer blocks, improving performance without increasing model size; evaluated on seven benchmarks.",
+      "llm_tldr_cn": "本文针对大语言模型Transformer缺乏局部归纳偏置的问题，提出在Qwen3模型的注意力前对查询、键、值施加轻量深度可分离卷积。宏观消融实验确定了卷积的最佳插入位置，微观实验优选残差深度卷积核大小3。在多个预训练数据规模下，该方法在七个下游基准上平均准确率提升，验证了卷积作为局部先验的有效性，且不增加模型尺寸。",
+      "llm_tldr": "本文针对大语言模型Transformer缺乏局部归纳偏置的问题，提出在Qwen3模型的注意力前对查询、键、值施加轻量深度可分离卷积。宏观消融实验确定了卷积的最佳插入位置，微观实验优选残差深度卷积核大小3。在多个预训练数据规模下，该方法在七个下游基准上平均准确率提升，验证了卷积作为局部先验的有效性，且不增加模型尺寸。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "large model by big tech companies",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.18618v1",
+      "source": "arxiv",
+      "title": "LatentMT: Machine Translation with Latent Reasoning",
+      "abstract": "Latent-reasoning looped language models (LoopLMs) offer a different scaling path for machine translation (MT): instead of increasing parameter count or emitting explicit chain-of-thought tokens, they spend additional recurrent computation inside hidden states. We introduce LatentMT, the first systematic study of latent-reasoning LoopLMs for machine translation. LatentMT adapts a small 2.6B-parameter backbone model with lightweight training. Across 32 translation directions spanning high-, mid-, and low-resource languages, LatentMT achieves performance comparable to models three to five times larger. It is competitive in a high-resource language and achieves state-of-the-art performance on both mid-resource and low-resource languages. Studying the behavior of scaling the number of recurrent reasoning steps, we find that recurrent computation consistently improves translation quality in early steps, then saturates quickly afterwards. Our mechanistic analysis shows that hidden-representation differences shrink along the recurrent reasoning-step axis, supporting the observed saturation in performance. Finally, our efficiency analysis shows that LatentMT requires lower training and inference compute than much larger non-latent-reasoning models with similar performance, making latent recurrent computation a promising path toward compact, efficient, and strong machine translation.",
+      "authors": [
+        "Wei-Rui Chen",
+        "Samar M. Magdy",
+        "Chiyu Zhang",
+        "Wenhui Zhu",
+        "Zhipeng Wang",
+        "Muhammad Abdul-Mageed"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL",
+        "cs.AI",
+        "cs.LG"
+      ],
+      "published": "2026-07-21T01:38:23+00:00",
+      "link": "https://arxiv.org/pdf/2607.18618v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "latent-reasoning looped language models, an alternative to explicit CoT",
+      "llm_evidence_cn": "潜在推理循环语言模型，替代显式思维链",
+      "llm_evidence": "潜在推理循环语言模型，替代显式思维链",
+      "canonical_evidence": "潜在推理循环语言模型，替代显式思维链",
+      "llm_tldr_en": "LatentMT adapts small 2.6B parameter looped language models with latent reasoning for machine translation, matching models 3-5x larger and achieving SOTA on mid/low-resource languages.",
+      "llm_tldr_cn": "该论文提出LatentMT，将潜在推理循环语言模型（LoopLM）应用于机器翻译。与显式思维链不同，它在隐藏状态中循环计算实现推理。仅2.6B参数的模型在32个翻译方向上性能媲美3-5倍大的模型，在中低资源语言上达到最佳。这表明潜在推理是一种高效的缩放路径。",
+      "llm_tldr": "该论文提出LatentMT，将潜在推理循环语言模型（LoopLM）应用于机器翻译。与显式思维链不同，它在隐藏状态中循环计算实现推理。仅2.6B参数的模型在32个翻译方向上性能媲美3-5倍大的模型，在中低资源语言上达到最佳。这表明潜在推理是一种高效的缩放路径。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.18915v1",
+      "source": "arxiv",
+      "title": "Reasoning Error from Known Fact: Step-Level Self-Consistency Group Relative Policy Optimization for LLM",
+      "abstract": "With the rapid advancement of large language models (LLMs), modern systems not only possess strong foundational capabilities and extensive knowledge, but can also solve complex problems via long, multi-step reasoning. However, as reasoning traces become longer, LLMs may produce a substantial amount of hallucinated content during the reasoning process, which is often difficult to detect. In this work, we conduct a fine-grained analysis of hallucinations arising in LLM reasoning and find that the reasoning traces are particularly prone to Context-Sensitive Factual Hallucinations: cases where the model actually has the relevant knowledge, yet makes factual errors due to contextual interference during reasoning. To address this issue, we propose Step-level Self-Consistency Group Relative Policy Optimization (SSC-GRPO), which assigns step-level rewards to reasoning traces by computing self-consistency scores of individual steps across multiple rollouts. Compared with prior methods, SSC-GRPO achieves state-of-the-art performance on both mathematical reasoning benchmarks and hallucination leaderboards. Our results offer a new perspective for detecting and mitigating hallucinations in the reasoning process of large language models.",
+      "authors": [
+        "Xiaomeng Hu",
+        "Jiaqi Hu",
+        "Hao Chen",
+        "Qi Zhang",
+        "Zhanming Shen",
+        "Wentao Ye",
+        "Junbo Zhao"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-07-21T09:56:58+00:00",
+      "link": "https://arxiv.org/pdf/2607.18915v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "step-level self-consistency optimization for LLM reasoning errors",
+      "llm_evidence_cn": "面向LLM推理错误的步级自一致性优化",
+      "llm_evidence": "面向LLM推理错误的步级自一致性优化",
+      "canonical_evidence": "面向LLM推理错误的步级自一致性优化",
+      "llm_tldr_en": "Proposes Step-Level Self-Consistency Group Relative Policy Optimization to reduce context-sensitive factual hallucinations in LLM chain-of-thought reasoning, improving correctness.",
+      "llm_tldr_cn": "本文针对大语言模型在多步推理过程中因上下文干扰产生的事实幻觉问题，提出步级自一致性组相对策略优化方法。通过细粒度分析推理轨迹，识别上下文敏感的错误，并利用自一致性约束和组相对策略优化来修正不准确推理步骤。实验表明，该方法显著降低了推理错误率，提升了链式推理的可靠性，为增强LLM的连贯推理能力提供了有效工具。",
+      "llm_tldr": "本文针对大语言模型在多步推理过程中因上下文干扰产生的事实幻觉问题，提出步级自一致性组相对策略优化方法。通过细粒度分析推理轨迹，识别上下文敏感的错误，并利用自一致性约束和组相对策略优化来修正不准确推理步骤。实验表明，该方法显著降低了推理错误率，提升了链式推理的可靠性，为增强LLM的连贯推理能力提供了有效工具。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": []
+}

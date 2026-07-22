@@ -1,0 +1,255 @@
+Title: Convolution for Large Language Models
+
+URL Source: https://arxiv.org/pdf/2607.18413v1
+
+Published Time: Wed, 22 Jul 2026 00:06:59 GMT
+
+Number of Pages: 12
+
+Markdown Content:
+# Convolution for Large Language Models 
+
+Technical Report Yuchuan Tian 1, Yingte Shu 1, Wei He 2, Shuo Zhang 2, Tianchen Zhao 3,Chao Xu 1, Xinghao Chen 2, Yunhe Wang 2, Hanting Chen 2, †, Yu Wang 3
+
+> 1
+
+Peking University 2Huawei Technologies 3Tsinghua University 
+
+July 2026 
+
+Abstract 
+
+Large language models (LLMs) largely rely on Transformers, where self-attention provides global token interaction but does not explicitly encode the locality of natural language. We study whether lightweight depthwise convolutions can supply this local inductive bias without materially increasing model size. Our macro-level ablation compares convolution at 17 locations in a Qwen3 Transformer block and finds the best results when convolution is applied to the projected queries, keys, and values before attention. A subsequent micro-level study favors a residual depthwise convolution with kernel size k = 3 , without additional normalization or activation. Across Qwen3 models and several pre-training data budgets, this design improves the average accuracy on seven downstream benchmarks while adding less than 0.01% parameters. A representation-level case study further suggests that the convolution makes repeated token IDs more sensitive to their immediate context. These results support depthwise convolution as a lightweight complement to self-attention for modeling short-range token interactions. 
+
+# 1 Introduction 
+
+Large language models (LLMs), including DeepSeek (Liu et al., 2024) and Llama (Grattafiori et al., 2024), are predominantly built by scaling Transformer architectures. Their basic structure remains a stack of self-attention layers for token interaction and feed-forward networks (FFNs) for token-wise feature transformation. Variants such as Multi-Head Latent Attention (MLA) and Grouped-Query Attention (GQA) improve the efficiency of attention, but local composition is still learned implicitly rather than encoded directly in the architecture. Natural language contains substantial short-range structure: adjacent tokens form compounds, phrases, and other units that contribute to sentence-level meaning. For example, in “neural network optimization,” the tokens “neural” and “network” form a familiar local unit. Transformers can learn such patterns through self-attention, but the standard architecture provides no explicit preference for them. This motivates adding a lightweight operator whose receptive field is local by construction. We therefore revisit one-dimensional convolution as a way to add locality to modern LLMs. Unlike hybrid architectures that use convolution as a separate block, such as Conformer (Gulati et al., 2020), we use it as a small refinement module within the existing Transformer data path. Our working hypothesis is that aggregating nearby features before attention can provide locally contextualized representations for subsequent long-range interaction. 
+
+> †Corresponding author.
+
+1arXiv:2607.18413v1 [cs.CL] 20 Jul 2026 Convolution for Large Language Models Technical Report Qwen3-1.7B Qwen3-4B   
+
+> 30
+> 35
+> 40
+> 45
+> 50
+> 55
+> 60
+> 65
+> 70
+> 75
+> Avg. Accuracy (%)
+> +1.99%
+> +1.57%
+> Performance Comparison
+> Transformer
+> Transformer + Conv1d
+> 30 60 100
+> Training Tokens (Billion)
+> 50.0
+> 52.5
+> 55.0
+> 57.5
+> 60.0
+> 62.5
+> 65.0
+> 67.5
+> 70.0
+> Avg. Accuracy (%)  Max Gain: +3.76%
+> Scaling under Data Expansion
+> Baseline
+> Ours (Post-QKV Conv)
+
+Figure 1. Summary of the downstream evaluation. Left: average accuracy at the 30B-token training budget for the evaluated Qwen3 model sizes. Right: average accuracy of Qwen3-4B at three training-data budgets. The post-QKV depthwise convolution adds less than 0.01% parameters. 
+
+We organize the study from macro-level placement to micro-level module design. At the macro level, we insert depthwise Conv1D at 17 locations in a Qwen3 Transformer block. The strongest configuration applies convolution after the query, key, and value projections and before attention. At the micro level, we compare residual connections, normalization, kernel size, initialization, activation functions, and reparameterization. Depthwise convolution operates independently on each channel, keeping the added parameter count linear in the hidden dimension. Across the evaluated model sizes and training-data budgets, the resulting model improves average downstream accuracy over its matched Transformer baseline. Figure 1 summarizes these results. We also examine a WSC example to assess how the convolution changes the representations of repeated token IDs in different local contexts. The main contributions are as follows: 1. We compare 17 convolution locations in a Qwen3 Transformer block and find that post-QKV convolution performs best in our controlled placement study. 2. We identify a compact module design: a residual depthwise Conv1D with kernel size 3 and no added normalization or activation. 3. We evaluate the design across Qwen3 model sizes and training-data budgets, observing higher average accuracy with less than 0.01% additional parameters. 
+
+# 2 Related Work 
+
+Convolution has often been combined with Transformer architectures to supplement the global receptive field of self-attention with local structure. We review representative approaches in vision and language modeling. 2Convolution for Large Language Models Technical Report 
+
+2.1 Convolution in Transformers 
+
+In computer vision, convolution is incorporated at several points in a Transformer. LeViT (Graham et al., 2021) and CoAtNet (Dai et al., 2021) use convolutional embeddings, downsampling, or convolutional blocks alongside attention. CvT (Wu et al., 2021) applies convolutional projections before producing attention inputs, whereas ConViT (d’Ascoli et al., 2021) introduces a gated positional bias toward local context. TiC (Zhang et al., 2023) develops a multi-head self-attention convolution as an alternative to global attention. Convolution also appears within the FFN in PVTv2 (Wang et al., 2022), SRFormer (Zhou et al., 2023), and CeiT (Yuan et al., 2021). Conformer (Gulati et al., 2020) places a convolution module between the FFN and attention sublayers, and depthwise convolution has also been used to bypass selected Transformer blocks (Zhang et al., 2025). In language modeling, ConvBERT (Jiang et al., 2020) replaces a subset of attention heads with span-based dynamic convolution. 
+
+2.2 Locality in Language Models 
+
+Several language-model architectures capture local or sequential structure through convolution-like operations. RWKV (Peng et al., 2023) combines linear attention with time decay, and the Gated Delta Network (Yang et al., 2024) uses recurrent state updates. Multi-Token Attention (Golovneva et al., 2025) allows queries to attend to contiguous token blocks. Zoology (Arora et al., 2023) and work on simple linear attention (Arora et al., 2024) study the role of local modeling in recall and pattern-matching tasks. Other approaches represent recurring phrases with scalable lookup tables (Cheng et al., 2026) or use parameterized long convolutions to capture dependencies at multiple scales (Poli et al., 2023). These models differ in mechanism and scope, but they all provide alternatives to unrestricted token-to-token attention for modeling sequential structure. Our focus is narrower: we keep the Transformer backbone fixed and compare where and how a lightweight depthwise convolution can be inserted. This controlled design study separates the effects of placement, residual structure, normalization, kernel size, initialization, activation, and reparameterization while preserving the backbone’s global attention mechanism. 
+
+# 3 Designing Convolutional Augmentation 
+
+3.1 A Lightweight Local Operator 
+
+Our design objective is to add a local inductive bias with little parameter overhead and minimal disruption to the Transformer block. We therefore use depthwise Conv1D as the basic operator and do not include dense cross-channel mixing within the convolutional layer. For a standard 1D convolution with kernel size k, the parameter count scales as O(kd 2model ).Qwen3-1.7B has L = 28 layers and hidden size dmodel = 2048 . Adding a standard convolution with 
+
+k = 2 to every layer would therefore introduce approximately 2 × 2048 2 × 28 ≈ 234 .88 million parameters, or about 13 .5% of the baseline parameter count. Depthwise Conv1D instead operates within each channel, reducing the parameter complexity to 
+
+O(kd model ). Under the same calculation, it adds approximately 2 × 2048 × 28 ≈ 0.11 million param-eters, corresponding to about 0.006% of the baseline. Channel mixing remains the responsibility of the existing projection and FFN layers. 3Convolution for Large Language Models Technical Report RMSNorm   
+
+> SiLU
+> RMSNorm
+> Linear
+> Self -Attention
+> QKV
+> Linear
+> Linear
+> Gate
+> ①
+> ②
+> ③
+> ④
+> ⑨
+> ⑩
+> ⑪
+> ⑫
+> ⑬
+> ⑭
+> ⑮
+> ⑯
+> ⑰
+> Up
+
+Q K V   
+
+> Repeat KV
+> QNorm KNorm
+> MatMul
+> SoftMax
+> MatMul
+> Positional
+> Encoding
+> ⑤
+> ⑥⑦⑧
+
+Figure 2. A Qwen3 Transformer block and the 17 candidate locations for a Conv1D module. 
+
+3.2 Comparing Convolution Locations 
+
+Table 1. Candidate Conv1D locations in a Qwen3 Transformer block. We report the convolution input width, average loss, WikiText-103 perplexity, and total parameter count in millions. 
+
+ID Position Width Mean loss Perplexity Params (M) 
+
+No No convolution added – 2.5144 13.42 1720.57 P1 Pre-attention residual branch input H 2.5056 13.27 1721.03 P2 Post-attention residual branch, pre-attention normalization H 2.5000 13.18 1720.86 P3 Inside attention residual path (pre- or post-split) H 2.5554 14.31 1720.86 P4 Post-attention RMSNorm, pre-QKV linear projections H 2.4906 13.06 1720.86 
+
+P5 On concatenated QKV projection outputs Hq + 2 Hkv 2.4818 12.85 1721.15 
+
+P6 On projected Query representations only Hq 2.5115 13.38 1720.80 P7 On projected Key representations only Hkv 2.5085 13.29 1720.72 P8 On projected Value representations only Hkv 2.4962 13.21 1720.72 P9 Between attention score computation and output projection H 2.4986 13.40 1720.86 P10 Post-attention submodule, pre-residual addition H 2.5020 13.31 1720.86 P11 Between attention residual output and FFN residual branch H 2.5002 13.36 1720.86 P12 Inside FFN (SwiGLU) residual path (pre- or post-split) H 2.4884 13.02 1720.86 P13 Post-FFN residual branch, pre-SwiGLU body H 2.5028 13.38 1720.86 P14 Post-FFN RMSNorm, pre-gating and up-projection H 2.5069 13.24 1720.86 P15 On joint output of FFN gating and up-projection 2Hffn 2.5044 13.29 1722.30 P16 Post element-wise gating multiplication, pre-down-projection Hffn 2.4872 13.30 1721.44 P17 Post FFN down-projection H 2.4877 13.12 1720.86 
+
+4Convolution for Large Language Models Technical Report 
+
+Figure 2 summarizes a Qwen3 Transformer block (Yang et al., 2025). The input u is first normalized with RMSNorm to produce h. Linear projections then produce the queries, keys, and values; QK normalization and rotary positional embeddings (RoPE) are applied before grouped-query attention. The attention output is projected and added to u, producing the intermediate state x. A second RMSNorm and a SwiGLU FFN follow. In the FFN, separate gate and up projections are combined by applying Swish to the gate branch and multiplying it element-wise by the up branch. A down projection maps the result back to the model dimension before the second residual addition. Table 1 defines the 17 candidate locations. We use Qwen3-1.7B as the backbone, add one Conv1D module at each location, and train each model from scratch on FineWeb-100B (Penedo et al., 2024). We report the mean training loss over the final 10,000 iterations, perplexity on WikiText-103 (Merity et al., 2018), and total parameter count. For discussion, we group the locations by whether they operate directly on the inputs or outputs of attention. The first group contains locations before attention, after attention, or in the FFN pathway (P1–P4 and P10–P17). At these locations, convolution acts on representations either before they enter attention or after global mixing. Most configurations improve at least one of loss or perplexity, but the gains vary substantially; P3 performs worse than the baseline on both metrics. The second group, P5–P9, acts directly on attention components. P6–P8 convolve only the query, key, or value representation, whereas P5 jointly processes the concatenated QKV projections. P9 applies convolution after attention scores have been used for aggregation. Among these choices, P5 obtains the lowest average loss (2.4818) and perplexity (12.85). One possible interpretation is that P5 supplies local context to all three attention inputs before global aggregation; the current ablation establishes the empirical ordering but does not isolate this mechanism. We therefore use P5, the post-QKV location, in the remaining design experiments. 
+
+3.3 Comparing Convolution Module Designs Conv   
+
+> Conv Conv
+> Norm
+> Conv
+> Norm
+> Norm
+> Figure 3. The four Conv1D module designs. From left to right: plain convolution, convolution with a shortcut, convolution with pre-normalization, and convolution with sandwich normalization.
+
+Module design. We first compare four internal configurations of the depthwise convolution module (Figure 3): (1) plain convolution , Y = Conv (X); (2) convolution with a shortcut ,
+
+Y = X + Conv (X); (3) convolution with pre-normalization , Y = X + Conv (Norm (X)) ; and (4) convolution with sandwich normalization , Y = X + Norm(Conv(Norm( X))) .All four convolutional variants improve average loss and perplexity over the “No Conv1D” baseline in Table 2. The Conv + Shortcut configuration gives the lowest reported perplexity, 12.79. The shortcut preserves the projected QKV features and lets the convolution learn a residual local correction. 5Convolution for Large Language Models Technical Report                    
+
+> Table 2. Effect of the Conv1D module design on Qwen3-1.7B.
+> Configuration Mean loss Perplexity Params (M)
+> No Conv1D 2.5144 13.42 1720.57 Convolution 2.4931 13.05 1721.15
+> Conv + Shortcut 2.4795 12.79 1721.03
+> Pre-Norm 2.4876 12.94 1721.03 Sandwich Norm 2.5110 13.33 1721.26
+
+Adding normalization does not improve this result: pre-normalization yields 12.94 perplexity, and sandwich normalization yields 13.33. Because the block already normalizes its input, an additional normalization at the post-QKV stage may alter the feature scale used by attention. We therefore retain the simpler Conv + Shortcut design for the remaining experiments. 
+
+3.4 Configuration Ablations                    
+
+> Table 3. Effect of kernel size on Qwen3-1.7B.
+> Kernel size Mean loss Perplexity Params (M)
+> No Conv1D 2.5144 13.42 1720.57
+> k= 2 2.4894 12.99 1720.92
+> k= 3 2.4795 12.79 1721.03
+> k= 4 2.4881 13.13 1721.15
+
+Kernel size. We compare k ∈ { 2, 3, 4} for the depthwise convolution at the post-QKV location. As shown in Table 3, all three settings improve over the baseline, and k = 3 gives the lowest reported perplexity, 12.79. Increasing the kernel size to k = 4 does not yield a further improvement. This result is consistent with a compact kernel being sufficient for short-range composition, although the ablation does not identify why k = 3 performs best. We use k = 3 in the remaining experiments.                         
+
+> Table 4. Effect of Conv1D initialization on Qwen3-1.7B. “Random” denotes sampling the weight or bias from N(0 ,0.02) .
+> Weight Bias Mean loss Perplexity Params (M)
+> zero N/A 3.0065 61.52 1720.92 zero zero 2.5056 13.27 1721.03 zero random 2.4908 12.85 1721.03
+> random random 2.4795 12.79 1721.03
+
+Initialization. Table 4 compares four initialization settings. Random initialization of both weights and biases gives the lowest reported loss and perplexity. The bias-free, zero-weight setting performs substantially worse, whereas the zero-weight setting with a zero or random bias does not show the same degradation. We use random initialization for both weights and biases in the remaining experiments. 6Convolution for Large Language Models Technical Report 
+
+3.5 Additional Architectural Variants 
+
+After selecting the location, module design, kernel size, and initialization, we test three additional choices: a second convolution, nonlinear activation, and multi-branch reparameterization. None improves both loss and perplexity over the selected configuration.              
+
+> Table 5. Results for Qwen3-1.7B with Conv1D at P5, P17, or both locations.
+> Position Mean loss Perplexity Params (M) P5 2.4818 12.85 1721.15
+> P17 2.4877 13.12 1720.86 P5+P17 2.4836 13.04 1721.44
+
+Multiple convolution modules. We add a second Conv1D module at P17 to the selected P5 configuration. As shown in Table 5, this variant slightly increases both loss and perplexity. The result may reflect redundant local mixing after attention and the FFN, but the ablation establishes only that adding P17 is not beneficial in this setting. We therefore retain a single convolution at P5.                 
+
+> Table 6. Effect of activation functions in the Qwen3-1.7B Conv1D module.
+> Configuration Mean loss Perplexity Params (M) No activation 2.4795 12.79 1721.03
+> SiLU 2.4962 13.06 1721.03 LeakyReLU 2.4892 12.96 1721.03 sigmoid 2.4889 12.94 1721.03
+
+Activation function. We test SiLU, LeakyReLU, and sigmoid activations after Conv1D. Each activation increases both loss and perplexity relative to the linear configuration in Table 6. We therefore use a linear convolution without an activation function.              
+
+> Table 7. Effect of convolutional reparameterization in Qwen3-1.7B.
+> Configuration Mean loss Perplexity Params (M) No reparameterization 2.4795 12.79 1721.03
+> Kernel 1 branch 2.5029 13.28 1721.26 Kernel 1 and 2 branches 2.5048 13.28 1721.61
+
+Reparameterization. We also train multi-branch Conv1D modules with different kernel sizes and merge the branches into an equivalent convolution for inference. Both reparameterized variants perform worse than the single-branch configuration in Table 7. One possible explanation is that the branches mix local patterns over different spans, although this ablation does not isolate the cause. We therefore use a single compact Conv1D module. 7Convolution for Large Language Models Technical Report 
+
+# 4 Representation Analysis Qwen3 baseline  Qwen3+Conv1d  
+
+> Passage: Mr. Moncrieff visited Chester's luxurious New York apartment, thinking that it belonged to his son Edward. The resul t w as
+> that Mr. Moncrieff has decided to cancel Edward's allowance on the ground that he no longer requires *his* financial support.
+> Question: In the passage above, does the pronoun "*his*" refer to "*Chester*"?
+> Answer:
+> Avg. cosine similarity of same token id:
+
+0.837  → Failed  Avg.  cosine similarity of same token id:  0.621  → Success 
+
+Figure 4. Cosine-similarity heatmaps of QKV representations from the Qwen3 baseline and Qwen3+Conv1D in one WSC example. Red boxes mark repeated token IDs at different positions. In this example, the Conv1D model assigns lower similarity to these occurrences and produces the correct prediction. 
+
+We use one WSC example to examine whether Conv1D changes the representations of repeated token IDs that occur in different local contexts. RoPE encodes token position, while the neighboring tokens may help determine the interpretation of each occurrence. For the same prompt, we extract the QKV projection outputs from the Qwen3 baseline and its Conv1D-augmented counterpart and compute pairwise cosine similarities across positions. For repeated token IDs, lower similarity is consistent with greater contextual differentiation, although cosine similarity alone does not establish a semantic interpretation. The example is drawn from WSC (Levesque et al., 2012). As shown in Figure 4, the highlighted repeated-token occurrences have lower cosine similarity in the Conv1D model than in the baseline. This case shows that the convolution changes QKV representations according to nearby context and is consistent with the proposed role of the module. Establishing a general mechanism would require an aggregate analysis over many examples and suitable controls. 8Convolution for Large Language Models Technical Report 
+
+# 5 Experiments 
+
+Table 8. Main results. Accuracy on seven benchmarks for Qwen3 backbones trained with different token budgets, with and without Conv1D.                                                                                   
+
+> Backbone Data Conv1D ARC-C ARC-E BoolQ HellaSwag PIQA WinoGrande WSC Average
+> Qwen3-1.7B 30B No 32.00 69.23 53.27 40.24 70.89 55.25 48.08 52.71 Yes 33.28 69.99 55.50 41.29 71.11 55.96 55.77 54.70 Qwen3-4B 30B No 37.46 72.01 63.64 44.45 72.52 59.83 50.00 57.13 Yes 38.05 73.32 60.52 44.06 72.69 58.80 63.46 58.70 Qwen3-4B 60B No 37.97 72.85 65.60 45.53 73.61 61.09 54.81 58.78 Yes 39.42 73.44 65.05 46.26 73.18 64.01 63.46 60.69 Qwen3-4B 100B No 42.66 77.31 64.56 49.57 75.46 64.48 36.54 58.65 Yes 44.03 78.07 67.95 49.94 76.33 65.75 54.81 62.41
+
+5.1 Experimental Setup 
+
+Causal implementation and decoding. To preserve autoregressive causality, we use a causal depthwise convolution. For kernel size k, left padding by k − 1 positions ensures that the output at time t depends only on the current token and the preceding k − 1 tokens. During incremental decoding, we maintain a convolution cache containing the features of the most recent k − 1 tokens. For each new token, the convolution uses this cache and the current input; the cache is then updated as a sliding window. The convolutional work per decoded token therefore does not grow with the decoded context length. 
+
+Models and data. We pretrain Qwen3-1.7B and Qwen3-4B from scratch. Both backbones use grouped-query attention, SwiGLU activations, and rotary positional embeddings. The experiments use FineWeb-100B (Penedo et al., 2024) and its 30B- and 60B-token subsets. 
+
+Hyperparameters. We set the training hyperparameters based on Step Law (Li et al., 2025), with adjustments for optimization stability. The peak learning rates are 1.0 × 10 −3 for Qwen3-1.7B and 6.0 × 10 −4 for Qwen3-4B. The learning rate is annealed after reaching its peak. All runs use a context length of 4096 tokens and a global batch size of 256 sequences, corresponding to 1,048,576 tokens per optimization step. 
+
+Evaluation. We evaluate the models on seven benchmarks: ARC-Challenge and ARC-Easy (Clark et al., 2018), BoolQ (Clark et al., 2019), HellaSwag (Zellers et al., 2019), PIQA (Bisk et al., 2020), WinoGrande (Sakaguchi et al., 2021), and WSC (Levesque et al., 2012). Table 8 summarizes the results across backbone sizes and training-token budgets. Conv1D improves the average score in each reported setting: by 1.99 points for Qwen3-1.7B trained on 30B tokens, and by 1.57, 1.91, and 3.76 points for Qwen3-4B trained on 30B, 60B, and 100B tokens, respectively. The largest individual gains occur on WSC. Although the average improves in every setting, several individual benchmark scores decrease. The larger average gain at 100B tokens suggests that the benefit may increase with the data budget for Qwen3-4B, but additional training budgets and repeated runs would be needed to establish a general scaling trend. 9Convolution for Large Language Models Technical Report 
+
+# 6 Conclusion 
+
+We study depthwise Conv1D as a lightweight local inductive bias for Transformer-based language models. Among the 17 insertion points tested, applying convolution to the QKV projections before attention gives the lowest loss and perplexity. The subsequent ablations favor a residual convolution with kernel size k = 3 , random initialization, and no additional normalization or activation. Across the evaluated Qwen3 model sizes and training-token budgets, this configuration improves average benchmark accuracy with a small increase in parameter count. These results indicate that local convolution can complement self-attention by incorporating neighboring-token information before global interaction. The evidence is limited to the evaluated Qwen3 configurations, and broader comparisons are needed to determine how well the result transfers to other model families and training settings. 
+
+# References 
+
+Simran Arora, Sabri Eyuboglu, Aman Timalsina, Isys Johnson, Michael Poli, James Zou, Atri Rudra, and Christopher Ré. Zoology: Measuring and improving recall in efficient language models. 
+
+arXiv preprint arXiv:2312.04927 , 2023. Simran Arora, Sabri Eyuboglu, Michael Zhang, Aman Timalsina, Silas Alberti, Dylan Zinsley, James Zou, Atri Rudra, and Christopher Ré. Simple linear attention language models balance the recall–throughput tradeoff. arXiv preprint arXiv:2402.18668 , 2024. Yonatan Bisk, Rowan Zellers, Jianfeng Gao, Yejin Choi, et al. PIQA: Reasoning about physical commonsense in natural language. In Proceedings of the AAAI conference on artificial intelligence ,volume 34, pages 7432–7439, 2020. Xin Cheng, Wangding Zeng, Damai Dai, Qinyu Chen, Bingxuan Wang, Zhenda Xie, Kezhao Huang, Xingkai Yu, Zhewen Hao, Yukun Li, et al. Conditional memory via scalable lookup: A new axis of sparsity for large language models. arXiv preprint arXiv:2601.07372 , 2026. Christopher Clark, Kenton Lee, Ming-Wei Chang, Tom Kwiatkowski, Michael Collins, and Kristina Toutanova. BoolQ: Exploring the surprising difficulty of natural yes/no questions. arXiv preprint arXiv:1905.10044 , 2019. Peter Clark, Isaac Cowhey, Oren Etzioni, Tushar Khot, Ashish Sabharwal, Carissa Schoenick, and Oyvind Tafjord. Think you have solved question answering? try ARC, the AI2 reasoning challenge. 
+
+arXiv preprint arXiv:1803.05457 , 2018. Zihang Dai, Hanxiao Liu, Quoc V Le, and Mingxing Tan. CoAtNet: Marrying convolution and attention for all data sizes. Advances in Neural Information Processing Systems , 34:3965–3977, 2021. Stéphane d’Ascoli, Hugo Touvron, Matthew L Leavitt, Ari S Morcos, Giulio Biroli, and Levent Sagun. ConViT: Improving vision transformers with soft convolutional inductive biases. In 
+
+International Conference on Machine Learning , pages 2286–2296. PMLR, 2021. Olga Golovneva, Tianlu Wang, Jason Weston, and Sainbayar Sukhbaatar. Multi-token attention. 
+
+arXiv preprint arXiv:2504.00927 , 2025. 10 Convolution for Large Language Models Technical Report 
+
+Benjamin Graham, Alaaeldin El-Nouby, Hugo Touvron, Pierre Stock, Armand Joulin, Hervé Jégou, and Matthijs Douze. LeViT: A vision transformer in ConvNet’s clothing for faster inference. In 
+
+Proceedings of the IEEE/CVF International Conference on Computer Vision , pages 12259–12269, 2021. Aaron Grattafiori, Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey, Abhishek Kadian, Ahmad Al-Dahle, Aiesha Letman, Akhil Mathur, Alan Schelten, Alex Vaughan, et al. The Llama 3 herd of models. arXiv preprint arXiv:2407.21783 , 2024. Anmol Gulati, James Qin, Chung-Cheng Chiu, Niki Parmar, Yu Zhang, Jiahui Yu, Wei Han, Shibo Wang, Zhengdong Zhang, Yonghui Wu, et al. Conformer: Convolution-augmented transformer for speech recognition. arXiv preprint arXiv:2005.08100 , 2020. Zi-Hang Jiang, Weihao Yu, Daquan Zhou, Yunpeng Chen, Jiashi Feng, and Shuicheng Yan. Con-vBERT: Improving BERT with span-based dynamic convolution. Advances in Neural Information Processing Systems , 33:12837–12848, 2020. Hector J Levesque, Ernest Davis, and Leora Morgenstern. The winograd schema challenge. KR ,2012(13th):3, 2012. Houyi Li, Wenzhen Zheng, Qiufeng Wang, Hanshan Zhang, Zili Wang, Shijie Xuyang, Yuantao Fan, Zhenyu Ding, Haoying Wang, Ning Ding, Shuigeng Zhou, Xiangyu Zhang, and Daxin Jiang. Predictable scale: Part i – optimal hyperparameter scaling law in large language model pretraining, 2025. URL https://arxiv.org/abs/2503.04715 .Aixin Liu, Bei Feng, Bing Xue, Bingxuan Wang, Bochao Wu, Chengda Lu, Chenggang Zhao, Chengqi Deng, Chenyu Zhang, Chong Ruan, et al. DeepSeek-V3 technical report. arXiv preprint arXiv:2412.19437 , 2024. Stephen Merity, Nitish Shirish Keskar, James Bradbury, and Richard Socher. Scalable language modeling: WikiText-103 on a single GPU in 12 hours. Proceedings of the SYSML , 18, 2018. Guilherme Penedo, Hynek Kydlíček, Anton Lozhkov, Margaret Mitchell, Colin A Raffel, Leandro Von Werra, Thomas Wolf, et al. The FineWeb datasets: Decanting the web for the finest text data at scale. Advances in Neural Information Processing Systems , 37:30811–30849, 2024. Bo Peng, Eric Alcaide, Quentin Anthony, Alon Albalak, Samuel Arcadinho, Stella Biderman, Huanqi Cao, Xin Cheng, Michael Chung, Matteo Grella, et al. RWKV: Reinventing RNNs for the transformer era. arXiv preprint arXiv:2305.13048 , 2023. Michael Poli, Stefano Massaroli, Eric Nguyen, Daniel Y Fu, Tri Dao, Stephen Baccus, Yoshua Bengio, Stefano Ermon, and Christopher Ré. Hyena hierarchy: Towards larger convolutional language models. In International Conference on Machine Learning , pages 28043–28078. PMLR, 2023. Keisuke Sakaguchi, Ronan Le Bras, Chandra Bhagavatula, and Yejin Choi. WinoGrande: An adversarial winograd schema challenge at scale. Communications of the ACM , 64(9):99–106, 2021. Wenhai Wang, Enze Xie, Xiang Li, Deng-Ping Fan, Kaitao Song, Ding Liang, Tong Lu, Ping Luo, and Ling Shao. PVT v2: Improved baselines with pyramid vision transformer. Computational Visual Media , 8(3):415–424, 2022. 11 Convolution for Large Language Models Technical Report 
+
+Haiping Wu, Bin Xiao, Noel Codella, Mengchen Liu, Xiyang Dai, Lu Yuan, and Lei Zhang. CvT: Introducing convolutions to vision transformers. In Proceedings of the IEEE/CVF International Conference on Computer Vision , pages 22–31, 2021. An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao, Chengen Huang, Chenxu Lv, et al. Qwen3 technical report. arXiv preprint arXiv:2505.09388 ,2025. Songlin Yang, Jan Kautz, and Ali Hatamizadeh. Gated delta networks: Improving Mamba2 with delta rule. arXiv preprint arXiv:2412.06464 , 2024. Kun Yuan, Shaopeng Guo, Ziwei Liu, Aojun Zhou, Fengwei Yu, and Wei Wu. Incorporating convolution designs into visual transformers. In Proceedings of the IEEE/CVF International Conference on Computer Vision , pages 579–588, 2021. Rowan Zellers, Ari Holtzman, Yonatan Bisk, Ali Farhadi, and Yejin Choi. HellaSwag: Can a machine really finish your sentence? arXiv preprint arXiv:1905.07830 , 2019. Song Zhang, Qingzhong Wang, Jiang Bian, and Haoyi Xiong. TiC: Exploring vision transformer in convolution. arXiv preprint arXiv:2310.04134 , 2023. Tianxiao Zhang, Wenju Xu, Bo Luo, and Guanghui Wang. Depth-wise convolutions in vision transformers for efficient training on small datasets. Neurocomputing , 617:128998, 2025. Yupeng Zhou, Zhen Li, Chun-Le Guo, Song Bai, Ming-Ming Cheng, and Qibin Hou. SRFormer: Permuted self-attention for single image super-resolution. In Proceedings of the IEEE/CVF International Conference on Computer Vision , pages 12780–12791, 2023. 12

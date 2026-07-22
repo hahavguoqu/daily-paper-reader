@@ -1,0 +1,379 @@
+Title: LatentMT: Machine Translation with Latent Reasoning
+
+URL Source: https://arxiv.org/pdf/2607.18618v1
+
+Published Time: Wed, 22 Jul 2026 00:23:13 GMT
+
+Number of Pages: 12
+
+Markdown Content:
+# LatentMT: Machine Translation with Latent Reasoning 
+
+Wei-Rui Chen 1,* , Samar M. Magdy 1, Chiyu Zhang 1, Wenhui Zhu 2,Zhipeng Wang 3, Muhammad Abdul-Mageed 1,4,* ,
+
+> 1
+
+The University of British Columbia, 2Arizona State University, 
+
+> 3
+
+Rice University, 4Canada Research Chair in NLP and ML 
+
+> wrchen012@gmail.com, muhammad.mageed@ubc.ca
+
+Abstract 
+
+Latent-reasoning looped language models (LoopLMs) offer a different scaling path for machine translation (MT): instead of increasing parameter count or emitting explicit chain-of-thought tokens, they spend additional recurrent computation inside hidden states. We intro-duce LatentMT , the first systematic study of latent-reasoning LoopLMs for machine transla-tion. LatentMT adapts a small 2.6B-parameter backbone model with lightweight training. Across 32 translation directions spanning high-, mid-, and low-resource languages, LatentMT achieves performance comparable to models three to five times larger. It is competitive in a high-resource language and achieves state-of-the-art performance on both mid-resource and low-resource languages. Studying the be-havior of scaling the number of recurrent rea-soning steps, we find that recurrent computa-tion consistently improves translation quality in early steps, then saturates quickly afterwards. Our mechanistic analysis shows that hidden-representation differences shrink along the re-current reasoning-step axis, supporting the ob-served saturation in performance. Finally, our efficiency analysis shows that LatentMT re-quires lower training and inference compute than much larger non-latent-reasoning models with similar performance, making latent recur-rent computation a promising path toward com-pact, efficient, and strong machine translation. 
+
+1 Introduction 
+
+Latent reasoning is a paradigm in which a language model performs reasoning through continuous hid-den states rather than externalizing reasoning steps as discrete text tokens (Zhu et al., 2025; Geiping et al., 2025; Saunshi et al., 2025). Looped language models (LoopLMs) instantiate this paradigm by re-peatedly applying shared Transformer weights to update these states before each next-token predic-tion (Saunshi et al., 2025; Gatmiry et al., 2024; 
+
+> *Corresponding authors
+
+Figure 1: Overview of LatentMT. A frozen LoopLM backbone is paired with compact per-language-pair LoRA adapters, avoiding full-model duplication. At inference, the shared backbone is unrolled for recur-rent latent reasoning before each next-token prediction, adding internal computation without adding parameters. Swappable adapters let one deployed backbone serve many translation directions. 
+
+Jeddi et al., 2026). This makes latent reasoning depth an architectural choice: the model can allo-cate more internal computation through additional recurrent steps without adding parameters at each step. For machine translation (MT), the effective-ness of latent-reasoning LoopLMs and the rela-tionship between recurrent depth and translation quality remain largely unexplored. This shared-parameter approach contrasts with conventional non-loop LMs, which usually obtain more capacity by increasing model size (Kaplan et al., 2020). For MT, this alternative scaling strat-egy has important practical implications. If latent reasoning can shift some of the burden from model size to repeated computation over a compact back-bone, then strong translation systems become more plausible in resource-constrained settings, includ-ing edge devices and local deployments (Lin et al., 2023). Such deployments can reduce dependence on cloud APIs, keep sensitive text closer to the user, and make MT more accessible to communi-ties with limited or unreliable Internet access (Xu 1arXiv:2607.18618v1 [cs.CL] 21 Jul 2026 et al., 2020). In this work, we introduce LatentMT, an MT approach built from compact latent-reasoning LoopLMs. Figure 1 illustrates the approach: a single frozen LoopLM backbone applies its shared weights over several recurrent steps, and each lan-guage pair is served by a lightweight LoRA mod-ule that can be swapped in at inference time with-out touching the backbone. We make recurrent depth an experimental variable and ask whether additional latent refinement steps improve transla-tion quality. Our study is organized around two research questions: 
+
+RQ1. Can compact latent-reasoning LoopLMs provide a competitive architecture for machine translation compared with larger regular language models? 
+
+RQ2. Does increasing the number of la-tent reasoning steps improve MT performance, and where does this improvement saturate? We apply LatentMT to 32 language pairs span-ning high-, medium-, and low-resource regimes, using a compact LoRA module (Hu et al., 2022) for each pair over the same frozen backbone. We compare against specialized MT systems, state-of-the-art models, and larger regular language models, including a Qwen3-8B baseline trained under the same conditions. Despite relying on a 2.6B-parameter backbone that is three to five times smaller than leading comparison models, La-tentMT achieves comparable performance overall and state-of-the-art results in some settings. Trans-lation quality improves with additional recurrent steps before saturating, and our analysis shows that most output-distribution refinement occurs in early recurrent transitions. This work makes three contributions. First, we introduce LatentMT and, to our knowledge, pro-vide the first systematic study of latent reasoning for MT. Second, we empirically compare LatentMT with explicit-reasoning regular language model, showing that compact latent-reasoning LoopLMs can provide a competitive architecture for MT. Third, we study recurrent depth directly and show, supported by mechanistic and linguistic error anal-ysis, that additional latent reasoning steps improve translation performance, but the gains saturate quickly after the first few steps. 
+
+2 Related Work 
+
+2.1 Machine Translation and Explicit Reasoning 
+
+Chain-of-thought (CoT) prompting (Wei et al., 2022) has become a standard way to elicit explicit reasoning from large language models, especially on tasks where reasoning steps are useful. Recent MT work suggests that this explicit reasoning can be helpful for translation. Large reasoning models have been argued to improve MT by supporting co-herence and the identification of cultural intent (Liu et al., 2025; Ataee et al., 2026). Empirical studies also report CoT gains in literary translation (Wang et al., 2025a). At the same time, these gains are not uniform. Some studies find that explicit reason-ing has setting-dependent effects (Nguyen and Xu, 2025; Zebaze et al., 2025). Other work indicates that explicit reasoning can add a resource-intensive generation stage without directly improving the fi-nal translation (Wu et al., 2025; Rajaee et al., 2026). This landscape motivates LatentMT. We treat explicit reasoning as a strong comparison point for MT and ask a different question: whether latent reasoning can provide translation gains when the intermediate computation is performed inside hid-den states rather than emitted as chain-of-thought text. We isolate this effect by varying a fixed num-ber of recurrent steps while training the model to generate only the target translation. This allows us to measure how translation quality changes as more computation is allocated to latent refinement. 
+
+2.2 Latent Reasoning vs. Explicit Reasoning 
+
+Explicit and latent reasoning scale test-time com-putation along different axes. CoT scales along the output-token sequence: more computation means longer generated reasoning traces (Snell et al., 2025). Latent reasoning instead scales along re-current depth, moving intermediate computation into continuous hidden states (Lu et al., 2025). LoopLMs do so by repeatedly applying a shared stack of hidden layers to the evolving sequence state (Zhu et al., 2025; Geiping et al., 2025). Ex-plicit CoT therefore scales computation along the output-token sequence, whereas LoopLMs scale computation along recurrent depth without emit-ting intermediate reasoning tokens. LatentMT focuses on this depth-recurrent form of latent reasoning in the specific setting of ma-chine translation. For MT, the key question is whether a translation model can use additional 2recurrent hidden-state updates to improve the fi-nal target-language output without producing inter-mediate reasoning traces or other non-translation tokens. Whereas prior LoopLM work primar-ily studies general reasoning and STEM-oriented tasks (Hao et al., 2025; Wei et al., 2025; Deng et al., 2026), we examine how the same recurrent-depth axis transfers to MT and treat recurrent depth as a controlled experimental variable. 
+
+2.3 Edge Computing Translation 
+
+Machine translation can often be used on sensitive text, including personal communication, medical information, and business content (Kamocki and O’Regan, 2016). Cloud-based MT systems can provide strong quality, but they also require users to transmit source text to remote servers and de-pend on network connectivity. For many users and communities, especially in low-connectivity or resource-constrained settings, local translation is therefore not only an efficiency goal but also an ac-cess goal (Watt et al., 2023). This makes compact, deployable MT models an important complement to very large cloud MT systems. LatentMT is motivated by this deployment set-ting. LoopLMs trade repeated computation for model size, and LoRA extends the saving to multi-language support: each pair is a lightweight attach-ment to the same frozen backbone. Together they point toward edge intelligence, where reduced con-nectivity dependence keeps private text local (Cha-bal et al., 2023). 
+
+3 Experiments 
+
+3.1 Formulation 
+
+We formulate LatentMT as parameter-efficient su-pervised fine-tuning of the pre-trained looped lan-guage model, natively trained with latent reason-ing (Zhu et al., 2025). For a source sentence 
+
+x = (x1, . . . , x m) and target translation y =(y1, . . . , y n), the model receives a chat-style trans-lation prompt and is trained to produce the target translation as the assistant response. Let p(x) de-note this source-conditioned prompt. Training uses the concatenated sequence 
+
+s = [ p(x); y; eos] , (1) but masks all prompt positions, so gradients are taken only on target-side assistant tokens. Let E be the embedding layer, FΘ the shared re-current Transformer stack, and Wℓm the language-model head. Let u denote the fixed number of recurrent computation steps applied before predict-ing each next token. For a fixed u,
+
+h(0) = E(s), (2) 
+
+h(k) = FΘ(h(k−1) ), k = 1 , . . . , u, (3) 
+
+π(u) 
+
+> t
+
+= softmax 
+
+
+
+Wℓm h(u)
+
+> t
+
+
+
+, (4) 
+
+P u
+
+> Θ
+
+(st+1 ) = π(u) 
+
+> t
+
+[st+1 ] = PΘ(st+1 | s<t +1 ; u).
+
+(5) In our experiments, we deactivate Ouro’s adaptive early-exit mechanism and force every generated token to use the same pre-set number of recurrent steps. This fixed-u setting is necessary for analysis: with adaptive early exit enabled, different tokens may terminate at different recurrent steps, making it difficult to attribute translation behavior to a spe-cific computation depth. We therefore sweep u
+
+across runs to study how recurrent depth affects machine translation performance while removing adaptive early exit as a confounder. During fine-tuning, the pretrained backbone pa-rameters Θ0 are frozen and only the LoRA adapter parameters (Hu et al., 2022) are updated. This keeps the recurrent latent-reasoning backbone fixed while adapting the model to the translation distri-bution with a much smaller number of trainable parameters. Let Ψ denote all trainable adapter parameters and T (s) the unmasked target-token positions. The training objective is the target-side causal language-modeling loss 
+
+min 
+
+> Ψ
+
+1
+
+|D| 
+
+X
+
+> (x,y )∈D
+
+1
+
+|T (s)|
+
+X 
+
+> t∈T (s)
+
+− log P u
+
+> Θ0,Ψ
+
+(st).
+
+(6) Thus, LatentMT adapts translation behavior through a small set of LoRA updates while preserv-ing the latent-reasoning mechanism of the back-bone model. 
+
+3.2 Experimental Setup Models. Our main backbone model is Ouro-2.6B-Thinking 1 (Zhu et al., 2025), a 2.6B-parameter LoopLM natively trained with recurrent latent com-putation. Ouro-2.6B-Thinking is trained predom-inantly on English data, with Chinese language appearing minimally during pretraining and being entirely absent from mid-training and post-training 
+
+> 1https://huggingface.co/ByteDance/Ouro-2. 6B-Thinking .
+
+3Dataset Train Validation Test DRT 19,264 1,000 2,000 ArzEn-MultiGenre 22,224 1,666 1,666 OLDI/Flores 6,193 997 1,012 
+
+Table 1: Train, validation, and test sizes for the three dataset families. OLDI/Flores includes 30 target lan-guages; sizes are per target language. 
+
+stages. For the recurrent-depth study, we evaluate 
+
+u ∈ { 1, 2, . . . , 6}. In the results tables we write LatentMT u and Ouro u for a model evaluated at a fixed recurrent depth u. For comparison, we also include Qwen3-8B 2 (Yang et al., 2025) as a larger non-looped explicit-reasoning LM, trained under the same dataset splits and training/evaluation pro-tocol. 
+
+Datasets. We train and evaluate on three trans-lation benchmark families. English–Chinese lan-guage DRT dataset 3 (Wang et al., 2025a) serves as a high-resource representative, while English– Egyptian Arabic ArzEn-MultiGenre dataset 4 (Al-Sabbagh, 2024) serves as a mid-resource repre-sentative. To include low-resource languages, we use OLDI/Flores, a randomly sampled subset of 30 languages in the intersection of OLDI-seed dataset 5 (Maillard et al., 2023) and Flores-200 benchmark 6 (Team et al., 2022), training on OLDI-seed and evaluating on Flores-200. Table 1 sum-marizes the train, validation, and test sizes for all three dataset families. 
+
+Training. To enable lightweight training, we fine-tune with LoRA while keeping the pretrained back-bone frozen. For DRT and ArzEn-MultiGenre, LoRA uses rank 32, α = 64 , and dropout 0.05. For OLDI/Flores, which has a smaller training split, LoRA uses rank 16, α = 32 , and dropout 0.05. We train DRT for three epochs, ArzEn-MultiGenre for six epochs, and OLDI/Flores for four epochs. All runs use AdamW, learning rate 2 × 10 −4, co-sine scheduling, warmup ratio 0.03, maximum se-quence length 3,072, per-device batch size eight, and gradient accumulation one. Training masks prompt tokens and optimizes only assistant-side target tokens. For each language pair, the train-
+
+> 2https://huggingface.co/Qwen/Qwen3-8B
+> 3https://github.com/krystalan/DRT
+> 4https://data.mendeley.com/datasets/ 6k97jty9xg/4
+> 5https://huggingface.co/datasets/ openlanguagedata/oldi_seed
+> 6https://github.com/facebookresearch/flores
+
+ing is conducted on single Nvidia A100 (40GB) or H100 (80GB) GPU. 
+
+Evaluation. At inference time, each model gener-ates translations from the test split of each included dataset. For LatentMT, generation uses the fixed number of recurrent step(s) u specified for the run. Decoding uses temperature 1.0, nucleus sampling with top-p = 0 .7. We evaluate with zero-shot infer-ence for trained models and few-shot inference for out-of-box models; few-shot prompts use five train-ing exeamplares to perform in-context learning. We report BLEU and chrF++ via SacreBLEU 7
+
+, together with the neural metrics COMET 8 (Rei et al., 2022a) and COMETKiwi 9 (Rei et al., 2022b) using COMET framework 10 (Stewart et al., 2020). BLEU uses the zh tokenizer, which specifically supports Chinese text, for DRT; and the flores200 
+
+tokenizer, which supports all the languages cov-ered, for ArzEn-MultiGenre and OLDI/Flores. For ArzEn-MultiGenre, we report an overall BLEU calculated over the combined test sets (304, 518, and 844, respectively) of all three genres (Songs, Novels, Subtitles) 11 .
+
+4 Results 
+
+4.1 High-resource DRT 
+
+Table 2 reports results on DRT. LatentMT produces significant improvements at every recurrent depth, indicating that the framework can further improve translation quality even when the out-of-box back-bone already shows decent performance at larger recurrent depths. Out-of-box Ouro remains at 0.00–9.02 BLEU, 32.01–57.27 COMET, and 21.38– 50.23 COMETKiwi across the sweep, whereas La-tentMT reaches 20.25–29.37 BLEU, 66.06–76.57 COMET, and 58.23–69.21 COMETKiwi. Most of the gain from additional recurrent computation ap-pears early: moving from u = 1 to u = 2 adds 7.65 BLEU, 9.35 COMET, and 9.86 COMETKiwi, after         
+
+> 7https://github.com/mjpost/sacrebleu
+> 8https://huggingface.co/Unbabel/ wmt22-comet-da
+> 9https://huggingface.co/Unbabel/ wmt22-cometkiwi-da
+> 10 https://github.com/Unbabel/COMET
+> 11 The original ArzEn-MultiGenre dataset paper (Al-Sabbagh, 2024) reports split sizes but does not release the actual train/validation/test partition. We therefore ran-domly sample validation and test splits matching the re-ported sizes (1,666 segments each; per genre 304/518/844 for Songs/Novels/Subtitles) and assign all remaining exam-ples to the training split.
+
+4Model Size BLEU COMET COMETKiwi                                                                     
+
+> Reference systems (larger, literary-specialized)
+> DRT-8B 8B 32.67 78.81 70.85 DRT-14B 14B 36.46 80.64 72.11 DeepTrans-7B 7B 21.55 ⋆78.63 ⋆71.82 / 72.45 ⋆
+> ExTrans-7B 7B 16.32 ⋆62.92 ⋆74.23 / 54.93 ⋆
+> Backbone (untrained, out-of-box)
+> Ouro 12.6B 0.00 32.01 21.38 Ouro 22.6B 0.00 33.74 22.85 Ouro 32.6B 1.21 42.69 32.85 Ouro 42.6B 6.07 52.53 44.17 Ouro 52.6B 9.02 57.27 50.23 Ouro 62.6B 8.87 57.26 49.99
+> Same-protocol systems (ours)
+> Qwen3-8B SFT 8B 13.19 54.82 45.14 LatentMT 12.6B 20.25 66.06 58.23 LatentMT 22.6B 27.90 75.41 68.09 LatentMT 32.6B 29.18 76.32 68.80 LatentMT 42.6B 29.34 76.51 69.01 LatentMT 52.6B 29.37 76.57 69.21
+> LatentMT 62.6B 29.14 76.36 68.84
+
+Table 2: DRT results (English-to-Chinese). La-tentMT and its out-of-box Ouro backbone use a 2.6B-parameter model, while DRT (Wang et al., 2025a), DeepTrans (Wang et al., 2025b), and ExTrans (Wang et al., 2025c) are state-of-the-art 7B–14B systems built specifically for literary translation, the domain the DRT dataset focuses on. Among systems trained under our identical protocol, bold marks the best value per met-ric; underline marks the best value across all systems. Subscripts denote the fixed number of recurrent steps u.Superscript stars mark reference values we reproduced by evaluating those models ourselves; unstarred refer-ence values are from the original papers. 
+
+which the curve changes only marginally through 
+
+u = 6 .Against Qwen3-8B SFT, our same-protocol con-trol, the best LatentMT checkpoint is higher on all three metrics despite using a substantially smaller 2.6B-parameter backbone. This comparison is especially notable because Ouro has only mini-mal Chinese language exposure during pretraining and no Chinese language data in mid-training or post-training, whereas the comparison systems are multilingual or DRT-specific models with substan-tially stronger Chinese language supervision. Com-pared with the larger, domain-specialized reference systems, LatentMT exhibits strong parameter effi-ciency. DRT-14B and ExTrans-7B retain a slight edge on selected metrics, but the best LatentMT-2.6B checkpoint closes much of the performance gap while operating at a 3 × to 5 × parameter dis-advantage. Thus, in the high-resource setting, La-tentMT clearly improves over a larger Chinese-Model Size Songs Subtitles Novels Overall                                                                            
+
+> Reference systems (commercial and domain-adapted)
+> Google NMT Unk 8.95 12.54 11.84 11.67 Fine-tuned Google NMT Unk 11.87 19.05 17.28 17.19
+> Backbone (untrained, out-of-box)
+> Ouro 12.6B 0.01 0.01 0.00 0.00 Ouro 22.6B 0.00 0.05 0.00 0.02 Ouro 32.6B 0.01 0.19 0.00 0.10 Ouro 42.6B 0.01 0.37 0.02 0.20 Ouro 52.6B 0.06 0.32 0.01 0.18 Ouro 62.6B 0.03 0.31 0.04 0.18
+> Same-protocol systems (ours)
+> Qwen3-8B SFT 8B 4.28 30.48 9.45 19.16 LatentMT 12.6B 4.53 23.11 9.05 15.35 LatentMT 22.6B 6.49 31.81 12.84 21.29 LatentMT 32.6B 6.39 35.20 13.85 23.30 LatentMT 42.6B 7.61 36.98 13.96 24.47
+> LatentMT 52.6B 6.56 36.60 13.41 23.91 LatentMT 62.6B 7.14 36.04 14.80 24.16
+
+Table 3: BLEU on ArzEn-MultiGenre (English-to-Egyptian Arabic). LatentMT and its out-of-box Ouro backbone use a 2.6B-parameter model, while the reference systems are a commercial NMT engine and a variant fine-tuned on this benchmark’s own data (Al-Sabbagh, 2024). Overall is weighted by the Songs/Subtitles/Novels test sizes (304/844/518). Among systems trained under our identical protocol, 
+
+bold marks the best value per metric; underline marks the best value across all systems. Subscripts denote the fixed number of recurrent steps u.
+
+language-capable LLM trained under the same con-ditions and approaches the performance of systems that are substantially larger and specialized for liter-ary translation, the domain the DRT dataset focuses on. 
+
+4.2 Mid-resource ArzEn-MultiGenre 
+
+Table 3 gives the overall BLEU results for ArzEn-MultiGenre, our mid-resource English-to-Egyptian-Arabic benchmark. Unlike on DRT, out-of-box Ouro is effectively unable to translate this bench-mark: overall BLEU stays between 0.00 and 0.20 across recurrent depths, with every genre-level score at or below 0.37. Fine-tuning therefore turns a near-zero out-of-box system into a strong mid-resource translator, indicating that the LatentMT framework is effective even when the out-of-box backbone is weak at translating into the target lan-guage. LatentMT achieves the best overall score among all compared systems, peaking at 24.47 BLEU with u = 4 . This is 7.28 BLEU above fine-tuned Google NMT and 5.31 BLEU above Qwen3-8B SFT, indicating that the recurrent model remains competitive even against a much larger multilingual LM. 5LatentMT-2.6B 4 Qwen3-8B SFT EMMA-500-8B Target Lang Family BLEU chrf++ BLEU chrf++ BLEU chrf++ ace_Arab Austronesian 8.52 21.15 4.49 16.25 1.72 12.13 ary_Arab Afro-Asiatic 13.25 30.89 9.47 22.75 13.67 32.70 bam_Latn Mande 6.03 24.96 2.23 13.81 3.15 20.85 ban_Latn Austronesian 12.61 37.98 9.91 31.86 16.93 42.58 bjn_Arab Austronesian 12.05 25.31 5.44 14.65 2.59 15.68 bjn_Latn Austronesian 14.24 41.24 7.69 25.45 24.03 50.05 bug_Latn Austronesian 6.51 29.90 4.40 22.50 1.51 17.47 crh_Latn Turkic 14.04 34.85 5.50 18.84 16.97 38.15 dik_Latn Nilotic 5.61 22.80 3.69 14.80 1.39 12.65 dzo_Tibt Sino-Tibetan 2.32 15.96 2.55 14.58 4.35 26.61 fur_Latn Indo-European 29.53 48.85 15.17 28.05 34.17 53.00 fuv_Latn Atlantic-Congo 3.62 20.46 2.78 16.13 0.81 11.36 kas_Arab Indo-European 12.56 28.22 5.81 15.40 11.83 28.94 kas_Deva Indo-European 3.28 15.47 2.99 13.86 2.07 13.93 knc_Arab Saharan 12.48 16.20 11.28 14.09 0.52 3.70 knc_Latn Saharan 5.00 23.39 2.68 16.76 0.98 13.30 lij_Latn Indo-European 29.53 47.25 19.50 34.13 28.80 47.52 lim_Latn Indo-European 19.20 40.09 14.49 31.67 22.69 45.05 lmo_Latn Indo-European 9.97 31.79 7.09 24.51 11.39 33.33 ltg_Latn Indo-European 25.24 44.27 20.74 37.27 26.62 46.66 mni_Beng Sino-Tibetan 16.50 28.12 14.96 25.83 21.93 35.10 nus_Latn Nilotic 10.39 26.22 7.09 19.40 0.80 9.47 pbt_Arab Indo-European 13.74 31.04 6.61 17.72 16.75 34.60 prs_Arab Indo-European 15.06 36.32 10.81 26.57 20.97 42.58 shn_Mymr Tai-Kadai 0.09 7.24 2.57 15.64 6.00 25.89 srd_Latn Indo-European 25.88 47.50 16.13 34.17 35.17 55.19 szl_Latn Indo-European 23.49 41.13 12.26 25.82 26.17 44.57 taq_Latn Afro-Asiatic 3.78 21.19 2.31 15.78 0.23 6.07 taq_Tfng Afro-Asiatic 3.06 11.83 4.23 14.54 0.60 8.99 vec_Latn Indo-European 23.83 46.57 13.16 29.91 20.60 45.80 Average 12.71 29.94 8.27 21.76 12.51 29.13 
+
+Table 4: BLEU and chrf++ on 30 language pairs of Flores200 (English is always the source language). LatentMT-2.6B 4 and Qwen3-8B SFT are trained un-der our identical protocol; EMMA-500-8B refers to the state-of-the-art EMMA-500-Llama3-8B model (Ji et al., 2025). Between the two same-protocol systems, bold 
+
+marks the better value per metric; underline marks the best value across all three systems. LatentMT-2.6B 4
+
+uses a fixed recurrent depth of u = 4 .
+
+The recurrent-depth trend again shows rapid early improvement followed by saturation. La-tentMT rises from 15.35 at u = 1 to 21.29 at u = 2 
+
+and 23.30 at u = 3 , then fluctuates within a narrow band from u = 4 to u = 6 . At the genre level, LatentMT shows robust cross-domain adaptabil-ity rather than uniform dominance. Google NMT fine-tuned on this benchmark’s own data remains strongest on the more stylistic Songs and Novels genres, but LatentMT is substantially stronger on the highly conversational Subtitles domain, outper-forming fine-tuned Google NMT by 17.93 BLEU points (36.98 vs. 19.05). This large Subtitle gain, together with competitive performance on the other weighted genres, drives LatentMT to the highest overall weighted BLEU among all compared sys-tems. This suggests that LatentMT provides a ro-bust mid-resource translation model, even though the backbone has limited capabilities before train-ing. 
+
+4.3 Low-resource OLDI/Flores 
+
+Table 4 reports BLEU and chrF++ on the 30 displayed low-resource OLDI/Flores target lan-guage/script configurations. LatentMT obtains the 
+
+Figure 2: Performance scaling with the fixed number of recurrent steps. DRT reports BLEU, COMET, and COMETKiwi, while ArzEn-MultiGenre reports BLEU. Most gains occur when moving from low to moderate fixed recurrent depths, followed by saturation at higher depths. 
+
+highest mean BLEU and chrF++ among the dis-played systems, reaching 12.71 BLEU and 29.94 chrF++. It is slightly ahead of EMMA-500-Llama3-8B on both averages (12.51 BLEU and 29.13 chrF++) and clearly ahead of Qwen3-8B SFT (8.27 BLEU and 21.76 chrF++). LatentMT is able to achieve the best average score on both reported met-rics despite using a much smaller 2.6B-parameter backbone. Overall, the three benchmarks show that the La-tentMT framework yields strong translation gains across high-, mid-, and low-resource settings. They also reveal a consistent recurrent-depth pattern: most gains appear when moving from low to mod-erate fixed recurrent depths, while higher depths mainly preserve or lightly refine quality. The next section examines this saturation behavior directly and includes a manual linguistic analysis to further support the effectiveness of the LatentMT frame-work beyond automatic metrics. 
+
+5 Analysis 
+
+5.1 Performance Scaling with Recurrent Steps 
+
+We ask how performance scales with the number of recurrent steps. Since each additional recurrent step reapplies the same shared Transformer stack before producing the next-token distribution, increasing 
+
+u gives the model more latent refinement compute without changing the parameter count. The relevant question is therefore not whether more steps can add compute, but whether that compute continues to translate into better MT quality. Figure 2 shows a consistent early-gain pattern 6across the two datasets. On DRT, the dominant improvement occurs between u = 1 and u = 2 .Subsequent depths mainly produce small adjust-ments: the best BLEU and COMET scores occur at 
+
+u = 5 , but the gains from u = 2 to u = 5 are only 1.47 BLEU, 1.16 COMET, and 1.12 COMETKiwi. ArzEn-MultiGenre shows a slightly longer rise, im-proving from 15.35 BLEU at u = 1 to 24.47 at 
+
+u = 4 , then remaining close to that level through 
+
+u = 6 . Together, these trends suggest that recur-rent latent computation is useful for MT, but its marginal returns concentrate in the first few steps. We further validate this trend with a human linguistic error analysis of DRT and ArzEn-MultiGenre outputs at every recurrent depth. For each dataset, translation errors were annotated by a trained linguist who is also a native speaker of the dataset language, using the LQM taxon-omy (Magdy et al., 2026). The error counts mirror the automatic metrics: errors drop sharply from low 
+
+u and then flatten, with severe errors concentrated at low recurrent depths. Thus, the early-gain-then-saturation pattern is supported by both automatic metrics and expert assessment; the full analysis appears in Appendix A. The same saturation pattern appears inside the recurrent computation. For a generated token, let 
+
+hk ∈ Rd be the hidden representation of the last hidden layer, the layer immediately preceding the language-model head, produced at recurrent step k.For adjacent steps k → k + 1 we report the cosine distance 
+
+dcos (k) = 1 − h⊤ 
+
+> k
+
+hk+1 
+
+∥hk∥ ∥ hk+1 ∥ , (7) Let tk = arg max( Wℓm hk) be the top-1 token at step k. We also report the top-1 flip indicator 
+
+flip( k) = 1[ tk̸ = tk+1 ] . (8) Figure 3 plots, for each transition, the mean of these two metrics over generated tokens and ex-amples. Let M ∈ { dcos , flip } be either metric, E
+
+be index examples, and Te be the generated token positions of example e. The reported per-transition mean at recurrent depth u is 
+
+M u(k) = 1
+
+|E| 
+
+X
+
+> e∈E
+
+1
+
+|T e|
+
+X
+
+> i∈T e
+
+M (k; e, i ). (9) Both metrics decline across successive transitions: the change is largest at the first transition and 
+
+> Figure 3: Mechanistic saturation across recurrent tran-sitions. The columns show cosine distance and top-1 flip rate for DRT (top) and ArzEn-MultiGenre (bottom). Later transitions show much smaller changes in both metrics, indicating that recurrent updates diminish as depth increases. This mechanistic flattening aligns with the performance saturation at larger recurrent depths.
+
+shrinks toward zero at the last. At u = 6 on DRT, for instance, the mean cosine distance falls from 0.159 at the first transition to 0.014 at the last, and the mean top-1 flip rate from 0.320 to 0.039; ArzEn-MultiGenre shows the same con-traction. The full per-transition means for every recurrent-depth checkpoint are reported in Table 6 (Appendix B). By the final transitions the top-1 token rarely changes, indicating that the token pref-erence has largely settled. This stabilized token preference helps explain why translation metrics saturate at larger u. Taken together, the perfor-mance scaling in Figure 2, the mechanistic satura-tion in Figure 3, and the linguistic error analysis in Appendix A align with and support the same finding: recurrent computation improves transla-tion quickly at lower u and then saturates at larger 
+
+u.
+
+5.2 Efficiency Analysis 
+
+We ask whether LatentMT, a LoopLM backbone with an attached LoRA module, offers a better efficiency–quality tradeoff than a conventional lan-guage model, comparing it against a Qwen3-8B rea-soning model trained under identical conditions on DRT. Our analysis centers on two operating points: the quality-optimal depth u = 5 and a cost-efficient depth u = 2 . The latter is chosen by knee-point 7Figure 4: Efficiency comparison of LatentMT against Qwen3-8B on DRT. Scaling computation through recurrent depth, LatentMT keeps both training and inference GPU memory well below Qwen3-8B while also achieving lower end-to-end inference time. The circled marker ( u = 5 ) denotes the quality-optimal recurrent depth and the triangle marker ( u = 2 ) the most cost-efficient one. 
+
+detection 12 (Satopa et al., 2011) on the average of BLEU, COMET, and COMETKiwi against each of four efficiency axes (training step time, peak train-ing memory, inference time per sample, and peak inference memory), which unanimously place the knee at u = 2 (triangle in Figure 4). Because qual-ity saturates early, u = 2 retains 97.9% of the peak quality reached at u = 5 , making it a near-tied but far more resource-efficient operating point. Weight sharing keeps LatentMT’s GPU memory footprint small: each recurrent step reapplies the same Transformer stack rather than duplicating pa-rameters, so both training and inference peak mem-ory grow only slowly with u (panels (c) and (f)) and stay well below Qwen3-8B. Both operating points inherit this advantage, cutting peak training memory by over 63% and training compute by 43% (u = 5 ) to 77% ( u = 2 ) relative to Qwen3-8B; the cost-efficient u = 2 additionally halves the per-step training time. The inference behavior of the two models dif-fers sharply. Because the reasoning baseline emits a long explicit chain of thought before its an-swer whereas LatentMT refines in latent recurrent steps and emits only the translation, LatentMT pro-duces significantly shorter outputs (panel (d)). This brevity keeps LatentMT below Qwen3-8B on both inference axes: it lowers end-to-end latency by 
+
+> 12 https://github.com/arvkevi/kneed
+
+8.5% at u = 5 and 61.9% at the more cost-efficient 
+
+u = 2 , and peak inference memory by 26.9% and 52.2% respectively. Overall, LatentMT is more efficient than the rea-soning baseline at both operating points, with recur-rent depth serving as a controllable dial between the cost-efficient u = 2 and the quality-optimal 
+
+u = 5 .
+
+6 Conclusion 
+
+We presented LatentMT , a compact MT frame-work that adapts latent-reasoning looped language models to translation with a frozen 2.6B-parameter recurrent backbone and lightweight LoRA mod-ules. Across 32 translation directions, LatentMT remains competitive in high-resource Chinese and achieves state-of-the-art results in both Egyptian Arabic and low-resource languages, despite being three to five times smaller than several leading com-parison models. Our analysis further shows that recurrent latent computation improves translation most strongly at early depths, then saturates as hid-den representations and token preferences stabilize across later steps. Together with the efficiency re-sults, these findings show that LatentMT offers a strong quality–compute tradeoff and an effective alternative to MT systems built upon regular lan-guage models. 8Acknowledgments 
+
+Muhammad Abdul-Mageed acknowledges support from Canada Research Chairs (CRC), the Natu-ral Sciences and Engineering Research Council of Canada (NSERC; RGPIN-2026-07098), the So-cial Sciences and Humanities Research Council of Canada (SSHRC; 895-2020-1004), Canadian Foundation for Innovation (CFI; 37771), Digital Research Alliance of Canada 13 , UBC Advanced Research Computing-Sockeye 14 .
+
+References 
+
+Rania Al-Sabbagh. 2024. Arzen-multigenre: An aligned parallel dataset of egyptian arabic song lyrics, novels, and subtitles, with english translations. Data in Brief , 54:110271. Shabnam Ataee, Hugo Huart, and Andrei Popescu-Belis. 2026. Chain-of-thought reasoning improves context-aware translation with large language models. 
+
+Preprint , arXiv:2510.18077. Daphnee Chabal, Dolly Sapra, and Zoltán Ádám Mann. 2023. On achieving privacy-preserving state-of-the-art edge intelligence. Preprint , arXiv:2302.05323. Jingcheng Deng, Liang Pang, Zihao Wei, Shicheng Xu, Zenghao Duan, Kun Xu, Yang Song, Huawei Shen, and Xueqi Cheng. 2026. Llm latent reasoning as chain of superposition. Preprint , arXiv:2510.15522. Khashayar Gatmiry, Nikunj Saunshi, Sashank J. Reddi, Stefanie Jegelka, and Sanjiv Kumar. 2024. Can looped transformers learn to implement multi-step gradient descent for in-context learning? In Forty-first International Conference on Machine Learning .Jonas Geiping, Sean McLeish, Neel Jain, John Kirchen-bauer, Siddharth Singh, Brian R. Bartoldson, Bhavya Kailkhura, Abhinav Bhatele, and Tom Goldstein. 2025. Scaling up test-time compute with latent reasoning: A recurrent depth approach. Preprint ,arXiv:2502.05171. Shibo Hao, Sainbayar Sukhbaatar, DiJia Su, Xian Li, Zhiting Hu, Jason Weston, and Yuandong Tian. 2025. Training large language models to reason in a contin-uous latent space. Preprint , arXiv:2412.06769. Edward J Hu, yelong shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, and Weizhu Chen. 2022. LoRA: Low-rank adaptation of large language models. In International Conference on Learning Representations .Ahmadreza Jeddi, Marco Ciccone, and Babak Taati. 2026. Loopformer: Elastic-depth looped transform-ers for latent reasoning via shortcut modulation. In 
+
+> 13 https://alliancecan.ca
+> 14 https://arc.ubc.ca/ubc-arc-sockeye
+
+The Fourteenth International Conference on Learn-ing Representations .Shaoxiong Ji, Zihao Li, Jaakko Paavola, Hengyu Luo, and Jörg Tiedemann. 2025. Massively multilingual adaptation of large language models using bilingual translation data. arXiv preprint 2506.00469 .Pawel Kamocki and Jim O’Regan. 2016. Privacy issues in online machine translation services - European per-spective. In Proceedings of the Tenth International Conference on Language Resources and Evaluation (LREC’16) , pages 4458–4462, Portorož, Slovenia. European Language Resources Association (ELRA). Jared Kaplan, Sam McCandlish, Tom Henighan, Tom B. Brown, Benjamin Chess, Rewon Child, Scott Gray, Alec Radford, Jeffrey Wu, and Dario Amodei. 2020. Scaling laws for neural language models. Preprint ,arXiv:2001.08361. Ye Lin, Xiaohui Wang, Zhexi Zhang, Mingxuan Wang, Tong Xiao, and Jingbo Zhu. 2023. Mobilenmt: En-abling translation in 15mb and 30ms. Preprint ,arXiv:2306.04235. Sinuo Liu, Chenyang Lyu, Minghao Wu, Longyue Wang, Weihua Luo, Kaifu Zhang, and Zifu Shang. 2025. New trends for modern machine trans-lation with large reasoning models. Preprint ,arXiv:2503.10351. Wenquan Lu, Yuechuan Yang, Kyle Lee, Yanshu Li, and Enqi Liu. 2025. Latent chain-of-thought? de-coding the depth-recurrent transformer. Preprint ,arXiv:2507.02199. Samar M. Magdy, Fakhraddin Alwajih, Abdellah El Mekki, Wesam El Sayed, and Muhammad Abdul-Mageed. 2026. LQM: Linguistically motivated mul-tidimensional quality metrics for machine translation. In Findings of the Association for Computational Lin-guistics: ACL 2026 , pages 40470–40493, San Diego, California, United States. Association for Computa-tional Linguistics. Jean Maillard, Cynthia Gao, Elahe Kalbassi, Kaushik Ram Sadagopan, Vedanuj Goswami, Philipp Koehn, Angela Fan, and Francisco Guzmán. 2023. Small data, big impact: Leveraging min-imal data for effective machine translation. In 
+
+Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 2740–2756, Toronto, Canada. Association for Computational Linguistics. Lam Nguyen and Yang Xu. 2025. Reasoning for trans-lation: Comparative analysis of chain-of-thought and tree-of-thought prompting for LLM translation. In 
+
+Proceedings of the 63rd Annual Meeting of the As-sociation for Computational Linguistics (Volume 4: Student Research Workshop) , pages 259–275, Vienna, Austria. Association for Computational Linguistics. Sara Rajaee, Sebastian Vincent, Alexandre Berard, Marzieh Fadaee, Kelly Marchisio, and Tom Kocmi. 
+
+92026. Unlocking reasoning capability on machine translation in large language models. Preprint ,arXiv:2602.14763. Ricardo Rei, José G. C. de Souza, Duarte Alves, Chrysoula Zerva, Ana C Farinha, Taisiya Glushkova, Alon Lavie, Luisa Coheur, and André F. T. Martins. 2022a. COMET-22: Unbabel-IST 2022 submission for the metrics shared task. In Proceedings of the Seventh Conference on Machine Translation (WMT) ,pages 578–585, Abu Dhabi, United Arab Emirates (Hybrid). Association for Computational Linguistics. Ricardo Rei, Marcos Treviso, Nuno M. Guerreiro, Chrysoula Zerva, Ana C Farinha, Christine Maroti, José G. C. de Souza, Taisiya Glushkova, Duarte Alves, Luisa Coheur, Alon Lavie, and André F. T. Martins. 2022b. CometKiwi: IST-unbabel 2022 sub-mission for the quality estimation shared task. In 
+
+Proceedings of the Seventh Conference on Machine Translation (WMT) , pages 634–645, Abu Dhabi, United Arab Emirates (Hybrid). Association for Com-putational Linguistics. Ville Satopa, Jeannie Albrecht, David Irwin, and Barath Raghavan. 2011. Finding a "kneedle" in a haystack: Detecting knee points in system behavior. In 31st International Conference on Distributed Computing Systems Workshops , pages 166–171. Nikunj Saunshi, Nishanth Dikkala, Zhiyuan Li, San-jiv Kumar, and Sashank J Reddi. 2025. Reasoning with latent thoughts: On the power of looped trans-formers. In International Conference on Learning Representations , volume 2025, pages 14855–14881. Charlie Victor Snell, Jaehoon Lee, Kelvin Xu, and Avi-ral Kumar. 2025. Scaling LLM test-time compute optimally can be more effective than scaling param-eters for reasoning. In The Thirteenth International Conference on Learning Representations .Craig Stewart, Ricardo Rei, Catarina Farinha, and Alon Lavie. 2020. COMET - deploying a new state-of-the-art MT evaluation metric in production. In Pro-ceedings of the 14th Conference of the Association for Machine Translation in the Americas (Volume 2: User Track) , pages 78–109, Virtual. Association for Machine Translation in the Americas. NLLB Team, Marta R. Costa-jussà, James Cross, Onur Çelebi, Maha Elbayad, Kenneth Heafield, Kevin Hef-fernan, Elahe Kalbassi, Janice Lam, Daniel Licht, Jean Maillard, Anna Sun, Skyler Wang, Guillaume Wenzek, Al Youngblood, Bapi Akula, Loic Barrault, Gabriel Mejia Gonzalez, Prangthip Hansanti, and 20 others. 2022. No language left behind: Scal-ing human-centered machine translation. Preprint ,arXiv:2207.04672. Jiaan Wang, Fandong Meng, Yunlong Liang, and Jie Zhou. 2025a. DRT: Deep reasoning translation via long chain-of-thought. In Findings of the Associa-tion for Computational Linguistics: ACL 2025 , pages 6770–6782, Vienna, Austria. Association for Com-putational Linguistics. Jiaan Wang, Fandong Meng, and Jie Zhou. 2025b. Deeptrans: Deep reasoning translation via reinforce-ment learning. Preprint , arXiv:2504.10187. Jiaan Wang, Fandong Meng, and Jie Zhou. 2025c. Ex-trans: Multilingual deep reasoning translation via exemplar-enhanced reinforcement learning. Preprint ,arXiv:2505.12996. Tess Watt, Christos Chrysoulas, and Dimitra Gkatzia. 2023. Edge nlp for efficient machine translation in low connectivity areas. In 2023 IEEE 9th World Forum on Internet of Things (WF-IoT) , pages 1–6. Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, brian ichter, Fei Xia, Ed Chi, Quoc V Le, and Denny Zhou. 2022. Chain-of-thought prompt-ing elicits reasoning in large language models. In 
+
+Advances in Neural Information Processing Systems ,volume 35, pages 24824–24837. Curran Associates, Inc. Xilin Wei, Xiaoran Liu, Yuhang Zang, Xiaoyi Dong, Yuhang Cao, Jiaqi Wang, Xipeng Qiu, and Dahua Lin. 2025. Sim-cot: Supervised implicit chain-of-thought. Preprint , arXiv:2509.20317. Di Wu, Seth Aycock, and Christof Monz. 2025. Please translate again: Two simple experiments on whether human-like reasoning helps translation. In Proceed-ings of the 2025 Conference on Empirical Methods in Natural Language Processing , pages 20424–20440, Suzhou, China. Association for Computational Lin-guistics. Dianlei Xu, Tong Li, Yong Li, Xiang Su, Sasu Tarkoma, Tao Jiang, Jon Crowcroft, and Pan Hui. 2020. Edge intelligence: Architectures, challenges, and applica-tions. Preprint , arXiv:2003.12172. An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao, Chengen Huang, Chenxu Lv, Chujie Zheng, Day-iheng Liu, Fan Zhou, Fei Huang, Feng Hu, Hao Ge, Haoran Wei, Huan Lin, Jialong Tang, and 41 others. 2025. Qwen3 technical report. Preprint ,arXiv:2505.09388. Armel Zebaze, Benoît Sagot, and Rachel Bawden. 2025. Compositional translation: A novel llm-based approach for low-resource machine translation. 
+
+Preprint , arXiv:2503.04554. Rui-Jie Zhu, Zixuan Wang, Kai Hua, Tianyu Zhang, Ziniu Li, Haoran Que, Boyi Wei, Zixin Wen, Fan Yin, He Xing, Lu Li, Jiajun Shi, Kaijing Ma, Shanda Li, Taylor Kergan, Andrew Smith, Xingwei Qu, Mude Hui, Bohong Wu, and 14 others. 2025. Scaling latent reasoning via looped language models. Preprint ,arXiv:2510.25741. 
+
+10 A Linguistic Error Analysis 
+
+To demonstrate the recurrent-step scaling trends of Section 5.1 with human assessment, we conducted a manual linguistic error analysis of the model outputs at every recurrent depth. For each of DRT (30 segments) and ArzEn-MultiGenre (60 segments, 20 per genre), the six recurrent-depth outputs ( u = 1 
+
+through u = 6 ) were produced for the same source segments and annotated by a trained linguist who is a native speaker of the relevant language. Following the LQM framework (Magdy et al., 2026), the annotator labeled each translation error with a fine-grained error type and a severity (Minor, Major, or Critical). We summarize each recurrent depth with the total number of tagged errors, the mean LQM quality score per segment, and the fraction of segments with no tagged errors, as shown in Figure 5.  
+
+> Figure 5: Human linguistic error analysis across recurrent depths for DRT and ArzEn-MultiGenre. Each panel reports, against the number of recurrent steps u, the total tagged errors, the mean LQM quality score per segment (0–100, higher is better), and the error-free segment rate. Both datasets improve steeply over the first few steps and then saturate.
+
+The analysis reproduces the early-gain-then-saturation pattern observed under automatic metrics. Figure 5 shows that both datasets improve sharply as the fixed recurrent-depth setting increases from low values and then level off. On DRT, mean errors per segment fall from 1.83 at u = 1 to 0.47 by u = 3 and remain low thereafter, while the corresponding LQM score rises from 36.2 at u = 1 to 86.5 at u = 3 and exceeds 90 from u = 4 onward. ArzEn-MultiGenre follows the similar trajectory: errors per segment decline from 1.23 at u = 1 to 0.70 by u = 4 , while the LQM score increases overall from 32.1 to about 58 and the error-free segment rate doubles from 25.0% to 50.0%; the largest gains occur as the fixed recurrent-depth setting increases up to u = 4 , with little movement thereafter.    
+
+> Figure 6: Severity composition of tagged errors across recurrent depths, for DRT (left) and ArzEn-MultiGenre (right). Critical errors are concentrated at low uand become much rarer at higher fixed-usettings, leaving mostly Minor and Major residual errors.
+
+The severity breakdown in Figure 6 explains why quality improves faster than the raw error count suggests: low-u settings contain many of the most damaging errors, whereas higher fixed-u settings contain far fewer of them. Table 5 gives representative examples in which annotated errors present at low 
+
+u are absent when the same source segment is translated with a higher fixed-u setting. Critical errors are 11 Dataset Source Reference u LatentMT prediction Error count DRT Cruel, to deny me one ray of those adorable eyes!–how a single glance would have revived me!        
+
+> 残忍啊，不让我见那可爱双眸的
+> 一丝 光芒！–哪怕一瞥，也能让
+> 我精神为之一 振。
+> 1残酷地否定我那些可爱眼睛 中的一束光芒！–即便
+> 是最微弱 的一缕光芒，也能夺走我希望的光明。
+> 52残忍，拒绝我那令人 向往的眼神中的一缕光芒！–若
+> 有一瞥便能夺回我的生命火花！
+> 13残忍，竟不肯让我瞥见那可爱的眼眸 中的一束光
+> 芒！–哪怕一瞥，也能让我重获生机！
+> 0ArzEn-MultiGenre The thorns, what use are they?
+
+? ÈK @ È J”PB ,ºÒ  ÇÀ@ 1 ?ºÒ  ÇÀ@ ÈK @ 12 ? ÈK @ È J”PB ,ºÒ  ÇÀ@ 03 ? ÈK @ È J”PB ,ºÒ  ÇÀ@ 0
+
+Table 5: Examples from the linguistic error analysis where increasing recurrent computation removes annotated translation errors. For each example, the source and reference are shown once, while the LatentMT prediction is shown for u = 1 , u = 2 , and u = 3 . Annotated errors are shown in color: for the DRT example, wrong terms are chosen that do not match the semantic meaning of the source; for the ArzEn-MultiGenre example, the phrase “what use are they” is omitted from the low-u prediction. Both examples have no annotated errors for u ≥ 3.
+
+concentrated in the low-u outputs and become much less common at higher u: on DRT they fall from 37 at u = 1 to 5 by u = 3 and 1 by u = 6 , while on ArzEn-MultiGenre they fall from 26 at u = 1 to 2 by 
+
+u = 3 , disappear at u = 4 –5, and reappear with small amount at u = 6 . Taken together, the linguistic analysis shows that the behavior identified by our automatic evaluation is also supported at the level of concrete, human-verified translation errors, strengthening the robustness of our conclusions. 
+
+B Per-Transition Mechanistic Means 
+
+Table 6 includes the full per-transition means underlying the mechanistic saturation analysis of Section 5.1. 
+
+u 1 → 2 2 → 3 3 → 4 4 → 5 5 → 6
+
+DRT — Cosine distance 
+
+2 0.2317 3 0.2210 0.0954 4 0.1923 0.1048 0.0431 5 0.1744 0.0917 0.0620 0.0218 6 0.1585 0.0784 0.0538 0.0350 0.0141 
+
+DRT — Top-1 flip rate 
+
+2 0.2063 3 0.2768 0.1113 4 0.3123 0.1480 0.0710 5 0.3224 0.1633 0.1032 0.0489 6 0.3201 0.1706 0.1131 0.0700 0.0388 
+
+ArzEn-MultiGenre — Cosine distance 
+
+2 0.4657 3 0.3157 0.2505 4 0.2767 0.1446 0.1576 5 0.2509 0.1151 0.0950 0.1041 6 0.2378 0.1192 0.0685 0.0649 0.0922 
+
+ArzEn-MultiGenre — Top-1 flip rate 
+
+2 0.4459 3 0.4678 0.2107 4 0.4654 0.2511 0.1219 5 0.4656 0.2780 0.1809 0.0800 6 0.4193 0.2631 0.1738 0.1056 0.0623 
+
+Table 6: Mean mechanistic change at each recurrent transition, per recurrent-depth checkpoint u (rows): cosine distance of the last hidden state and top-1 flip rate after the language-model head, averaged over generated tokens and examples. Each row u shows that checkpoint’s transitions 1 → 2, . . . , (u−1) → u; blank cells do not exist for that checkpoint. Smaller values indicate less step-to-step change. 
+
+12

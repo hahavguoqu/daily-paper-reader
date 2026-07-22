@@ -1,0 +1,720 @@
+Title: Reasoning Error from Known Fact: Step-Level Self-Consistency Group Relative Policy Optimization for LLM
+
+URL Source: https://arxiv.org/pdf/2607.18915v1
+
+Published Time: Wed, 22 Jul 2026 00:47:47 GMT
+
+Number of Pages: 16
+
+Markdown Content:
+## Reasoning Error from Known Fact: Step-Level Self-Consistency Group Relative Policy Optimization for LLMs 
+
+Xiaomeng Hu, Jiaqi Hu, Hao Chen, Qi Zhang, Zhanming Shen, Wentao Ye, Junbo Zhao 
+
+Zhejiang University 
+
+{xm.hu,j.zhao}@zju.edu.cn 
+
+Abstract 
+
+With the rapid advancement of large language models (LLMs), modern systems not only pos-sess strong foundational capabilities and ex-tensive knowledge, but can also solve com-plex problems via long, multi-step reasoning. However, as reasoning traces become longer, LLMs may produce a substantial amount of hallucinated content during the reasoning pro-cess, which is often difficult to detect. In this work, we conduct a fine-grained analy-sis of hallucinations arising in LLM reasoning and find that the reasoning traces are particu-larly prone to Context-Sensitive Factual Hal-lucinations —cases where the model actually has the relevant knowledge, yet makes factual errors due to contextual interference during reasoning. To address this issue, we propose 
+
+Step-level Self-Consistency Group Relative 
+
+Policy Optimization (SSC-GRPO), which as-signs step-level rewards to reasoning traces by computing self-consistency scores of individ-ual steps across multiple rollouts. Compared with prior methods, SSC-GRPO achieves state-of-the-art performance on both mathematical reasoning benchmarks and hallucination leader-boards. Our results offer a new perspective for detecting and mitigating hallucinations in the reasoning process of large language models. 
+
+1 Introduction 
+
+In recent years, with the continuous advancement of large language models (LLMs), remarkable performance has been achieved across many do-mains (Achiam et al., 2023; Team et al., 2024; Grattafiori et al., 2024). Existing general-purpose models possess strong foundational capabilities, and their domain knowledge is increasingly com-prehensive. Moreover, to better solve complex problems, reasoning models have undergone rapid development (Yang et al., 2025; Guo et al., 2025). The test-time scaling principle suggests that models can analyze questions step by step via long chains of thought and ultimately derive final answers (Wu et al., 2024). However, LLMs suffer from the hallucination 
+
+problem, in which models generate confident but incorrect statements (Ji et al., 2023). Since hal-lucinations severely hinder the development and deployment of LLMs, the detection and mitiga-tion of hallucinations have become central research topics in recent years (Zhang et al., 2025b). As we move beyond general tasks and consider rea-soning models, hallucinations occurring during the reasoning process present fundamentally different challenges (Li et al., 2024). The long reasoning chains and complex contextual dependencies ren-der traditional hallucination detection methods inef-fective (Cheng et al., 2025), necessitating a deeper study of hallucinations within the reasoning pro-cess. To better study hallucinations during reasoning, we conduct a fine-grained categorization of ob-served hallucination types. Through detailed case analyses, we find that current models frequently exhibit context-sensitive factual hallucinations :factual errors that arise within the reasoning pro-cess even though the model actually knows the rel-evant knowledge, but is misled by the surrounding reasoning context, as shown in Figure 1. Specif-ically, if we extract the hallucinated segment and rewrite it as an independent question to query the same model, it can answer correctly; yet within the original reasoning context, it produces a fac-tual mistake. By analyzing hallucination categories during reasoning, we observe that context-sensitive hallucinations account for the overwhelming ma-jority, as shown in Figure 2. To address this issue, we propose Step-Level Self-Consistency Group Relative Policy 
+
+Optimization(SSC-GRPO), a reinforcement-learning-based method to mitigate hallucinations in the model’s reasoning process. In the standard GRPO algorithm, the model performs multiple arXiv:2607.18915v1 [cs.CL] 21 Jul 2026 How many natural num                        
+
+> bers 𝑁 >700 ,exist suc
+> hthat among the numbe
+> rs 3𝑁 ,𝑁 −700 ,𝑁 +
+> 35 ,2𝑁 are exactly two a
+> re four -digit numbers?
+> Complex Reasoning
+> Prompt
+> LLM
+> Step 1:
+> Analyze
+> conditions
+> …
+> Step 2 (Hallucination
+> Point):
+> Given N > 700.
+> …
+> So, for all N > 700, 3N is
+> a four -digit number.
+> Step 3:
+> Analyze it is
+> a four -digit
+> number.
+> Step 4:
+> Flaws based
+> on a four -di
+> git error.
+
+SCENARIO A: Context -Sensitive Factual Hallucination during Complex Reasoning 
+
+> Context -Sensitive
+> Factual Hallucination
+> Subsequent Flaws
+> Chain of Thoughts
+> Final Answer:
+> Incorrect result based
+> on Hallucination
+
+SCENARIO B: Isolated Verification (Knowledge revealed)          
+
+> Isolate factual claim
+> from reasoning context
+> Question: Is it true that for all
+> natural numbers N > 700, 3N is
+> always a four -digit number?
+> Isolated Factual Query Same LLM
+> Answer: No.
+> Counterexample: If N = 3500 (which is > 700),
+> Then 3N = 10500, which is a five -digit number.
+> 3N is four -digit only for 334 ≤𝑁 ≤3333 .
+> Correct Factual Knowledge Successfully Retrieved
+
+Figure 1: Context-Sensitive Factual Hallucination in Large Language Models. During the reasoning process, large language models may produce factual errors that subsequently lead to incorrect final answers, as illustrated in Scenario A. However, when the erroneous part is extracted and reformulated as an independent question, the model is able to answer it correctly, as shown in Scenario B. This phenomenon indicates that the model actually possesses the relevant factual knowledge, but generates hallucinations due to the influence of the reasoning context. 
+
+rollouts and samples a set of outputs; similarly, self-consistency-based hallucination detection also relies on multiple samples. This indicates that GRPO naturally aligns with self-consistency hallucination detection . Furthermore, because the hallucinated content during reasoning is knowledge the model actually possesses, self-consistency detection can locate where hallucinations occur 
+
+without external knowledge , enabling step-level rewards for GRPO. Following the idea of S ELF -CHECK GPT (Manakul et al., 2023), we prompt the model being trained to judge its own consistency and obtain a consistency score, which is used as the reward for each reasoning step. We then rescale rollout-level advantages into step-level reweighted advantages based on step rewards, redistributing per-step advantages while keeping the total sentence-level advantage unchanged. Finally, SSC-GRPO optimizes the model using these redistributed advantages. To validate the effectiveness of our method, we conduct detailed experiments on both hallucination and mathematics tasks. We train models with SSC-GRPO on Qwen3-4B-Base, Qwen3-4B-Instruct and Llama3-8B-Instruct, and compare against a GRPO baseline and other methods. The results show that our approach achieves state-of-the-art performance on both math and hallucination tasks, outperforming the baseline by 1.8%. Furthermore, we analyze consistency dynamics during training and find that consistency steadily increases, while the number of inconsistent steps decreases, provid-ing additional evidence for the effectiveness of our approach. In summary, our contributions are as follows: • We identify context-sensitive factual hallu-cinations in the reasoning process of existing models: even when the model knows the rele-vant facts, it can be influenced by context and make factual errors during reasoning. We fur-ther demonstrate experimentally that this type of hallucination dominates in the reasoning process. • We propose SSC-GRPO , which uses self-consistency to provide step-level rewards for reasoning steps, thereby mitigating context-sensitive factual hallucinations. • We design extensive experiments on both mathematics and hallucination tasks to ver-ify the effectiveness of our method. 
+
+2 Related Work 
+
+2.1 Hallucination in Large Language Models 
+
+As large language models (LLMs) evolve rapidly, hallucination—the generation of fluent yet factu-ally unfounded content—has become a primary concern, severely impeding the reliability and prac-tical deployment of these systems (Zhang et al., 2025b). To detect hallucinations, self-consistency based methods have been proposed. For exam-ple, SelfCheckGPT (Manakul et al., 2023) iden-tifies hallucinated facts by measuring agreement across multiple sampled responses without ex-ternal knowledge. Similarly, Farquhar et al. (2024) quantifies uncertainty by computing en-tropy over semantically clustered outputs, reveal-ing unstable and confabulated generations. Be-yond these, verification-based approaches such as retrieval-augmented or fact-decomposition meth-ods leverage external evidence to detect hallucina-tions, achieving strong performance but requiring additional supervision or tools (Heo et al., 2025). However, with the emergence of reasoning mod-els, hallucinations occurring during multi-step rea-soning have attracted increasing attention, as tradi-tional hallucination detection methods that focus on final outputs often fail to capture errors embed-ded in long and complex reasoning chains (Cheng et al., 2025). Yao et al. (2025) show that reasoning models can be even more prone to hallucination in certain settings, especially due to miscalibrated un-certainty and post-training procedure. Other mech-anistic perspectives analyze hallucination patterns unique to multi-step reasoning and propose tailored detection metrics and reward-shaping frameworks for reasoning paths (Sun et al., 2025). 
+
+2.2 Reinforcement Learning for Hallucination Mitigation 
+
+Reinforcement learning (RL) has recently been explored as an effective paradigm for hallucina-tion mitigation by explicitly optimizing models to-ward factual and reliable behaviors. FSPO (Li and Ng, 2025) introduces step-wise factuality rewards into policy optimization, encouraging correctness throughout the generation process rather than only at the final output. While RFT (Song et al., 2025) leverages reinforcement learning to train models to appropriately refuse answering when uncertain, thereby reducing hallucinations by encouraging cal-ibrated abstention. RLFH (Wen et al., 2025) uses on-policy self-alignment with fine-grained feed-back, decomposing responses into atomic state-ments and converting truth assessments into dense rewards. Additionally, TruthRL (Wei et al., 2025) proposes a ternary reward design that explicitly distinguishes correct answers, hallucinations, and uncertainty, leading to significant reductions in hal-lucination rates across tasks. However, existing approaches largely depend on external knowledge for detection and provide lim-ited insight into how hallucinations arise within multi-step reasoning processes. Therefore, Our work provides a fine-grained analysis of hallucina-tions during reasoning. 
+
+3 Hallucination Analysis in the Reasoning Process of Large Language Models 
+
+3.1 Preliminary 
+
+For a large language model π and a question q,we feed q into the model and obtain a reasoning path with m steps O = o1, o 2, . . . , o m and a final answer A. We assume a hallucination detector H,which determines whether a hallucination occurs in each reasoning step o:
+
+H(o) ∈ { 0, 1} (1) Here, H(o) = 0 indicates that a hallucination occurs, and H(o) = 1 indicates otherwise. 
+
+3.2 Hallucination During Reasoning: Context-Sensitive Factual Hallucinations 
+
+Recently, as large language models (LLMs) con-tinue to improve, the models have exhibited in-creasingly strong foundation capabilities; more-over, under the test-time scaling paradigm, they can tackle complex problems by allocating more inference-time compute and following longer rea-soning trajectories (Wu et al., 2024). However, hallucinations that arise within the reasoning steps can be subtle and may propagate across steps, mak-ing them harder to pinpoint than errors in short-form responses (Yao et al., 2025; Li and Ng, 2025). Moreover, while Chain-of-Thought prompting can reduce hallucination frequency in some cases, it can also obscure the cues relied upon by many existing hallucination detectors, thereby degrad-ing detection effectiveness in long-reasoning set-tings (Cheng et al., 2025). Because the reasoning process of a large lan-guage model typically consists of multiple steps, we conduct a fine-grained analysis of whether hallu-cination occurs at each step. Consider a reasoning path o1, o 2, . . . , o m; The model may hallucinate at step ok, where this step contains a factual error. However, if we rewrite the knowledge point corre-sponding to this hallucinated step into a standalone question and feed it to the model in isolation, as shown in Figure 1, the model can in fact produce a correct, non-hallucinated output: 
+
+H (π (ok | o1: k−1)) = 0 H (π (ˆ ok)) = 1 .
+
+(2) 66.32% 
+
+> 7.12%
+> 3.80%
+> 22.76%
+> Correct
+> Context Conflict
+> Knowledge Gap
+> Context-sensitive Factual
+
+Total Distribution 21.14%  
+
+> 11.28%
+> 67.58%
+> Context Conflict
+> Knowledge Gap
+> Context-sensitive Factual
+
+Hallucination Distribution 
+
+(a) Qwen3-4B-Instruct 81.80% 
+
+> 4.90%
+> 1.10%
+> 12.20%
+> Correct
+> Context Conflict
+> Knowledge Gap
+> Context-sensitive Factual
+
+Total Distribution 26.92%  
+
+> 6.04%
+> 67.03%
+> Context Conflict
+> Knowledge Gap
+> Context-sensitive Factual
+
+Hallucination Distribution 
+
+(b) Qwen3-4B-Thinking 
+
+Figure 2: Analysis of hallucination types in reasoning models. Among all cases where hallucinations occur, context-sensitive factual hallucinations account for the majority—nearly 70%. The other categories of hallu-cinations make up only a small fraction. As model capability improves, knowledge-missing hallucinations become increasingly rare, yet a substantial number of context-sensitive factual hallucinations still persist. 
+
+Here, ˆok denotes the reformulation of the origi-nal ok into an independent question that is fed into the model in isolation. When ok is influenced by the context o1: k−1, the model produces a hallucina-tion; however, when ˆok is provided independently without contextual influence, the model outputs the correct answer. This phenomenon indicates that the model actually possesses the relevant knowledge, but due to the influence of the reasoning context, it hallucinates during the reasoning process. This phenomenon is very common in hallucinations of reasoning models (see Section 3.3 for a detailed empirical analysis). Thus, we define this phenomenon as follows: 
+
+Definition Context-sensitive factual hallucina-tions : the factual hallucination that arises during the model’s reasoning process, wherein the model actually possesses the relevant knowledge but, due to contextual influences during reasoning, produces a factually incorrect output. 
+
+3.3 Empirical Analysis of Reasoning-Process Hallucinations 
+
+To further validate the hypothesis above, we design an experiment to capture this phenomenon. The experimental procedure is as follows: 1. Given a question q, we query the model to ob-tain a reasoning trace O = {o1, o 2, · · · , o m}
+
+and corresponding answer A.2. Then we use a stronger reference model to judge whether each answer A is correct. If A
+
+is correct, we label it as correct .3. If A is incorrect, we ask the reference model to locate the hallucinated step ok in the reason-ing trace O and classify the error type as either 
+
+context conflict or factual hallucination .4. If the error is a factual hallucination , we ask the reference model to rewrite the hallucinated fact at step ok into a standalone question, and then query the target model with this question in isolation. If the model still fails to answer correctly, we attribute the error to a knowl-edge gap . Otherwise, if the model answers correctly in isolation, we conclude that the original error is a context-sensitive factual hallucination .Through the steps above, we categorize hallu-cinations in the model’s reasoning process into three types: Context conflict , Knowledge gap ,and Context-sensitive factual . In practice, we evaluate Qwen3-4B-Instruct (Yang et al., 2025) and Qwen3-4B-Thinking by sampling 2500 examples from the BOBA (inclusionAI, 2025) dataset and using Qwen3-235B-A22B as the reference model. The results are shown in Figure 2. We ob-serve that among the hallucinated samples, context-sensitive factual hallucinations account for nearly 70%. As model capabilities improve, hallucina-tions caused by knowledge gaps become less fre-quent. This trend is especially pronounced for reasoning models such as Qwen3-4B-Thinking, whose accuracy is substantially higher than that of standard instruct models, resulting in very few knowledge-gap hallucinations. Nevertheless, a large number of context-sensitive factual hallucina-tions still remain. Moreover, to further substantiate the conclusions above, we design a set of contextual data evalua-tion experiments in Appendix D. The results still validate the correctness of our hypothesis. Step Weight               
+
+> 𝒘 𝟏 ,𝒌 𝒌 $𝟏
+> 𝒏 𝟏
+> Step Weight
+> 𝒘 𝟏 ,𝒌 𝒌 $𝟏
+> 𝒏 𝟏
+> 𝒐 𝑮 ,𝟐 𝒐 𝑮 ,𝒏 𝒈
+> …
+> Step Weight
+> 𝒘 𝟏 ,𝒌 𝒌 $𝟏
+> 𝒏 𝟏
+> Query
+> (𝑶 𝟏 ):
+> (𝑶 𝟐 ):
+> (𝑶 𝑮 ):
+> 𝒐 𝟏 ,𝟏 𝒐 𝟏 ,𝟐 𝒐 𝟏 ,𝒏 𝟏
+> …
+> …
+> Answer 1
+> 𝒐 𝟐 ,𝟏 𝒐 𝟐 ,𝟐 𝒐 𝟐 ,𝒏 𝟐 …Answer 2
+> (Correct ✅)
+> 𝒐 𝑮 ,𝟏
+> Answer 𝐺
+> (Incorrect ❌)
+
+MACRO: RL Generation & Standard Outcome Assessment     
+
+> Policy Model
+> 𝑅 (
+> 𝑅 )
+> 𝑅 *
+> …
+> …
+> 𝐴 (
+> 𝐴 )
+> 𝒈 Reasoning Paths (Rollouts)
+> 𝐴 *
+> 𝑨 𝟏 𝒘 𝟏 ,𝒌 𝒌 $𝟏
+> 𝒏 𝟏
+> 𝑨 𝟐 𝒘 𝟐 ,𝒌 𝒌 $𝟏
+> 𝒏 𝟐
+> Outcome
+> Reward
+> 𝑨 𝑮 𝒘 𝑮 ,𝒌 𝒌 $𝟏
+> 𝒏 𝑮
+
+MICRO: Self -Judge Step Reward Calculation        
+
+> 𝒐 𝟏 ,𝒌 𝒌 $𝟏
+> 𝒏 𝟏
+> vs. Full Path 𝑂 )
+> (Correct Answer ✅)
+> vs. Full Path 𝑂 *
+> (Incorrect Answer ❌)
+> Standard
+> Advantage
+> Scaled Advantage
+> for Each Step
+> Consistency Score
+> ×High Weight
+> (Correct)
+> Consistency Score
+> ×Low Weight
+> (Incorrect)
+
+Σ
+
+> Policy Model
+> acting as Judge
+> Step Reward
+> 𝒓 𝟏 ,𝒌
+> 𝒔𝒄
+> 𝒌 $𝟏
+> 𝒏 𝟏
+
+×
+
+> Cross -Rollout Self -Consistency Check
+
+×
+
+×
+
+> Rollout -
+> Inside
+> Scale
+> …
+> …
+> …
+> …
+
+Figure 3: Overview of Our Method. We first follow the standard GRPO procedure to sample a group of rollouts. Then, for each reasoning step in each rollout, SSC-GRPO computes a consistency score with respect to other rollouts, which serves as a step-level reward. Based on these step-level rewards, we rescale the rollout-level advantages by allocating higher advantages to reasoning steps with higher consistency scores. Finally, SSC-GRPO optimizes the policy model using the rescaled advantages. 
+
+4 Method: Step-Level Self-Consistency Group Relative Policy Optimization 
+
+To address the hallucination issue described above, we propose our method, Step-level Self-
+
+Consistency Group Relative Policy Optimization (SSC-GRPO). An overview of our approach is il-lustrated in Figure 3. 
+
+4.1 Background: GRPO 
+
+Group Relative Policy Optimization (GRPO) is an RL algorithm proposed by Deepseek-math (Shao et al., 2024), aiming to estimate advantages without training a separate critic model. For each prompt 
+
+q, GRPO samples a group of outputs from the old policy πold and assigns each output a reward score 
+
+{Ri}. GRPO then constructs the advantage using within-group relative rewards, where the advantage is defined as: 
+
+Ai = Ri − mean( {Ri}Gi=1 )std( {Ri}Gi=1 ) . (3) GRPO then performs policy updates using a PPO-style clipped surrogate objective, together with a KL regularization term to a reference policy πref 
+
+for stability: 
+
+JGRPO (θ) = Eq, {oi}∼ πθold 
+
+"
+
+1
+
+G
+
+GX
+
+i=1 
+
+min 
+
+
+
+ρi(θ) Ai,
+
+clip( ρi(θ), 1 − ϵ, 1 + ϵ) Ai
+
+
+
+− β D KL (πθ∥πref )
+
+#
+
+.
+
+(4) where ρi(θ) = πθ (oi|q)
+
+πθold (oi|q) , ϵ is the clipping parame-ter, and β controls the KL penalty. 
+
+4.2 Self-Consistency-Based Step-Level Reward 
+
+In standard GRPO, for a given input, the policy is rolled out multiple times to obtain a group of sam-pled outputs. Meanwhile, self-consistency-based hallucination detection methods likewise rely on multiple stochastic generations from the model and quantify agreement across these samples to esti-mate consistency. Therefore, the GRPO training setting is highly compatible with self-consistency. Moreover, as discussed in Section 3, hallucinations that occur during multi-step reasoning are often 
+
+context-sensitive factual hallucinations : the model actually possesses the relevant knowledge, yet pro-duces factual errors due to contextual interference. This property enables us to detect such hallucinated segments without relying on external knowledge sources . So, by leveraging self-consistency signals across rollouts, we can effectively identify the steps that exhibit context-sensitive factual hallucinations and consequently assign step-level rewards to guide policy optimization. Specifically, for each rollout oi, we decompose it into ni reasoning steps {oi, 1, . . . , o i,n i }. For each step oi,k , we compute its self-consistency score against the reasoning parts of other rollouts in the same group (excluding the final answer). Following the self-consistency checking scheme in SelfCheck-GPT (Manakul et al., 2023), we use an NLI-style prompt to ask the training model πold to determine whether the step is entailment , contradiction , or 
+
+neutral with respect to another rollout: 
+
+SC i,k ←j = NLI πold (oj , o i,k ) ∈ { +1 , 0, −1},
+
+(5) where +1 , 0, and −1 correspond to entailment ,
+
+neutral , and contradiction , respectively. The full prompt can be found in the Appendix I. After obtaining the consistency signals against all other rollouts, we compute the final step-level consistency reward by a weighted aggregation: 
+
+rsc  
+
+> i,k
+
+= X 
+
+> j̸=i
+
+αj · SC i,k ←j . (6) Here, the weight αj is determined by the outcome reward of the referenced rollout oj . If Rj > 0, the referenced rollout is considered correct and thus receives a higher weight; if Rj ≤ 0, it is considered incorrect and receives a lower weight: 
+
+αj =
+
+(
+
+α+, Rj > 0
+
+α−, Rj ≤ 0 where α+ > α −. (7) 
+
+4.3 Step Advantage Rescaling 
+
+After obtaining the step-level self-consistency re-wards, we incorporate them into GRPO by re-scaling the advantage of each step according to rsc 
+
+> i,k
+
+.Inspired by the method in Zhang et al. (2025a), First, for each rollout, we compute a trajectory-level reward using the reward model, and then derive the trajectory-level advantage for each oi
+
+following Equation 3. Next, within each rollout, we perform a step-level advantage redistribution by computing a per-step advantage coefficient: 
+
+wi,k = clip 
+
+
+
+1 + sgn( Ai)λ rsc  
+
+> i,k
+
+− mean( {rsc 
+
+> i,k
+
+}ni
+
+> k=1
+
+)std( {rsc 
+
+> i,k
+
+}ni
+
+> k=1
+
+)
+
+, 1 − ϵc, 1 + ϵc
+
+
+
+(8) Here, sgn( ·) denotes the sign function. When 
+
+Ai is positive, sentences with higher consistency receive larger weights; when Ai is negative, sen-tences with higher consistency receive smaller weights, so that reasoning steps with larger rj,k 
+
+are assigned larger advantages. The parameter λ
+
+is the scaling factor and ϵ is the clipping coeffi-cient that prevent excessively large reallocation magnitudes from harming training stability. With Equation 8, we redistribute the advantage across sentences while preserving the total advantage of each rollout. 
+
+4.4 Reinforcement Learning Formulation 
+
+We now formalize the overall training objective of 
+
+SSC-GRPO . Given a reference model πold and a reference model πref , based on G rollouts {oi}Gi=1 
+
+for input q, the objective of SSC-GRPO is to op-timize the policy πθ by maximizing the following objective: 
+
+JSSC −GRPO (θ) = Eq, {oi}∼ πθold 
+
+"
+
+1
+
+G
+
+> G
+
+X
+
+> i=1
+
+1
+
+TiTiX
+
+> t=1
+
+min 
+
+
+
+ρi,t (θ) Ai wi,k (t), clip  ρi,t (θ), 1 − ϵ, 1 + ϵ
+
+Ai wi,k (t)
+
+
+
+− β D KL (πθ∥πref )
+
+#
+
+,
+
+(9) where k(t) denotes the index of the reasoning step to which token t belongs. and ρi,t (θ) =   
+
+> πθ(oi,t |q,o i,<t )
+> πθold (oi,t |q,o i,<t )
+
+.
+
+5 Experiment 
+
+In this section, we describe our experimental setup, report the main results, and provide further analysis. 
+
+5.1 Experimental Setup Datasets and Benchmarks. Since our goal is to mitigate hallucinations in long reasoning while pre-serving general capabilities, we evaluate on both mathematical reasoning and hallucination bench-marks. Overall, our experimental protocol largely follows the setup in FSPO (Li and Ng, 2025). For hallucination-oriented training, we use a 2K sub-set of HotpotQA (Yang et al., 2018) as the train-ing set. For mathematical training, we mix 200 high-quality samples from the BOBA (inclusionAI, 2025) dataset with 8,000 samples from the Simple-RL (Zeng et al., 2025) dataset. For evaluation, we test math on GSM8K (Cobbe et al., 2021), MATH-500 (Hendrycks et al., 2021), AIME-24 (Zhang and Math-AI, 2024), and AIME-25 (Zhang and Math-AI, 2025). We report Pass@1 accuracy for GSM8K and MATH-500. For AIME-24 and AIME-25, since Pass@1 accuracy can ex-hibit high variance at test time, we report Pass@32 accuracy for improved stability. For hallucination-related evaluation, we validate on HaluEval(QA Model Method Math Hallucination Avg.                                                                                                                               
+
+> GSM8K MATH-500 AIME24 AIME25 HaluEval TruthFulQA HotpotQA Qwen3-4B-Base Vanilla 87.60 54.40 16.67 16.67 48.00 18.54 9.06 35.85 GRPO 92.64 73.40 33.33 26.67 51.08 19.58 9.72 43.77 FSPO 90.98 72.00 30.00 30.00 54.32 18.72 10.94 43.85 SEED-GRPO 90.44 73.00 36.67 36.67 53.30 18.24 9.94 45.46
+> SSC-GRPO 92.03 74.60 36.67 43.33 52.42 21.17 10.58 47.26
+> Qwen3-4B-Ins Vanilla 85.67 78.00 60.00 53.33 65.00 45.90 16.40 57.75 GRPO 89.76 84.80 73.33 60.00 69.80 54.46 17.80 64.27 FSPO 90.14 83.60 70.00 56.67 73.42 49.08 18.73 63.09 SEED-GRPO 89.84 85.00 73.33 66.67 69.26 52.26 18.54 64.98
+> SSC-GRPO 90.60 85.40 73.33 63.33 71.12 55.32 19.46 65.99
+> Llama3-8B-Ins Vanilla 81.20 44.60 16.67 0.00 65.34 35.50 15.72 37.00 GRPO 84.91 54.00 23.33 6.67 69.80 40.27 23.78 43.25 FSPO 83.99 52.80 23.33 10.00 68.90 41.13 25.22 43.62 SEED-GRPO 85.28 55.60 26.67 6.67 69.40 40.64 23.88 44.01
+> SSC-GRPO 84.82 55.20 30.00 10.00 71.36 42.84 24.34 45.51
+
+Table 1: The Main results of our methods in math and hallucination benchmarks. For AIME24 and AIME25, we report Pass@32 accuracy, while Pass@1 accuracy is used for the other benchmarks. The best results are highlighted in bold and the second best results are highlighted in underline .The SSC-GRPO method achieves state-of-the-art performance on Qwen3-4B Base, Qwen3-4B-Instruct and Llama3-8B-Instruct, outperforming the baseline by an average of 1.80%, 1.01% and 1.50%, respectively. 
+
+task) (Li et al., 2023), TruthfulQA (Lin et al., 2022), and the test set of HotpotQA (Yang et al., 2018) All evaluations were conducted twice, and we report the average results. . 
+
+Models. We choose three base models: Qwen3-4B-base (Yang et al., 2025), Qwen3-4B-Instruct (Yang et al., 2025) and Llama3-8B-Instruct (Grattafiori et al., 2024). On top of each base model, we apply our method as well as competing baselines. 
+
+Baselines. We compare SSC-GRPO against the following methods: Vanilla : the original base model without RL fine-tuning; GRPO (Shao et al., 2024): the standard group relative policy optimiza-tion algorithm; FSPO (Li and Ng, 2025): the method factuality-aware step-wise policy optimiza-tion, which assigns step-level rewards using exter-nal knowledge to guide policy optimization; SEED-GRPO (Chen et al., 2025): which reweights ad-vantages across trajectories using semantic entropy. All the aforementioned methods are reproduced un-der identical settings on the same dataset, ensuring a consistent experimental environment. 
+
+Implementation Details. We implement and train all methods using the verl (Sheng et al., 2024) framework. The full hyperparameter settings are provided in Appendix A.             
+
+> Method Correct Knowledge Gap Context Conflict Context Sensitive
+> Qwen3-4B-Ins 66.32% 3.80% 7.12% 22.76% SSC-GRPO 72.24% 3.18% 7.68% 16.90%
+
+Table 2: Hallucination type after training. After ap-plying SSC-GRPO, the proportion of context-sensitive factual hallucinations decreases significantly. 
+
+5.2 Main Results 
+
+Our main experimental results are shown in Ta-ble 1. On Qwen3-4B-Base, Qwen3-4B-Instruct and Llama3-8B-Instruct, our method, SSC-GRPO, consistently outperforms the baseline and other competing approaches, achieving state-of-the-art performance. On Qwen3-4B-Base, SSC-GRPO improves over the baseline by 1.80% on average. On Qwen3-4B-Instruct SSC-GRPO exceeds the baseline by 1.01%, while on Llama3-8B-Instruct, it exceeds the baseline by 1.50%. Although SEED-GRPO outperforms our method on AIME25 with Qwen3-4B-Instruct, we still achieve better average performance across math-ematical benchmarks. In particular, on Qwen3-4B-Base, our method surpasses other approaches by 6.67%. For hallucination benchmarks, FSPO achieves higher performance than SSC-GRPO on HaluEval; however, it relies on external knowledge bases to provide reward signals. In contrast, our method requires only the model’s internal knowl-edge and still outperforms other approaches on the overall hallucination benchmarks. These results demonstrate the effectiveness of SSC-GRPO. 0 50 100 150 200 250 
+
+> Training Step
+> 20%
+> 30%
+> 40%
+> 50%
+> 60%
+> 70%
+> 80%
+> Rate
+> Consistency
+> Inconsistency
+
+Figure 4: Consistency Ratio over Training. As training progresses, the proportion of consistent steps steadily increases while the proportion of inconsistent steps decreases, demonstrating that hallucinations are gradually reduced during training. 
+
+Model Accuracy F1-score 
+
+Qwen3-4B-Base 83.30 82.94 Qwen3-4B-Ins 92.18 92.02 
+
+Table 3: Evaluation of the model’s NLI capability. 
+
+Both Qwen3-4B Base and Qwen3-4B-Instruct achieve high accuracy on the math NLI task, demonstrating that the models possess strong NLI reasoning capabilities. 
+
+5.3 Can SSC-GRPO mitigate context-sensitive factual hallucination? 
+
+In Section 3, we pointed out that most existing hallucinations are context-sensitive factual hallu-cinations. To verify whether our method can ef-fectively mitigate this type of hallucination, we ap-plied the hallucination classification method from Section 3.3 to the model after SSC-GRPO training. The results are shown in Table 2. We observe that after applying our method, the proportion of context-sensitive factual hallucina-tions decreases significantly, indicating that SSC-GRPO can effectively mitigate this issue. 
+
+5.4 Step Consistency Over the Process of Training 
+
+During training, we compute the consistency of each reasoning step with respect to other rollouts. We expect that, as training progresses, reasoning consistency will increase, thereby reducing hallu-cinations. To verify this hypothesis, we track the proportion of consistent and inconsistent steps over the course of training. As shown in Figure 4, the proportion of con-sistent steps gradually increases while the propor-tion of inconsistent steps decreases. This indicates that reinforcement learning progressively enhances reasoning consistency and reduces hallucinations, which in turn improves the model’s reasoning capa-bility and leads to performance gains across bench-marks. 
+
+5.5 Accuracy of Self-consistency Judge 
+
+Since our method requires the model to assess self-consistency to provide rewards, incorrect judg-ments would result in erroneous reward signals and could severely impair training. Therefore, it is crucial to verify that the model is capable of performing self-consistency evaluation reliably. Because the judgments made during training do not have ground-truth labels, we cannot directly measure their correctness in the training process. Instead, as our consistency evaluation is imple-mented via an NLI-based prompt, we assess the model’s judgment accuracy using the same prompt on a standard NLI benchmark. Specifically, we evaluate the model on the MathNLI (de Paiva et al., 2025) dataset. We report several key metrics, as shown in Table 3. As shown in the table above, both Qwen3-4B Base and Qwen3-4B-Instruct achieve high accu-racy on the math NLI classification task. For Qwen3-4B-Instruct, the accuracy even reaches 92%. This indicates that the models possess strong NLI discrimination capability and also supports the reasonableness of using the model itself for consistency judgment. 
+
+6 Conclusion 
+
+In this paper, we conduct a fine-grained analy-sis of hallucinations in the reasoning process and identify context-sensitive factual hallucination : the model actually possesses the relevant knowledge, yet produces factual errors due to interference from the reasoning context. Through empirical analysis, we show that this type of hallucination accounts for the majority of hallucinations dur-ing reasoning. To address this issue, we pro-pose Step-Level Self-Consistency Group Relative 
+
+Policy Optimization(SSC-GRPO), which leverages self-consistency to provide step-level rewards for reasoning trajectories. Experiments on both mathe-matical and hallucination benchmarks demonstrate the effectiveness of SSC-GRPO. Our work offers a new perspective on mitigating hallucinations in the reasoning process. Limitations 
+
+Due to resource constraints, SSC-GRPO has only been evaluated on the Qwen and Llama model fam-ilies at the 4B and 8B scales. In addition, although SSC-GRPO is naturally compatible with GRPO, computing self-consistency still introduces addi-tional overhead, which slows down training. 
+
+Ethical Considerations 
+
+We utilized generative AI to facilitate code debug-ging and to refine the writing style with grammati-cal errors. 
+
+References 
+
+Josh Achiam, Steven Adler, Sandhini Agarwal, Lama Ahmad, Ilge Akkaya, Florencia Leoni Aleman, Diogo Almeida, Janko Altenschmidt, Sam Altman, Shyamal Anadkat, and 1 others. 2023. Gpt-4 techni-cal report. arXiv preprint arXiv:2303.08774 .Samuel R. Bowman, Gabor Angeli, Christopher Potts, and Christopher D. Manning. 2015. A large anno-tated corpus for learning natural language inference. In Proceedings of the 2015 Conference on Empiri-cal Methods in Natural Language Processing , pages 632–642, Lisbon, Portugal. Association for Compu-tational Linguistics. Minghan Chen, Guikun Chen, Wenguan Wang, and Yi Yang. 2025. Seed-grpo: Semantic entropy en-hanced grpo for uncertainty-aware policy optimiza-tion. arXiv preprint arXiv:2505.12346 .Jiahao Cheng, Tiancheng Su, Jia Yuan, Guoxiu He, Ji-awei Liu, Xinqi Tao, Jingwen Xie, and Huaxia Li. 2025. Chain-of-thought prompting obscures halluci-nation cues in large language models: An empirical evaluation. arXiv preprint arXiv:2506.17088 .Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz Kaiser, Matthias Plappert, Jerry Tworek, Jacob Hilton, Reiichiro Nakano, Christopher Hesse, and John Schulman. 2021. Training verifiers to solve math word prob-lems. arXiv preprint arXiv:2110.14168 .Valeria de Paiva, Qiyue Gao, Hai Hu, Pavel Kovalev, Yikang Liu, Lawrence S Moss, and Zhiheng Qian. 2025. Math natural language inference: this should be easy! In Proceedings of the 14th Joint Conference on Lexical and Computational Semantics (* SEM 2025) , pages 179–188. Sebastian Farquhar, Jannik Kossen, Lorenz Kuhn, and Yarin Gal. 2024. Detecting hallucinations in large language models using semantic entropy. Nature ,630(8017):625–630. Aaron Grattafiori, Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey, Abhishek Kadian, Ahmad Al-Dahle, Aiesha Letman, Akhil Mathur, Alan Schelten, Alex Vaughan, and 1 others. 2024. The llama 3 herd of models. arXiv preprint arXiv:2407.21783 .Daya Guo, Dejian Yang, Haowei Zhang, Junxiao Song, Ruoyu Zhang, Runxin Xu, Qihao Zhu, Shi-rong Ma, Peiyi Wang, Xiao Bi, and 1 others. 2025. Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning. arXiv preprint arXiv:2501.12948 .Dan Hendrycks, Collin Burns, Saurav Kadavath, Akul Arora, Steven Basart, Eric Tang, Dawn Song, and Ja-cob Steinhardt. 2021. Measuring mathematical prob-lem solving with the math dataset. arXiv preprint arXiv:2103.03874 .Sangwoo Heo, Sungwook Son, and Hyunwoo Park. 2025. Halucheck: Explainable and verifiable automa-tion for detecting hallucinations in llm responses. Ex-pert Systems with Applications , 272:126712. inclusionAI. 2025. Areal-boba-data. https: //huggingface.co/datasets/inclusionAI/ AReaL-boba-Data .Ziwei Ji, Nayeon Lee, Rita Frieske, Tiezheng Yu, Dan Su, Yan Xu, Etsuko Ishii, Ye Jin Bang, Andrea Madotto, and Pascale Fung. 2023. Survey of hal-lucination in natural language generation. ACM com-puting surveys , 55(12):1–38. Junyi Li, Xiaoxue Cheng, Wayne Xin Zhao, Jian-Yun Nie, and Ji-Rong Wen. 2023. Halueval: A large-scale hallucination evaluation benchmark for large language models. arXiv preprint arXiv:2305.11747 .Junyi Li and Hwee Tou Ng. 2025. Reasoning mod-els hallucinate more: Factuality-aware reinforcement learning for large reasoning models. In The Thirty-ninth Annual Conference on Neural Information Pro-cessing Systems .Ruosen Li, Ziming Luo, and Xinya Du. 2024. Fg-prm: Fine-grained hallucination detection and mitigation in language model mathematical reasoning. arXiv preprint arXiv:2410.06304 .Stephanie Lin, Jacob Hilton, and Owain Evans. 2022. Truthfulqa: Measuring how models mimic human falsehoods. In Proceedings of the 60th annual meet-ing of the association for computational linguistics (volume 1: long papers) , pages 3214–3252. Michael Luo, Sijun Tan, Justin Wong, Xiaoxiang Shi, William Tang, Manan Roongta, Colin Cai, Jeffrey Luo, Tianjun Zhang, Erran Li, Raluca Ada Popa, and Ion Stoica. 2025. Deepscaler: Surpassing o1-preview with a 1.5b model by scaling rl. Notion Blog. Potsawee Manakul, Adian Liusie, and Mark Gales. 2023. Selfcheckgpt: Zero-resource black-box hallucination detection for generative large language models. In 
+
+Proceedings of the 2023 conference on empirical methods in natural language processing , pages 9004– 9017. Zhihong Shao, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song, Xiao Bi, Haowei Zhang, Mingchuan Zhang, YK Li, Yang Wu, and 1 others. 2024. Deepseekmath: Pushing the limits of mathematical reasoning in open language models. arXiv preprint arXiv:2402.03300 .Guangming Sheng, Chi Zhang, Zilingfeng Ye, Xibin Wu, Wang Zhang, Ru Zhang, Yanghua Peng, Haibin Lin, and Chuan Wu. 2024. Hybridflow: A flexible and efficient rlhf framework. arXiv preprint arXiv: 2409.19256 .Freda Shi, Xinyun Chen, Kanishka Misra, Nathan Scales, David Dohan, Ed Chi, Nathanael Schärli, and Denny Zhou. 2023. Large language models can be easily distracted by irrelevant context. arXiv preprint arXiv:2302.00093 .Linxin Song, Taiwei Shi, and Jieyu Zhao. 2025. The hallucination tax of reinforcement finetuning. arXiv preprint arXiv:2505.13988 .Zhongxiang Sun, Qipeng Wang, Haoyu Wang, Xiao Zhang, and Jun Xu. 2025. Detection and mitigation of hallucination in large reasoning models: A mecha-nistic perspective. arXiv preprint arXiv:2505.12886 .Gemini Team, Petko Georgiev, Ving Ian Lei, Ryan Burnell, Libin Bai, Anmol Gulati, Garrett Tanzer, Damien Vincent, Zhufeng Pan, Shibo Wang, and 1 others. 2024. Gemini 1.5: Unlocking multimodal understanding across millions of tokens of context. 
+
+arXiv preprint arXiv:2403.05530 .Zhepei Wei, Xiao Yang, Kai Sun, Jiaqi Wang, Rulin Shao, Sean Chen, Mohammad Kachuee, Teja Golla-pudi, Tony Liao, Nicolas Scheffer, and 1 others. 2025. Truthrl: Incentivizing truthful llms via reinforcement learning. arXiv preprint arXiv:2509.25760 .Xueru Wen, Jie Lou, Xinyu Lu, Yuqiu Ji, Xinyan Guan, Yaojie Lu, Hongyu Lin, Ben He, Xianpei Han, De-bing Zhang, and 1 others. 2025. On-policy self-alignment with fine-grained knowledge feedback for hallucination mitigation. In Findings of the Associa-tion for Computational Linguistics: ACL 2025 , pages 5215–5231. Yangzhen Wu, Zhiqing Sun, Shanda Li, Sean Welleck, and Yiming Yang. 2024. Inference scaling laws: An empirical analysis of compute-optimal inference for problem-solving with language models. arXiv preprint arXiv:2408.00724 .An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao, Chengen Huang, Chenxu Lv, and 1 others. 2025. Qwen3 technical report. arXiv preprint arXiv:2505.09388 .Zhilin Yang, Peng Qi, Saizheng Zhang, Yoshua Bengio, William Cohen, Ruslan Salakhutdinov, and Christo-pher D Manning. 2018. Hotpotqa: A dataset for diverse, explainable multi-hop question answering. In Proceedings of the 2018 conference on empiri-cal methods in natural language processing , pages 2369–2380. Zijun Yao, Yantao Liu, Yanxu Chen, Jianhui Chen, Jun-feng Fang, Lei Hou, Juanzi Li, and Tat-Seng Chua. 2025. Are reasoning models more prone to halluci-nation? arXiv preprint arXiv:2505.23646 .Weihao Zeng, Yuzhen Huang, Qian Liu, Wei Liu, Ke-qing He, Zejun Ma, and Junxian He. 2025. Simplerl-zoo: Investigating and taming zero reinforcement learning for open base models in the wild. In Second Conference on Language Modeling .Yaocheng Zhang, Haohuan Huang, Zijun Song, Yuan-heng Zhu, Qichao Zhang, Zijie Zhao, and Dongbin Zhao. 2025a. Criticsearch: Fine-grained credit as-signment for search agents via a retrospective critic. 
+
+arXiv preprint arXiv:2511.12159 .Yifan Zhang and Team Math-AI. 2024. American invi-tational mathematics examination (aime) 2024. Yifan Zhang and Team Math-AI. 2025. American invi-tational mathematics examination (aime) 2025. Yue Zhang, Yafu Li, Leyang Cui, Deng Cai, Lemao Liu, Tingchen Fu, Xinting Huang, Enbo Zhao, Yu Zhang, Yulong Chen, and 1 others. 2025b. Siren’s song in the ai ocean: A survey on hallucination in large language models. Computational Linguistics , pages 1–46. 
+
+A Implementation Details of our method 
+
+The detailed hyperparameter settings are shown in Table 4. Our training is conducted on 8 Nvidia H20 GPUs, with full parameter optimization and gradient checkpointing. 
+
+Table 4: The hyperparameter of our experiments 
+
+Parameter Value 
+
+Training batch size 32 Learning rate 1e-6 Training epochs 2Rollout number 8Rollout temperature 1.0 KL loss coefficient β 0.001 Clip ratio 0.2 Positive reward factor α+ 0.8 Negetive reward factor α− 0.2 Rescaled factor λ 0.05 Rescaled clip ratio ϵc 0.2 Parameter GSM8K Math-500 AIME24 AIME25 w/o λ and ϵc 85.06 76.00 60.00 50.00                     
+
+> λ= 0 .2,ϵc= 0 .288.86 82.80 66.67 60.00
+> λ= 0 .05 ,ϵc= 0 .190.52 83.60 70.00 63.33
+> λ= 0 .05 ,ϵc= 0 .290.60 85.40 73.33 63.33
+
+Table 5: Ablation study of the factor λ and ϵc in Qwen3-4B-Instruct. We choose λ = 0 .05 and ϵc =0.2 as the final hyperparameters.             
+
+> Judge Model Correct Context Conflict Knowledge Gap Context-Sens. Factual
+> Qwen3-235B-A22B 66.32% 7.12% 3.80% 22.76% GPT-OSS-120B 64.40% 10.20% 4.40% 21.00%
+
+Table 6: Hallucination taxonomy distributions produced by two judge models on the same sampled Qwen3-4B-Instruct reasoning traces. Both judges support the same qualitative conclusion. 
+
+B Effect of the Factor λ and ϵc
+
+In Equation 8, we apply both scaling and clipping to the coefficient w. To examine the impact of this coefficient, we conduct ablation studies over different values of λ and ϵc. Specifically, we train the Qwen3-4B-Instruct model on a mathematical dataset using various parameter settings, and the results are shown in Table 5. We find that removing scaling and clipping causes the training process to collapse. Larger values of λ or smaller values of ϵc
+
+also negatively affect training stability. Therefore, we ultimately choose λ = 0 .05 and ϵc = 0 .2 as the final hyperparameters. 
+
+C Cross-Model Validation of Hallucination Classification 
+
+In the main analysis, we use Qwen3-235B-A22B as the reference model to identify and classify hallu-cinations in reasoning traces. To examine whether the resulting taxonomy distribution is sensitive to the choice of the judge model, we repeat the analy-sis on the same sampled Qwen3-4B-Instruct reason-ing traces using GPT-OSS-120B as an alternative judge. As shown in Table 6, the two judge models yield similar aggregate distributions. In particular, context-sensitive factual hallucinations account for 22.76% and 21.00% of all examples under Qwen3-235B-A22B and GPT-OSS-120B, respectively. De-spite differences in individual category proportions, context-sensitive factual hallucination remains the most frequent error category under both judges. Therefore, using different large-scale judge mod-els leads to the same qualitative observation, sug-gesting that the hallucination taxonomy analysis is robust to the choice of the reference model. This consistency across independent judge models pro-vides additional evidence that LLM-based judg-ing offers a meaningful and reliable approach to hallucination-type analysis. 
+
+D Further Analysis: Context-Augmented Data Evaluation 
+
+To further substantiate the conclusions above, we design a set of contextual data evaluation experi-ments. Since most existing benchmarks evaluate models on single, independent questions, we aim to better approximate scenarios that arise during multi-step reasoning. Inspired by the idea in Shi et al. (2023), we apply context-form data augmenta-tion to the original questions: we append additional constraints from the same domain that do not affect the original solution, i.e., extra conditions that are irrelevant to answering the question. With such per-turbations, the model’s process of solving the ques-tion becomes analogous to solving intermediate sub-questions during a reasoning procedure. The augmented examples are shown in Appendix E. In practice, we perform contextual data aug-mentation on subsets of GSM8K (Cobbe et al., 2021), MATH (Hendrycks et al., 2021), and Deep-Scaler (Luo et al., 2025). Using a prompt (see Ap-pendix I), we instruct Qwen3-235B-A22B (Yang et al., 2025) to perturb the original questions ac-cording to our requirements while ensuring that the solution process and final answer remain un-changed. We then evaluate Qwen3-4B-Instruct and Qwen3-4B-Thinking on both the original bench-marks and the augmented versions, and compare their accuracies. 
+
+Table 7: Results of Context-Augmented Data Evalua-tion. After augmentation, both Qwen3-4B-Instruct and Qwen3-4B-Thinking show a significant performance drop. For the relatively simple GSM8K benchmark, the decline is the most severe, reaching 14%. This indi-cates that once subjected to contextual perturbations, the models’ reasoning on the original questions is indeed affected. This corroborates the existence of context-sensitive factual hallucinations.                           
+
+> Model GSM8K Math-500 DeepscaleR
+> Origin Augment Origin Augment Origin Augment Qwen3-4B-Instruct 89.69 75.13 78.00 71.20 59.60 51.20
+> ∆-14.35% -6.80% -8.40% Qwen3-4B-Thinking 94.76 81.50 86.20 80.20 63.90 57.70
+> ∆-13.26% -6.00% -6.20%
+
+We observe that across all benchmarks, the ac-curacy on the augmented data drops by nearly 10% relative to the original questions. On the simpler GSM8K benchmark, the degradation is even more pronounced. These results indicate that, for current models, irrelevant contextual information can in-deed interfere with the reasoning needed to solve the original problem, providing further evidence for the existence of context-sensitive factual hallu-cinations. 
+
+E Example of Augmented Data 
+
+In Section D, we perform data augmentation on the original benchmark using prompts, introducing additional conditions that commonly appear in rea-soning contexts but do not affect the final answer. Figure 5 presents a comparison example before and after augmentation. Although extra conditions are added, these conditions are redundant and irrele-vant to the actual solution. Nevertheless, the model produces an incorrect answer, indicating that it is indeed influenced by the reasoning context. Origin Question     
+
+> Question: Tom bought a CD for
+> $4, and a headphone set. In total,
+> he paid $48. How many more CDs
+> would Tom have been able to buy
+> if he had decided not to buy the
+> headphone set?
+> Answer: 11
+> Question: Tom bought a CD for $4, and a
+> headphone set. Earlier that day, he had
+> considered buying a different brand of
+> headphones that was $8 more expensive, but
+> ultimately decided against it. He also
+> remembered that last month, the CD he
+> purchased was on sale for $3, but today the
+> price had returned to $4. In total, he paid $48.
+> How many more CDs would Tom have been
+> able to buy if he had decided not to buy the
+> headphone set?
+> Answer: 10
+> Augmented Question
+
+Figure 5: Example of Augmented benchmarks. For the original problem, the model produces the correct answer, 11. However, for the augmented version, the model is misled by the additional context and outputs 10, which is incorrect. 
+
+F SSC-GRPO Perfermance in Augmented Benchmarks 
+
+In Section D, we perform data augmentation on several benchmarks and observe that model per-formance drops significantly on the augmented datasets. We also evaluate SSC-GRPO on these augmented benchmarks, and the results are shown in the Table 8. Although performance still de-creases after training with our method, SSC-GRPO consistently outperforms the original model and exhibits a smaller performance drop. Therefore, this experiment further provides indirect evidence of the effectiveness of our method. 
+
+Table 8: Augmented benchmarks for our method 
+
+Model GSM8K Math-500 
+
+Origin Augment Origin Augment Qwen3-4B-Instruct 89.69 75.13 78.00 71.20 
+
+∆ -14.35% -6.80% SSC-GRPO 90.60 79.07 85.40 81.00 
+
+∆ -11.53% -4.40%                  
+
+> Model Acc Entailment Precision Contradiction Precision CER
+> (+1 → − 1,−1→+1 )
+> FAR
+> (0→ ± 1)Qwen3-4B-Base 53.60 94.79 94.81 0.10% 0.36% Qwen3-4B-Ins 87.45 94.21 91.62 0.30% 1.58%
+
+Table 9: Evaluation of the model’s NLI capability. 
+
+Critical Error Rate (CER) represents the proportion of entailment and contradiction predictions that are re-versed, while False Activation Rate (FAR) represents the proportion of neutral examples incorrectly predicted as entailment or contradiction. 
+
+G Extra results of NLI Tasks 
+
+In Section 5.5, we report the results on MathNLI. To further and more comprehensively evaluate the model’s performance on NLI tasks, we conduct a more detailed analysis on the SNLI dataset (Bow-man et al., 2015). Key metrics are reported in Table 9, and the confusion matrix is shown in Fig-ure 6. For the instruct model, we already achieve a high accuracy. For the base model, we observe that the mispredicted samples are mainly those where originally Entailment or Contradiction cases are predicted as Neutral. However, in our SSC-GRPO process, the weight for the Neutral target is set to 0, which is equivalent to the original GRPO and does not provide negative training signals to the model. Therefore, although the base model may miss some true-consistency cases, it rarely makes incorrect consistency judgments; we can still optimize our policy model using the correctly predicted cases. 
+
+H Case Study for SSC-GRPO 
+
+To more clearly demonstrate that our method ef-fectively mitigates context-sensitive factual hallu-cinations, we sample several cases from Qwen3-4B-base, as shown in Table 10. The original model makes errors even on simple addition and subtrac-tion problems. However, after training with SSC-GRPO, the model successfully resolves these issues and no longer exhibits such errors. Question: The proper divisors of 12 are 1, 2, 3, 4 and 6. A proper divisor of an integer N is a positive divisor of N that is less than N . What is the sum of the proper divisors of the sum of the proper divisors of 284 ?
+
+Golden Answer 284 
+
+Vanilla: (Wrong) First, I need to find the sum of the proper divisors of 284 . Then, I will find the proper divisors of that sum and calculate their sum. find the sum of the proper divisors of 284 , I’ll start by listing its proper divisors: 1, 2, 4, 71 , and 142 . The sum of these is 1 + 2 + 4 + 71 + 142 = 220 . Now I need to find the proper divisors of 220 and then sum them up. The proper divisors of 220 are 1, 2, 4, 5, 10 , 11 , 20 , 22 , 44 , 55 , and 110 . The sum of these proper divisors is 1 + 2 + 4 + 5 + 10 + 11 + 20 + 22 + 44 + 55 + 110 = 304 .So, the sum of the proper divisors of the sum of the proper divisors of 284 is 304 .<answer> 304 </answer> 
+
+SSC-GRPO: (Correct) First, let´ s find the sum of the proper divisors of 284 .To do that, we need to find all proper divisors of 284 , add them up, and then find the sum of the proper divisors of that sum. 1. Find the proper divisors of 284 . To find the proper divisors of 284 , we first factorize 284 .
+
+(284 = 2 2 × 71) .The divisors of 284 are: 1, 2, 4, 71 , 142 , 284 . The proper divisors of 284 are all divisors except 284 itself, so they are: 1, 2, 4, 71 , 142 .2. Calculate the sum of the proper divisors of 284. [1 + 2 + 4 + 71 + 142 = 220] 3. Now, we need to find the sum of the proper divisors of 220 . First, find the proper divisors of 220 . To find the proper divisors of 220, we first factorize 220. (220 = 2 2 × 5 × 11) The divisors of 220 are: 1, 2, 4, 5, 10 , 11 , 20 , 22 , 44 , 55 ,
+
+110 , 220 . The proper divisors of 220 are all divisors except 220 itself, so they are: 1, 2, 4, 5, 10 , 11 , 20 , 22 , 44 , 55 , , 110 .4. Calculate the sum of the proper divisors of 220 .
+
+[1 + 2 + 4 + 5 + 10 + 11 + 20 + 22 + 44 + 55 + 110 = 284] 
+
+The sum of the proper divisors of the sum of the proper divisors of 284 is 284 .<answer> 284</answer> 
+
+Table 10: The case of our method in Qwen3-4B-base Entailment Neutral Contradiction        
+
+> Predicted label
+> Entailment
+> Neutral
+> Contradiction
+> True label
+> 291 385 2
+> 13 653 5
+> 3487 128 100
+> 200
+> 300
+> 400
+> 500
+> 600
+
+(a) Qwen3-4B-Base Entailment Neutral Contradiction         
+
+> Predicted label
+> Entailment
+> Neutral
+> Contradiction
+> True label
+> 586 68 12
+> 35 550 4
+> 355 613 100
+> 200
+> 300
+> 400
+> 500
+> 600
+
+(b) Qwen3-4B-Instruct 
+
+Figure 6: The Confusion Matrix of NLI task for mod-els 
+
+I Prompts Template 
+
+In this section, we provide detailed prompt tem-plates used in various stages of our experiments. These templates ensure the consistency and repro-ducibility of our experimental setup. Figures 7 and 8 show the system prompt and user prompt used in Section 3.3 to detect the locations and types of hallucinations occurring during the model’s reasoning process. We select a strong ref-erence model (Qwen3-235B-A22B in this paper) as the hallucination detector and use these prompts to perform detection, as well as to rewrite the hal-lucinated content into a standalone question when needed. The detector returns the hallucination po-sition, its type, and the rewritten question derived from the hallucination (if applicable). Figure 9 presents the prompt used in Section 3.4 for benchmark data augmentation with a strong reference model (also Qwen3-235B-A22B). We instruct the model to add additional conditions that commonly appear in reasoning contexts but do not affect the final result, and to return the augmented question along with its answer. Figure 10 illustrates the prompt used during SSC-GRPO training for the policy model to perform self-consistency judgment. We formulate this judgment as an NLI task, provide few-shot examples, and require the model to output only the classification result. System prompt for detecting hallucinations 
+
+Instruction: 
+
+You are a strict auditor of mathematical solutions and an expert in “hallucination localization/rewriting.” You will receive three segments: ‘<Question>’, ‘<Standard_Solutions>’, and ‘<Model_Solution>’. Output ONLY JSON as required. <Input Data> <Question> {question} </Question> <Standard_Solutions> {solutions} </Standard_Solutions> <Model_Solution> model_solution </Model_Solution> <Task> 1) Determine whether the final answer is correct - Extract the standard final answer from ‘<Standard_Solutions>’ (prefer ‘\boxed{...}’; otherwise take the last explicitly stated final value). - Extract the model’s final submitted answer from ‘<Model_Solution>’ (use the final conclusion/the last ‘\boxed{...}’/“Final Answer ...” as the reference; ignore intermediate work). - Judge whether the two are mathematically equivalent. - If correct: output ‘is_correct=true’, and set all other fields to ‘null’. 2) If the final answer is incorrect: locate the “earliest hallucinated sentence that directly affects subsequent reasoning” - Treat ‘<Model_Solution>’ as consisting of multiple sentences (or multiple lines/steps). Audit it sentence by sentence. - Find the first sentence that will directly cause the subsequent reasoning to derail or the final answer to be wrong. - Return only this one sentence as ‘hallucinated_sentence’ (do not return multiple sentences). 3) Determine the hallucination type: context inconsistency vs factual error - Context inconsistency (‘context inconsistency’): the sentence contradicts the problem conditions, previously established conclusions in the preceding derivation, symbol definitions, variable meanings, etc. (e.g., treating x defined earlier as y; misstating a given condition; saying “ AB = 5 ” when “ AB = 3 ”is given). - If it belongs to this type: set ‘is_context_inconsistency=true’ and provide a brief ‘explanation’ (indicate what contextual statement it conflicts with). - Factual error (‘factual error’): the sentence itself contains a mathematically verifiable mistake in arithmetic/algebra/theorem usage, etc. (e.g., 7 ∗ 8 = 54 ;
+
+(a + b)2 = a2 + b2; wrong differentiation/integration formula; illegal equation-solving step), and it does not primarily rely on a conflict with earlier definitions. - If it belongs to this type: set ‘is_context_inconsistency=false’ and continue to Step 4. 4) If it is a factual error: rewrite the hallucinated sentence into a new, “independently solvable” problem ‘hallucination_question’ - Goal: rewrite the erroneous step that caused the mistake into a standalone mini-problem, so that one can verify/derive the correct conclusion based on that mini-problem alone. - The new problem must: a) Be self-contained: include all required given conditions/variable definitions/expressions, without relying on the original problem or other parts of the original reasoning; b) Be focused: test only the key fact/calculation/theorem involved in that sentence; c) Be decidable: lead to a clear numeric or symbolic answer. - Output only the rewritten “problem text,” with no answer and no solution. One-shot examples (for understanding how to “rewrite into an independent problem”; do not copy) [Hallucinated sentence] “Given f (x) = x3 − 3x, we have f ′(x) = 3 x3 − 3.” [Rewritten standalone problem] “Let f (x) = x3 − 3x. Find and simplify the expression for the derivative f ′(x).” Another example closer to an algebraic chain: [Hallucinated sentence] “If a + b = 5 and ab = 6 , then a2 + b2 = 11 .” [Rewritten standalone problem] “Given real numbers a,b such that a + b = 5 and ab = 6 , find the value of a2 + b2.” <Output Requirements> - If ‘is_correct=true’: all other fields must be ‘null’. - If ‘is_correct=false’: you must provide ‘hallucinated_sentence’, ‘is_context_inconsistency’, and ‘explanation’; - If ‘is_context_inconsistency=false’ (factual error): you must also provide ‘hallucination_question’; - If ‘is_context_inconsistency=true’: ‘hallucination_question’ must be ‘null’. - Output JSON only; no extra text is allowed. <Output JSON Schema> {“is_correct": boolean, “standard_answer": string or null, “model_answer": string or null, “hallucinated_sentence": string or null, “is_context_inconsistency": boolean or null, “explanation": string or null, “hallucination_question": string or null }
+
+Figure 7: System prompt for detecting hallucinations during reasoning in Section 3.3 User Prompt for detecting hallucinations 
+
+Input :Please audit the following problem, standard solution, and model solution according to the system instructions, and output JSON only. <Question> {question} </Question> <Standard_Solutions> {solutions} </Standard_Solutions> <Model_Solution> model_solution </Model_Solution> 
+
+Figure 8: User prompt for detecting hallucinations during reasoning in Section 3.3 
+
+Context-Augmented data Prompt 
+
+Instruction: 
+
+You will receive a JSON corresponding to a single “question–answer” sample. Your task is, **without changing the correctness of the answer**, to perform “same-domain, misleading distractor-style augmentation” **only on** the ‘question‘, to simulate that this question is **one sub-step** within a larger problem-solving process; the newly added content represents information/intermediate conclusions from “other parts of the full problem” but **is irrelevant to the current question being solved**. **[Input Format]** - A JSON containing at least: - “question": <original question text> - “answer": <original answer text/value/expression> - It may also include other fields. **Do not assume field names**, and **do not add or remove any fields**. **[Augmentation Goals]** In ‘question’: 1) Add several conditions/background/intermediate conclusions in the **same domain** as the original problem (from “other parts”), which should be **misleading** but **irrelevant to solving the current question**, and must not change the original answer. 2) Create the sense that the “sub-question is embedded in a larger context,” but **do not use** explicit phrases such as “big problem/subproblem/step”; embed only via natural sentences. 3) **Keep only one question**, and the **last sentence** must ask that question; **keep the asking style consistent with the original** (e.g., if the original is “Compute. . . /What is. . . ,” the augmented version must follow the same paradigm). 4) Do not introduce conflicting conditions that would change the answer: do not alter given dimensions/definitions/constraints; do not replace key numeric values; you may introduce “seemingly related but actually irrelevant” definition reminders, side theorems, neighboring concepts, approximate-but-useless parameters, historical statistics, boundary-case discussions, etc. 5) Add 1–3 distractors of moderate length; preferably insert them in the front or middle of the question body with natural transitions. **[Invariance & Consistency]** - The ‘answer’ **must match the input exactly** (character-for-character, including formatting/units/case). - If after augmentation you find the answer might change or the reasoning is affected, **rewrite the distractor content** until it no longer affects the answer. - Ensure there is **only one question mark** (Chinese “?” or English “?”) in the ‘question’, and it appears in the last sentence; avoid creating new independent interrogative sentences. **[Language & Format]** - **Follow the input language**: if the original ‘question‘ is in English, the augmented ‘question‘ must be in English; otherwise use Chinese. - **Keep the JSON structure, key names, and field order exactly the same as the input**; modify only the ‘question‘ field; copy all other fields unchanged. - **Output strictly JSON only**—no explanations, prefixes/suffixes, code fences, or extra text. **[Output Requirements]** - Output a JSON for the augmented sample: - ‘question’: the revised question with inserted distractors satisfying all requirements. - ‘answer’: exactly the same as the input (must not be changed). - Any other fields: identical to the input (must not be changed). 
+
+Input :{“question": {question}, “answer": {answer} }
+
+Figure 9: Prompt for augmented dataset in section D NLI Judge Prompt 
+
+Instruction: 
+
+You are performing a Natural Language Inference (NLI) task. Given a dictionary containing a “premise" and a “hypothesis", determine the relationship between them. You must answer with ONLY one word, chosen from exactly these three labels: entailment, contradiction, neutral No explanation. No extra words. Only output the label. Below are examples: Example 1: {“premise": “A dog is running through a field.", “hypothesis": “An animal is outdoors."} Answer: entailment Example 2: {“premise": “A woman is cooking in the kitchen.", “hypothesis": “No one is inside the house."} Answer: contradiction Example 3: {“premise": “Two people are talking in the park.", “hypothesis": “They are discussing politics."} Answer: neutral Now classify the following sample strictly in the same format: 
+
+Input: 
+
+{“premise": <premise>, “hypothesis": <hypothesis> }
+
+Figure 10: Prompt for NLI judge during training

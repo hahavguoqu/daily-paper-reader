@@ -6,35 +6,33 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-21
-- 运行时间：2026-07-21 20:21:27 UTC
+- 最新运行日期：2026-07-22
+- 运行时间：2026-07-22 20:10:04 UTC
 - 运行状态：成功
-- 本次总论文数：5
+- 本次总论文数：4
 - 精读区：4
-- 速读区：1
+- 速读区：0
 
 ### 今日简报（AI）
-今日聚焦推理模型的思维链优化与约束锚定，精读两篇高分论文。最值得关注的方向是最优停止剪枝（OS-Pruner）和约束锚定推理轨迹，分别以9.0分提出高效压缩与可控生成策略。建议读者优先精读这两篇，深入理解如何通过停止机制减少冗余推理步骤，并利用约束锚定提升模型输出可靠性。
-- 详情：[/202607/21/README](/202607/21/README)
+今日精读4篇论文，重点聚焦推理微调与大语言模型卷积方法。最值得关注：推理微调可诱导持久隐策略状态（9.0分）和LLM卷积架构（8.0分）。建议深入探索推理微调内部机制，并关注卷积在LLM中的应用潜力。
+- 详情：[/202607/22/README](/202607/22/README)
 
 ### 精读区论文标签
-1. [OS-Pruner: Pruning Chains-of-Thought of Reasoning Models via Optimal Stopping](/202607/21/2607.11089v1-os-pruner-pruning-chains-of-thought-of-reasoning-models-via-optimal-stopping)  
+1. [Reasoning Fine-Tuning Induces Persistent Latent Policy States](/202607/22/2607.18532v1-reasoning-fine-tuning-induces-persistent-latent-policy-states)  
    标签：评分：9.0/10、query:vlm-cot
-   evidence：直接针对大模型中思维链推理的剪枝
-2. [Constraint-Anchored Reasoning Traces](/202607/21/2607.16727v1-constraint-anchored-reasoning-traces)  
-   标签：评分：9.0/10、query:vlm-cot
-   evidence：针对多模态大模型链式思维错误雪崩提出约束锚定
-3. [A Geometric Perspective on Stabilizing Value Conflict Resolution](/202607/21/2607.17946v1-a-geometric-perspective-on-stabilizing-value-conflict-resolution)  
-   标签：评分：9.0/10、query:vlm-cot
-   evidence：链式思考推理用于价值冲突解决
-4. [ST-Veto: Spatio-Temporal Token Veto for Diffusion MLLMs via Taylor Prediction and Visual Grounding](/202607/21/2607.17884v1-st-veto-spatio-temporal-token-veto-for-diffusion-mllms-via-taylor-prediction-and-visual-grounding)  
+   evidence：直接将大模型中的思维链推理建模为切换动态系统进行分析
+2. [Convolution for Large Language Models](/202607/22/2607.18413v1-convolution-for-large-language-models)  
    标签：评分：8.0/10、query:vlm-cot
-   evidence：在扩散多模态大模型中改进推理，涉及链式思维
+   evidence：在阿里大模型Qwen3上提出卷积改进
+3. [LatentMT: Machine Translation with Latent Reasoning](/202607/22/2607.18618v1-latentmt-machine-translation-with-latent-reasoning)  
+   标签：评分：8.0/10、query:vlm-cot
+   evidence：潜在推理循环语言模型，替代显式思维链
+4. [Reasoning Error from Known Fact: Step-Level Self-Consistency Group Relative Policy Optimization for LLM](/202607/22/2607.18915v1-reasoning-error-from-known-fact-step-level-self-consistency-group-relative-policy-optimization-for-llm)  
+   标签：评分：8.0/10、query:vlm-cot
+   evidence：面向LLM推理错误的步级自一致性优化
 
 ### 速读区论文标签
-1. [PPL-Factory: Task-Aware and Budget-Aware Data Selection from Language Modeling to Reasoning](/202607/21/2607.18199v1-ppl-factory-task-aware-and-budget-aware-data-selection-from-language-modeling-to-reasoning)  
-   标签：评分：6.0/10、query:vlm-cot
-   evidence：为大语言模型推理任务提供数据选择方法
+- 本次无速读推荐。
 
 
 <div class="dpr-home-promo-card">

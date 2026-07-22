@@ -1,0 +1,1967 @@
+Title: Reasoning Fine-Tuning Induces Persistent Latent Policy States
+
+URL Source: https://arxiv.org/pdf/2607.18532v1
+
+Published Time: Wed, 22 Jul 2026 00:21:58 GMT
+
+Number of Pages: 45
+
+Markdown Content:
+Published as a conference paper at COLM 2026 
+
+# Reasoning Fine-Tuning Induces Persistent Latent Policy States 
+
+Abir Harrasse 1∗, Michael Lan 1∗, Hunar Batra 2,Fateme Hashemi Chaleshtori 3, Chaithanya Bandi 11Martian, 2University of Oxford, 3University of Utah 
+
+> ∗
+
+Primary contributors 
+
+## Abstract 
+
+Reasoning-specialized language models show large performance gains over base models, yet the internal changes responsible for improved multi-step reasoning remain poorly understood. It is unclear whether reasoning fine-tuning improves local token-level competence or globally reorganizes how models structure inference over time. We address this question by modeling Chain-of-Thought reasoning as a switching dynamical system (SDS), in which internal representations evolve under discrete latent policy states. Our framework combines time-aware contrastive representation learning with discrete regime discovery to recover latent policies from activation trajectories. Across four benchmarks and model scales from 1.5B to 32B parameters, reasoning-fine-tuned models exhibit richer latent-policy organization than their base counterparts, characterized by more differentiated transition structure and model-dependent changes in state utilization, persistence, and mixing. The recovered regimes exhibit func-tional specialization aligned with distinct reasoning stages, and extensive controls confirm that their structure is not explained by correctness, repre-sentation learning, or modeling priors, but depends on the coherent tem-poral organization of reasoning trajectories. Causal interventions further show that the regimes are functionally meaningful: state-swap ablations reduce one-step predictive fit, while transplanting reasoning dynamics into base models improves performance on challenging reasoning problems. Finally, SDS-guided pruning of failure-prone reasoning prefixes outper-forms self-consistency in 11 of 12 model–dataset settings, with gains of up to 12.5 percentage points. Together, our results suggest that reasoning fine-tuning globally reorganizes latent dynamics, offering a new lens for mechanistic analysis and process-level control of reasoning models. Code: 
+
+https://github.com/withmartian/mi-cot .
+
+## 1 Introduction 
+
+Large language models exhibit striking improvements in Chain-of-Thought (CoT) reasoning after specialized fine-tuning (DeepSeek-AI, 2025; Shao et al., 2024; Huang et al., 2026). How-ever, the internal changes responsible for these improvements remain poorly understood (Yue et al., 2025; Wu & Choi, 2025; Ward et al., 2025a). In particular, it remains unclear whether reasoning fine-tuning primarily improves local token-level competence or globally reorganizes the latent computational dynamics that structure reasoning over extended horizons. Establishing such structure is challenging because CoT reasoning is a branching temporal process involving stochastic sampling and a distribution of possible trajectories (Macar et al., 2025; Lee et al., 2025). CoTs have therefore been modeled as dynamical systems that capture long-range transitions between branching reasoning states (Carson, 2025). This perspective suggests that reasoning behavior may be governed by low-dimensional latent policy states that shape future internal dynamics throughout inference. In this work, we compare fine-tuned reasoning models with their base counterparts by modeling activation trajectories using Switching Dynamical Systems (SDS), which recover 1arXiv:2607.18532v1 [cs.CL] 20 Jul 2026 Published as a conference paper at COLM 2026 
+
+Figure 1: Left: Overview of our framework. A base model Mθ is fine-tuned for reasoning to produce Mθ′ . We fit a Switching Dynamical System (SDS) to each model’s activation trajectories and recover sequences of latent regimes. Reasoning fine-tuning reorganizes state utilization, persistence, and mixing while producing more differentiated transition dynamics. The recovered reasoning policy can be transplanted onto the base model MT to test its causal and functional relevance. Right: Model activations h1: n are encoded into a low-dimensional representation z1: n using a CEBRA contrastive encoder. EM with forward– backward smoothing recovers the discrete latent regime sequence s1: n, where st ∈ { 1, . . . , K}
+
+represents the active reasoning-policy state at step t.discrete, low-dimensional latent policy states (Ackerson & Fu, 1970; Ghahramani & Hinton, 2000; Linderman et al., 2017). We combine SDS with time-aware contrastive manifold learning (Schneider et al., 2023) and find that reasoning fine-tuning induces richer latent-policy organization, most consistently reflected in more differentiated transition structure. State utilization, persistence, and mixing also change, with their contributions varying across models and datasets. The recovered states exhibit functional specialization aligned with reasoning stages, while predictivity degrades when the state space becomes over-fragmented. Overall, reasoning fine-tuning appears to globally reorganize internal dynamics, enabling models to maintain and transition between coherent computational modes over extended spans. We call this temporal and functional structure a latent reasoning policy , without assuming that it is localized to a particular model component. Our contributions are: 1. We formalize a dynamical-systems framework for uncovering differences in internal reasoning structure between base and reasoning-fine-tuned models. 2. We provide empirical evidence that reasoning fine-tuning induces richer latent-policy organization, characterized by more differentiated transition structure and model-dependent changes in state utilization, persistence, and mixing. 3. We introduce CEBRA for latent reasoning-state analysis and show that, in our set-ting, it provides a stronger balance of predictive fit and structured regime recovery than PCA. 4. We show that the inferred latent reasoning policy is actionable: causal state-swap and policy-transplantation interventions establish the functional relevance and transferability of the recovered dynamics, while SDS-guided pruning of failure-prone reasoning prefixes (P REFIX GUARD ) improves over self-consistency in 11 of 12 model–dataset settings, with gains of up to 12.5 percentage points. 
+
+## 2 Related Work 
+
+Comparing Base and Reasoning-Fine-Tuned Models. Reasoning fine-tuning typically combines supervised fine-tuning, distillation, and reinforcement learning with verifiable 2Published as a conference paper at COLM 2026 rewards (RLVR) (Lambert et al., 2025; DeepSeek-AI, 2025). A growing line of work argues that RLVR improves reasoning by reallocating probability mass toward successful trajecto-ries already supported by the base model, rather than by creating entirely new reasoning procedures (Yue et al., 2025; Wu & Choi, 2025; Nguyen et al., 2025; Zhu et al., 2025). While RL-trained models typically outperform their base counterparts at small sampling budgets, base models can sometimes match or exceed them at large pass@ k, suggesting that RLVR improves trajectory ranking and sampling efficiency while narrowing exploration (Yue et al., 2025; Nguyen et al., 2025; Ward et al., 2025a). Wu & Choi (2025) characterize this effect through support and entropy, while Wang et al. (2025a) show that RLVR acts dispropor-tionately on high-entropy tokens corresponding to critical forks in reasoning trajectories (Huang et al., 2026). These findings concern how post-training changes which reasoning chains are selected; we instead ask how it changes the internal dynamics through which those chains unfold. 
+
+Mechanistic Interpretability and Control of Reasoning. Previous mechanistic interpretabil-ity work suggests that reasoning fine-tuning repurposes latent representations already present in base models rather than constructing wholly new machinery (Ward et al., 2025a; Minder et al., 2026; Ward et al., 2025b; Muhamed et al., 2025; Wang et al., 2025b). Venhoff et al. (2025b) further argue that base models already contain many relevant reasoning be-haviors and that post-training primarily teaches the model when to deploy them. At a finer granularity, thinking tokens and thought anchors identify decision points that dis-proportionately shape subsequent reasoning (Qian et al., 2025; Bogdan et al., 2025), while steering-vector methods localize and manipulate individual reasoning behaviors (Venhoff et al., 2025a). Hidden-state clustering also provides evidence that reasoning unfolds through discrete internal stages (Liang et al., 2025). Related methods use such trajectory structure for inference-time improvement. CTRLS models CoT reasoning as latent state transitions and uses distributional reinforcement learning for state-aware exploration (Wu et al., 2026), while SEAL separates execution, reflection, and transition thoughts in latent space and steers representations toward more productive reasoning (Chen et al., 2025). Unlike methods that model, rank, or control trajectories within one model, we ask how reasoning fine-tuning reorganizes latent dynamics relative to its base model. Our SDS formulation addresses this through state utilization, persistence, transition organization, and predictive dynamics, followed by causal policy transplantation and process-level pruning of failure-prone reasoning trajectories. 
+
+Dynamical and Generative Models of Internal Representations. Our approach builds on theoretical work establishing conditions under which switching dynamical systems and related Markov-switching models can be recovered from observational trajectories (Ackerson & Fu, 1970; Ghahramani & Hinton, 2000; Linderman et al., 2017). Balsells-Rodas et al. (2024) provide conditions under which SDS parameters and discrete regimes are identifiable from data. Complementarily, Luo et al. (2026) train diffusion models on residual-stream activations to capture the distribution of a network’s internal states and provide priors for more faithful interventions. We combine an SDS with contrastive representation learning (Schneider et al., 2023), using CEBRA to obtain embeddings that empirically support stronger regime recovery than PCA in our setting. Concurrently, Carson (2025) show that sentence-level hidden states can be modeled using a low-dimensional switching linear dynamical system, where regimes capture distinct drift and transition patterns in reasoning traces. Whereas their PCA-based state space studies regimes within individual models, we use CEBRA-derived embeddings to compare matched base and reasoning-fine-tuned models and test whether the recovered differences are causally and practically actionable. 
+
+## 3 Reasoning as a Switching Dynamical System 
+
+3.1 Problem Setup 
+
+We study whether reasoning in LLMs can be described by persistent, low-dimensional latent policy states that govern future internal activation dynamics. We operationalize 3Published as a conference paper at COLM 2026 this as a predictive latent-variable problem: we hypothesize a discrete latent state (i.e., 
+
+regime ) st ∈ { 1, . . . , K} that (i) persists over time, (ii) governs the evolution of internal representations, and (iii) is identifiable from observed activation trajectories. Let ht ∈ Rd
+
+denote the residual stream activation at reasoning step t, where each step corresponds to a deterministically segmented sentence in a model-generated chain-of-thought trace. We obtain traces by sampling complete model responses to each reasoning prompt, then split each trace into sentence-level units using punctuation-based boundaries; ht is extracted at the final token of the t-th sentence. The choice of CEBRA over PCA for dimensionality reduction and EM over a Mixture-of-Experts formulation for parameter estimation are both justified empirically in Appendix E.4. 
+
+3.2 Switching Dynamical System Formulation 
+
+We model reasoning as a latent Markov process in which the discrete policy state st governs the local evolution of the continuous internal representation zt:
+
+P(st+1 = j | st = i) = Tij , (1) 
+
+P(zt+1 | zt, st = i) = pi(zt+1 | zt). (2) In the linear-Gaussian instantiation used for inference, the dynamics take the form: 
+
+zt+1 = Ast zt + bst + εt, εt | st ∼ N (0, Σst ), (3) with {st} an irreducible, aperiodic Markov chain with transition matrix T⋆. We further assume nontrivial self-transition pstay > 1 /K⋆ (persistent regimes) and distinct regime parameters for i̸ = j (full theory and formal assumptions appear in Appendix B). 
+
+3.3 Dimensionality Reduction via CEBRA 
+
+Raw activations ht are projected into observed d-dimensional embedding trajectories zt using a CEBRA-style contrastive encoder (Schneider et al., 2023). Positive pairs are temporally adjacent steps from the same problem; negatives are temporally distant steps from the same problem or steps from different problems. The encoder is trained with an InfoNCE objective: 
+
+LNCE = − log exp ( ˜z⊤ 
+
+> t
+
+˜zt+ /τ)
+
+exp ( ˜z⊤ 
+
+> t
+
+˜zt+ /τ) + ∑t− exp ( ˜z⊤ 
+
+> t
+
+˜zt− /τ) , (4) where embeddings are ℓ2-normalized and τ is a temperature parameter. This encourages local temporal coherence in the embedding space, ensuring that discovered regimes reflect functional reasoning transitions rather than superficial token similarity. 
+
+3.4 SDS Parameter Estimation via EM 
+
+We estimate the SDS parameters θ = {π, T, {Ak, bk, Σk}Kk=1} from the observed CEBRA embedding trajectories z1: T via Expectation-Maximization (Ghahramani & Hinton, 2000). At each iteration, the E-step applies the forward-backward algorithm to compute soft regime posteriors γt(k) = P(st = k | z1: T ), and the M-step updates the regime-conditional dynamics via weighted least squares and the transition matrix via soft transition counts. The discrete regime sequence is then recovered as ˆst = arg max k γt(k), and the model order K⋆ is selected by minimizing BIC on the fitted SDS likelihood. Full derivations and update equations are provided in Appendix A, with identifiability analysis provided in Appendix C. 
+
+3.5 Why CEBRA Outperforms PCA 
+
+Under mild assumptions on the SDS dynamics, the prediction risk decomposes into an irreducible noise term and a misclassification term controlled by the minimum pairwise Bhat-tacharyya distance B( f ) between regime-conditional distributions. This gives a closed-form criterion for when CEBRA outperforms PCA. The full derivation appears in Appendix B: 
+
+Corollary 3.1 (CEBRA vs. PCA) . RSDS ( fC ) < RSDS ( fP) if and only if B( fC ) − B( fP) >
+
+log M( fC )   
+
+> M(fP)
+
+.4Published as a conference paper at COLM 2026 We verify this condition empirically across all model–dataset pairs (Appendix B.1). Rea-soning models satisfy it substantially more often than base models, indicating that the representation advantage of CEBRA is strongest in the models where structured latent dynamics have emerged. 
+
+3.6 Validating the Markovian Assumption 
+
+Figure 2: CK residuals against the permu-tation null. Points below the diagonal indi-cate that the decoded regime sequence sat-isfies the Chapman–Kolmogorov relation more closely than a memoryless baseline. A core modeling assumption is that the de-coded regime sequence {st} follows a first-order Markov chain. We verify this using two complementary tests. The first is a Chapman– Kolmogorov residual test: for a first-order chain, the two-step transition matrix T(2) 
+
+> ij
+
+=
+
+P(st+2 = j | st = i) must satisfy T(2) ≈ T2,where T is the fitted one-step transition matrix. We measure the normalized Frobenius residual CK = ∥T2 − ˆT(2)∥F /∥ ˆT(2)∥F and compare it against a permutation null that destroys tem-poral dependencies while preserving marginal state frequencies. The second is an order-2 BIC test comparing first- and second-order Markov models on the decoded sequences, with posi-tive ∆BIC indicating preference for the simpler first-order model. Reasoning models concentrate well below the diagonal in Figure 2, indicating stronger first-order temporal consistency than permuted controls. Base models are more diffuse, consistent with weaker temporal organization. The order-2 BIC test corroborates this: first-order models are preferred in the large majority of reasoning-model runs, supporting the use of a first-order switching process as an adequate description of the recovered latent policies. 
+
+3.7 Why Reasoning Fine-Tuning Induces Persistent Latent States 
+
+One possible explanation for the emergence of persistent regimes in reasoning models is that trajectory-level rewards under RLVR may favor coherent multi-step strategies, implicitly creating a positive continuation margin γi(xt) := Vi(xt) − max j̸ =i Vj(xt) over large regions of state space and biasing the policy toward self-transition. Pretraining via maximum likelihood exerts no such pressure, as next-token prediction does not reward consistency of latent modes across time. Under this view, RLVR does not create latent structure from scratch but rather amplifies and stabilizes structure already present in the base model by making persistence directly reward-relevant. We formalize this argument in Appendix C.2 (Proposition C.7). Empirical support for this progressive emergence is provided by the training dynamics analysis in Appendix D. 
+
+## 4 Experimental Setup 
+
+We evaluate on GSM8K (7473 samples) (Cobbe et al., 2021), MATH-500 (500 samples) (Hendrycks et al., 2021), SVAMP (800 samples) (Patel et al., 2021), and MMLU-Pro (4000 samples) (Wang et al., 2024) using chain-of-thought traces, and study paired base and DeepSeek-R1 distilled reasoning models (DeepSeek-AI, 2025) for: Llama-3.1-8B (AI@Meta, 2024), Qwen2.5-14B (Bai et al., 2023), and Qwen2.5-Math-1.5B (Yang et al., 2024a;b). To examine whether these patterns extend to a larger scale, we additionally compare Qwen2.5-32B with its reasoning-specialized counterpart QwQ-32B using the same evaluation protocol; further details are provided in Appendix E.1. Activations are extracted at the sentence level using the last-token representation of each sentence at a single selected layer per model; the choice of layer is justified in Appendix E.3. 5Published as a conference paper at COLM 2026 
+
+Metrics. Let s1: T be the inferred discrete state sequence and A the estimated transition matrix. 
+
+Persistence measures temporal stickiness as Persistence = 1 
+
+> T−1
+
+∑T−1 
+
+> t=1
+
+1{st+1 = st}. The 
+
+effective number of states Keff = exp (H(π)) summarizes practical state usage via entropy-equivalent occupancy, where πk is the empirical state frequency. Transition structure (TVD) 
+
+quantifies deviation from random switching as the mean total variation distance between each transition row and a uniform reference. The spectral gap SpecGap = 1 − | λ2(A)|
+
+serves as a mixing proxy, with smaller values indicating slower mixing and stronger regime persistence. 
+
+## 5 Experimental Validation of SDS Model 
+
+5.1 Model Order Selection and Predictive Gain from Additional Regimes 
+
+Figure 3: Predictive gain from increasing la-tent regimes. The y-axis shows ∆R2 vs. alinear autoregressive baseline, with markers indicating BIC-selected K. Across models, performance improves with a small number of regimes, supporting discrete latent policy states over a single-mode baseline. To test whether additional latent regimes provide genuinely useful predictive struc-ture, we sweep the number of regimes K
+
+and measure the gain in one-step predic-tive fit relative to a linear autoregressive baseline. We report ∆R2 over linear AR and mark the BIC-selected model order for each run in Figure 3. Across model families, ∆R2 increases as the number of regimes grows from K = 1 to a small multi-regime model, after which gains taper. This pattern supports the claim that reasoning traces are better explained by a low-cardinality switching process than by a single linear dynamical mode. 
+
+5.2 State-Swap Ablations Across Depth 
+
+To test whether the discovered regimes are functionally necessary rather than arbitrary labels, we perform a state-swap ablation. After fitting the SDS and estimating per-regime dynamics { ˆAk, ˆbk}, we evaluate pre-diction under the original assignments R2id 
+
+and under randomly permuted assignments ¯R2rand , where the fitted dynamics are held fixed but regime labels are shuffled. We report the drop ∆ = R2id − ¯R2rand , averaged over N = 50 permutations. Across all model families and datasets, permuting the assignments produces a substantial drop in predictive R2, confirming that the correct dynamics model must be applied at the correct time step and that the discovered regimes reflect genuinely distinct dynamical modes rather than spurious clustering. The drop is consistently larger in later layers, consistent with a progressive consolidation of latent policy structure with depth. Full results are in Appendix E.5. 
+
+Robustness to correctness and temporal controls. We test whether these differences can be attributed to output correctness, temporal biases in the representation-learning objective, or the SDS persistence prior. Restricting the analysis to problems solved correctly by both models preserves the difference in latent-state organization. Replacing adjacent CEBRA positives with randomly selected non-adjacent steps also preserves the reasoning–base separation in pstay and TVD across all 12 model–dataset settings, while varying or completely removing the Dirichlet persistence prior produces negligible changes. Conversely, shuffling sentence order sharply reduces segment persistence and causes predictive gains over a linear autoregressive baseline to become negative, confirming that the recovered regimes 6Published as a conference paper at COLM 2026                                                                             
+
+> Keff ↑pstay ↑TVD ↑Spec. Gap ↓
+> Base Reasoning Base Reasoning Base Reasoning Base Reasoning Llama-8B 4.60 ±1.32 4.65 ±0.73 0.70 ±0.07 0.82 ±0.05 0.48 ±0.07 0.60 ±0.03 0.20 ±0.09 0.10 ±0.05
+> Qwen-1.5B 2.60 ±0.66 5.30 ±1.27 0.78 ±0.12 0.79 ±0.06 0.39 ±0.06 0.61 ±0.04 0.24 ±0.10 0.07 ±0.02
+> Qwen-14B 3.00 ±0.71 5.80 ±1.86 0.78 ±0.07 0.77 ±0.05 0.43 ±0.07 0.58 ±0.10 0.17 ±0.13 0.12 ±0.09
+> Qwen2.5/QwQ-32B 5.25 ±1.25 5.59 ±1.11 0.74 ±0.08 0.79 ±0.04 0.55 ±0.08 0.60 ±0.05 0.14 ±0.06 0.11 ±0.04
+
+Table 1: Per-model comparison of structural switching metrics between base and reasoning-fine-tuned models, averaged across datasets. Values report mean ± pooled population standard deviation across datasets and random seeds. Light-green cells and bold text in-dicate the numerically better value within each model pair; they do not denote statistical significance. Reasoning fine-tuning consistently produces more differentiated transition structure, while changes in state utilization, persistence, and mixing vary across model fam-ilies. Per-dataset results and additional robustness analyses are provided in Appendix E.1. 
+
+Figure 4: BIC curves comparing reasoning and base models across model families. Bold lines show family means; markers denote the BIC-selected K∗. Reasoning models consistently select larger K∗ than base models, supporting the claim that reasoning fine-tuning induces a richer multi-regime latent-policy structure. depend on coherent temporal organization rather than static activation geometry alone. Full results are reported in Appendix E.2. 
+
+## 6 Comparing Latent Policy Regimes in Base vs Fine-Tuned Models 
+
+Table 1 reports structural switching metrics averaged across datasets for each model pair. Reasoning fine-tuning increases TVD across all model families, providing the most consis-tent evidence of more differentiated transition structure. The remaining metrics vary across families: Qwen-1.5B and Qwen-14B show substantially greater effective state utilization, Llama-8B exhibits higher persistence and slower mixing, and QwQ-32B improves over Qwen2.5-32B across all four metrics. Overall, these results indicate a broader reorganization of latent-policy dynamics rather than a uniform increase in persistence. 
+
+6.1 Emergence of Persistent Latent Regimes 
+
+To determine how models operate via discrete policies, we vary the number of regimes 
+
+K and measure state persistence and transition structure in Figure 4. The single-model persistence-cliff pattern is mirrored by the broader model-family comparison using BIC, consistent with the theoretical prediction that such a cliff should emerge under multi-regime dynamics (Appendix C.1). Reasoning models consistently prefer larger effective regime counts than their base counterparts, indicating that reasoning fine-tuning supports a richer latent policy structure. This separation persists across datasets (Figure 5), showing that the effect is not driven by a single benchmark. The dataset-level curves sharpen the same conclusion: GSM8K, SVAMP, MATH-500, and MMLU-Pro all exhibit lower BIC at larger 
+
+K for reasoning models than for their base counterparts, indicating that the preference 7Published as a conference paper at COLM 2026 
+
+Figure 5: Per-dataset BIC curves for reasoning and base models across all model families. Dashed lines denote base models and solid lines denote reasoning models; thick lines show dataset-level averages. The reasoning preference for larger K∗ persists across datasets, indicating that the emergence of multi-regime structure is not limited to a single benchmark. for multi-regime dynamics is stable across both mathematical and broader knowledge benchmarks. We further track how this multi-regime structure develops during training in Appendix D, finding that Keff and transition structure emerge rapidly in early training before consolidating. Furthermore, these patterns are not dataset-specific: fitting a shared CEBRA encoder on GSM8K and transferring it to SVAMP and MMLU-Pro yields high cross-dataset consistency (ST ≥ 0.85, SC ≥ 0.76), confirming that the recovered policy states reflect intrinsic properties of the model’s reasoning behavior rather than surface statistics of the training distribution (Appendix E.7). 
+
+6.2 Geometry of Latent Policies 
+
+Figure 6: Representative CEBRA trajectories for Qwen-14B on GSM8K. Left: base model. 
+
+Right: reasoning model. The base trajectory oscillates among nearby R2, R3, and R1 regions with limited geometric separation, while the reasoning trajectory begins in a distinct green cluster and proceeds through blue and red regimes toward a compact terminal region. Representative CEBRA trajectory visualizations provide a complementary geometric view of these recovered policies (Figure 6). Across model families, base-model traces typically either remain trapped within a narrow subset of the embedding space or switch irregularly among nearby regions, yielding short or weakly ordered regime segments. Reasoning trajectories, by contrast, more often traverse separated clusters in a stage-like progression from the initial reasoning state toward terminal solution states, with longer contiguous segments and more coherent transitions between clusters. Qualitative examples spanning all model families and both mathematical benchmarks are reported in Appendix J, where the regime-sequence panels align the geometric trajectories with the decoded latent-state assignments. 
+
+## 7 Functional Specialization of States 
+
+To better characterize how states align with reasoning, we manually define reasoning stages ,similar to behaviors derived by (Venhoff et al., 2025a), and then annotate each sentence in 8Published as a conference paper at COLM 2026 
+
+Figure 7: Row-normalized contingency matrix P(regime | stage ) across three models ( left :Llama-8B, middle : Qwen-1.5B, right : Qwen-14B), showing how human-defined reasoning stages distribute across discovered latent regimes and revealing distinct specialization patterns across the recovered policy states. traces with both a reasoning stage via Qwen2.5-7B-Instruct (Yang et al., 2024b) and a state via SDS. This begets regime distributions per reasoning stage. Figure 7 shows the row-normalized contingency matrix P(regime | stage ) between inferred latent regimes and human-defined reasoning stages across three models on GSM8K. Since we established that regime structure is consistent across datasets for a given model (Ap-pendix E.7), we restrict this analysis to GSM8K without loss of generality. The recovered regimes exhibit clear functional specialization across all three models. We provide an extended analysis of this result in Appendix F. 
+
+## 8 Latent Policies Are Actionable 
+
+8.1 Causal Validation via Policy Transplantation 
+
+To test whether the recovered states are functionally meaningful, we transplant the latent policy learned from a reasoning-fine-tuned model into its base counterpart. We fit an SDS to the reasoning model’s activation trajectories and periodically apply a KL-regularized nudge to the base model’s residual stream, steering its dynamics toward transitions char-acteristic of the reasoning model. This intervention improves performance on challenging problems that the unsteered base model consistently fails, showing that the recovered dy-namics can causally alter downstream reasoning without modifying model weights. Full implementation details and results are provided in Appendices H and I. 
+
+8.2 SDS-Guided Pruning of Failure-Prone Prefixes 
+
+The policy-transplantation experiment provides a causal test of whether the recovered states influence reasoning, but it is not intended as a practical alternative to using the reasoning model itself. We therefore ask whether the learned SDS structure can identify and prune failure-prone trajectories during inference. For each latent state s, we estimate a utility V(s) from correctness outcomes. States with 
+
+V(s) < 0 are associated more strongly with unsuccessful trajectories. We define the detour score of a trajectory h1: T as the fraction of steps assigned to such states: 
+
+D(h1: T ) = 1
+
+T
+
+> T
+
+# ∑
+
+> t=1
+
+1[V(st) < 0] . (5) A high detour score indicates that a trajectory spends substantial time in regimes historically associated with failure. Based on this signal, we introduce P REFIX GUARD , a fixed process-level controller applied uniformly across models and datasets. We generate four partial rollouts up to 25% of the 9Published as a conference paper at COLM 2026                                                                                                                              
+
+> Model Dataset Self-Consistency PREFIX GUARD Gain Oracle Llama-8B GSM8K 60.9 ±3.1 68 .8±4.4+7.994.3 ±0.9 MATH-500 18.8 ±4.4 25 .5±7.6+6.754.7 ±2.3 MMLU-Pro 22.4 ±3.7 26 .0±4.8+3.670.3 ±3.1 SVAMP 54.2 ±8.2 58 .3±6.2+4.194.4 ±3.9 Qwen-14B GSM8K 87.5 ±4.2 91 .7±0.0+4.291.7 ±0.0 MATH-500 5.5 ±3.4 10 .2±5.1+4.721.1 ±4.1 MMLU-Pro 30 .2±2.328.1 ±5.4 −2.1 66.7 ±3.9 SVAMP 87.5 ±21.7 100 .0±0.0+12 .5100.0 ±0.0 Qwen-1.5B GSM8K 20.3 ±3.1 20 .8±2.9+0.544.3 ±3.1 MATH-500 13.5 ±2.3 16 .7±2.6+3.234.9 ±2.7 MMLU-Pro 8.9 ±2.7 9.9±1.7+1.041.1 ±2.7 SVAMP 68.8 ±6.2 76 .6±6.8+7.889.1 ±2.7
+
+Table 2: Accuracy of SDS-guided prefix pruning compared with standard self-consistency. Values are mean ± standard deviation. Gain denotes the percentage-point difference between P REFIX GUARD and self-consistency. Oracle selects a correct trajectory whenever one exists in the candidate pool and serves only as an upper bound. token budget and score each prefix using a fixed combination of CEBRA-based reasoning quality, SDS transition value, transition likelihood, and a penalty for time spent in detour states. We retain the highest-scoring prefix, corresponding to 75% pruning, continue it to completion, generate additional restart trajectories, and select the final answer using a fixed rank-based hybrid score. P REFIX GUARD is not a learned selector, and we perform no dataset-specific tuning or post-hoc selection of its scoring rule. As shown in Table 2, P REFIX GUARD improves over self-consistency in 11 of 12 model– dataset settings, with an average gain of 4.5 percentage points and a maximum gain of 12.5 points. The only decrease occurs for Qwen-14B on MMLU-Pro. The remaining gap to the oracle indicates that the candidate pool frequently contains a correct trajectory that the fixed scoring rule does not select. Thus, the learned SDS structure already identifies promising prefixes, while final trajectory selection remains the principal bottleneck. Together with policy transplantation, these results show that the recovered states are both causally meaningful and practically useful for avoiding failure-associated reasoning regimes. 
+
+## 9 Conclusion 
+
+We employ a dynamical-systems approach to compare reasoning-fine-tuned models with their base counterparts through latent policy states. Across models and benchmarks, rea-soning fine-tuning induces richer latent-policy organization, characterized by more dif-ferentiated transitions and model-dependent changes in state utilization, persistence, and mixing. Causal interventions establish the functional relevance of these dynamics, while SDS-guided prefix pruning demonstrates their practical utility. Our experiments focus on mathematical, symbolic, and multi-step reasoning with ex-plicit CoT traces. We do not claim that the same structure applies to retrieval, tool use, long-horizon planning, agentic or multimodal reasoning, or reasoning without observable intermediate steps. Future work can test these settings and investigate how latent-state transitions relate to high-entropy forks in reasoning trajectories (Qian et al., 2025). 
+
+## Acknowledgments 
+
+We thank Iv ´an Arcuschin, Jake Ward, Florent Draye and members of Martian for helpful discussions. We also thank the Cosmos Institute for providing computational support. 10 Published as a conference paper at COLM 2026 
+
+## LLM Usage Disclosure 
+
+LLMs were used to assist with literature review, code refinement, and limited parts of writing. 
+
+## References 
+
+G. Ackerson and K. Fu. On state estimation in switching environments. IEEE Transactions on Automatic Control , 15(1):10–17, 1970. doi: 10.1109/TAC.1970.1099359. AI@Meta. Llama 3 model card. 2024. URL https://github.com/meta-llama/llama3/blob/ main/MODEL CARD.md .Jinze Bai, Shuai Bai, Yunfei Chu, Zeyu Cui, Kai Dang, Xiaodong Deng, Yang Fan, Wenbin Ge, Yu Han, Fei Huang, Binyuan Hui, Luo Ji, Mei Li, Junyang Lin, Runji Lin, Dayiheng Liu, Gao Liu, Chengqiang Lu, Keming Lu, Jianxin Ma, Rui Men, Xingzhang Ren, Xuancheng Ren, Chuanqi Tan, Sinan Tan, Jianhong Tu, Peng Wang, Shijie Wang, Wei Wang, Sheng-guang Wu, Benfeng Xu, Jin Xu, An Yang, Hao Yang, Jian Yang, Shusheng Yang, Yang Yao, Bowen Yu, Hongyi Yuan, Zheng Yuan, Jianwei Zhang, Xingxuan Zhang, Yichang Zhang, Zhenru Zhang, Chang Zhou, Jingren Zhou, Xiaohuan Zhou, and Tianhang Zhu. Qwen technical report. arXiv preprint arXiv:2309.16609 , 2023. Carles Balsells-Rodas, Yixin Wang, and Yingzhen Li. On the identifiability of switching dynamical systems. In Proceedings of the 41st International Conference on Machine Learning ,ICML’24. JMLR.org, 2024. Paul C. Bogdan, Uzay Macar, Neel Nanda, and Arthur Conmy. Thought anchors: Which llm reasoning steps matter?, 2025. URL https://arxiv.org/abs/2506.19143 .Jack David Carson. A statistical physics of language model reasoning. In ICML 2025 Workshop on Reliable and Responsible Foundation Models , 2025. URL https://openreview. net/forum?id=MbJXVbwSir .Runjin Chen, Zhenyu Zhang, Junyuan Hong, Souvik Kundu, and Zhangyang Wang. SEAL: Steerable reasoning calibration of large language models for free. In Second Conference on Language Modeling , 2025. URL https://openreview.net/forum?id=klPszYDIRT .Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz Kaiser, Matthias Plappert, Jerry Tworek, Jacob Hilton, Reiichiro Nakano, Christopher Hesse, and John Schulman. Training verifiers to solve math word problems. arXiv preprint arXiv:2110.14168 , 2021. DeepSeek-AI. Deepseek-r1: Incentivizing reasoning capability in llms via reinforcement learning, 2025. URL https://arxiv.org/abs/2501.12948 .Randal Douc, ´Eric Moulines, and Tobias Ryd ´en. Asymptotic properties of the maximum likelihood estimator in autoregressive models with markov regime. The Annals of Statistics ,32(5), October 2004. ISSN 0090-5364. doi: 10.1214/009053604000000021. URL http: //dx.doi.org/10.1214/009053604000000021 .Zoubin Ghahramani and Geoffrey E Hinton. Variational learning for switching state-space models. Neural computation , 12(4):831–864, 2000. Dan Hendrycks, Collin Burns, Saurav Kadavath, Akul Arora, Steven Basart, Eric Tang, Dawn Song, and Jacob Steinhardt. Measuring mathematical problem solving with the math dataset, 2021. URL https://arxiv.org/abs/2103.03874 .Kexin Huang, Haoming Meng, Junkang Wu, Jinda Lu, Chiyu Ma, Ziqian Chen, Xue Wang, Bolin Ding, Jiancan Wu, Xiang Wang, Xiangnan He, Guoyin Wang, and Jingren Zhou. On the direction of RLVR updates for LLM reasoning: Identification and exploitation. In The Fourteenth International Conference on Learning Representations , 2026. URL https: //openreview.net/forum?id=r6Pw3RiMYL .11 Published as a conference paper at COLM 2026 Nathan Lambert, Jacob Morrison, Valentina Pyatkin, Shengyi Huang, Hamish Ivison, Faeze Brahman, Lester James V. Miranda, Alisa Liu, Nouha Dziri, Shane Lyu, Yuling Gu, Saumya Malik, Victoria Graf, Jena D. Hwang, Jiangjiang Yang, Ronan Le Bras, Oyvind Tafjord, Chris Wilhelm, Luca Soldaini, Noah A. Smith, Yizhong Wang, Pradeep Dasigi, and Hannaneh Hajishirzi. Tulu 3: Pushing frontiers in open language model post-training, 2025. URL https://arxiv.org/abs/2411.15124 .Seongyun Lee, Seungone Kim, Minju Seo, Yongrae Jo, Dongyoung Go, Hyeonbin Hwang, Jinho Park, Xiang Yue, Sean Welleck, Graham Neubig, Moontae Lee, and Minjoon Seo. The cot encyclopedia: Analyzing, predicting, and controlling how a reasoning model will think, 2025. URL https://arxiv.org/abs/2505.10185 .Zhenwen Liang, Ruosen Li, Yujun Zhou, Linfeng Song, Dian Yu, Xinya Du, Haitao Mi, and Dong Yu. Clue: Non-parametric verification from experience via hidden-state clustering. 
+
+arXiv preprint arXiv:2510.01591 , 2025. Scott Linderman, Matthew Johnson, Andrew Miller, Ryan Adams, David Blei, and Liam Paninski. Bayesian Learning and Inference in Recurrent Switching Linear Dynamical Systems. In Aarti Singh and Jerry Zhu (eds.), Proceedings of the 20th International Confer-ence on Artificial Intelligence and Statistics , volume 54 of Proceedings of Machine Learning Research , pp. 914–922. PMLR, 20–22 Apr 2017. URL https://proceedings.mlr.press/ v54/linderman17a.html .Grace Luo, Jiahai Feng, Trevor Darrell, Alec Radford, and Jacob Steinhardt. Learning a generative meta-model of llm activations, 2026. URL https://arxiv.org/abs/2602. 06964 .Uzay Macar, Paul C. Bogdan, Senthooran Rajamanoharan, and Neel Nanda. Thought branches: Interpreting llm reasoning requires resampling, 2025. URL https://arxiv.org/ abs/2510.27484 .Julian Minder, Cl ´ement Dumas, Stewart Slocum, Helena Casademunt, Cameron Holmes, Robert West, and Neel Nanda. Narrow finetuning leaves clearly readable traces in the activation differences. In The Fourteenth International Conference on Learning Representations ,2026. URL https://openreview.net/forum?id=qyVzZsrsnS .Aashiq Muhamed, Xuandong Zhao, Mona T. Diab, Virginia Smith, and Dawn Song. Towards a mechanistic understanding of robustness in finetuned reasoning models. In Mechanistic Interpretability Workshop at NeurIPS 2025 , 2025. URL https://openreview.net/forum?id= rqe4zQCURe .Phuc Minh Nguyen, Chinh D. La, Duy M. H. Nguyen, Nitesh V. Chawla, Binh T. Nguyen, and Khoa D. Doan. The reasoning boundary paradox: How reinforcement learning constrains language models, 2025. URL https://arxiv.org/abs/2510.02230 .Arkil Patel, Satwik Bhattamishra, and Navin Goyal. Are NLP models really able to solve simple math word problems? In Proceedings of the 2021 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies , pp. 2080–2094, Online, June 2021. Association for Computational Linguistics. doi: 10.18653/ v1/2021.naacl-main.168. URL https://aclanthology.org/2021.naacl-main.168 .Chen Qian, Dongrui Liu, Haochen Wen, Zhen Bai, Yong Liu, and Jing Shao. Demystifying reasoning dynamics with mutual information: Thinking tokens are information peaks in LLM reasoning. In The Thirty-ninth Annual Conference on Neural Information Processing Systems , 2025. URL https://openreview.net/forum?id=E1FrjgaG1J .Steffen Schneider, Jin Hwa Lee, and Mackenzie Weygandt Mathis. Learnable latent em-beddings for joint behavioural and neural analysis. Nature , 617(7960):360–368, May 2023. ISSN 1476-4687. doi: 10.1038/s41586-023-06031-6. URL http://dx.doi.org/10.1038/ s41586-023-06031-6 .12 Published as a conference paper at COLM 2026 Zhihong Shao, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song, Xiao Bi, Haowei Zhang, Mingchuan Zhang, Y. K. Li, Y. Wu, and Daya Guo. Deepseekmath: Pushing the limits of mathematical reasoning in open language models, 2024. URL https://arxiv.org/abs/ 2402.03300 .Constantin Venhoff, Iv ´an Arcuschin, Philip Torr, Arthur Conmy, and Neel Nanda. Under-standing reasoning in thinking language models via steering vectors. In Workshop on Reasoning and Planning for Large Language Models , 2025a. URL https://openreview.net/ forum?id=OwhVWNOBcz .Constantin Venhoff, Iv ´an Arcuschin, Philip Torr, Arthur Conmy, and Neel Nanda. Base models know how to reason, thinking models learn when, 2025b. URL https://arxiv. org/abs/2510.07364 .Shenzhi Wang, Le Yu, Chang Gao, Chujie Zheng, Shixuan Liu, Rui Lu, Kai Dang, Xionghui Chen, Jianxin Yang, Zhenru Zhang, Yuqiong Liu, An Yang, Andrew Zhao, Yang Yue, Shiji Song, Bowen Yu, Gao Huang, and Junyang Lin. Beyond the 80/20 rule: High-entropy minority tokens drive effective reinforcement learning for llm reasoning, 2025a. URL 
+
+https://arxiv.org/abs/2506.01939 .Xu Wang, Yan Hu, Wenyu Du, Reynold Cheng, Benyou Wang, and Difan Zou. To-wards understanding fine-tuning mechanisms of LLMs via circuit analysis. In ICLR 2025 Workshop on Building Trust in Language Models and Applications , 2025b. URL 
+
+https://openreview.net/forum?id=Z9qzta1yiK .Yubo Wang, Xueguang Ma, Ge Zhang, Yuansheng Ni, Abhranil Chandra, Shiguang Guo, Weiming Ren, Aaran Arulraj, Xuan He, Ziyan Jiang, Tianle Li, Max Ku, Kai Wang, Alex Zhuang, Rongqi Fan, Xiang Yue, and Wenhu Chen. Mmlu-pro: A more robust and challenging multi-task language understanding benchmark, 2024. URL https://arxiv. org/abs/2406.01574 .Jake Ward, Chuqiao Lin, Constantin Venhoff, and Neel Nanda. Reasoning-finetuning repurposes latent representations in base models, 2025a. URL https://arxiv.org/abs/ 2507.12638 .Jake Ward, Paul Riechers, and Adam Shai. Rank-1 loras encode interpretable reasoning signals. arXiv preprint arXiv:2511.06739 , 2025b. Fang Wu and Yejin Choi. On the limits of RLVR: Support, entropy, and the illusion of reasoning. In 2nd AI for Math Workshop @ ICML 2025 , 2025. URL https://openreview. net/forum?id=KXtLWJAzgh .Junda Wu, Yuxin Xiong, Xintong Li, Sheldon Yu, Zhengmian Hu, Tong Yu, Rui Wang, Xiang Chen, Jingbo Shang, and Julian McAuley. CTRLS: Chain-of-thought reasoning via latent state transition. In The 29th International Conference on Artificial Intelligence and Statistics ,2026. URL https://openreview.net/forum?id=afld4XGbQe .Sidney J. Yakowitz and John D. Spragins. On the identifiability of finite mixtures. The Annals of Mathematical Statistics , 39(1):209–214, February 1968. doi: 10.1214/aoms/1177698520. An Yang, Baosong Yang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Zhou, Chengpeng Li, Chengyuan Li, Dayiheng Liu, Fei Huang, Guanting Dong, Haoran Wei, Huan Lin, Jialong Tang, Jialin Wang, Jian Yang, Jianhong Tu, Jianwei Zhang, Jianxin Ma, Jin Xu, Jingren Zhou, Jinze Bai, Jinzheng He, Junyang Lin, Kai Dang, Keming Lu, Keqin Chen, Kexin Yang, Mei Li, Mingfeng Xue, Na Ni, Pei Zhang, Peng Wang, Ru Peng, Rui Men, Ruize Gao, Runji Lin, Shijie Wang, Shuai Bai, Sinan Tan, Tianhang Zhu, Tianhao Li, Tianyu Liu, Wenbin Ge, Xiaodong Deng, Xiaohuan Zhou, Xingzhang Ren, Xinyu Zhang, Xipin Wei, Xuancheng Ren, Yang Fan, Yang Yao, Yichang Zhang, Yu Wan, Yunfei Chu, Yuqiong Liu, Zeyu Cui, Zhenru Zhang, and Zhihao Fan. Qwen2 technical report. arXiv preprint arXiv:2407.10671 , 2024a. 13 Published as a conference paper at COLM 2026 An Yang, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chengyuan Li, Dayiheng Liu, Fei Huang, Haoran Wei, Huan Lin, Jian Yang, Jianhong Tu, Jianwei Zhang, Jianxin Yang, Jiaxi Yang, Jingren Zhou, Junyang Lin, Kai Dang, Keming Lu, Keqin Bao, Kexin Yang, Le Yu, Mei Li, Mingfeng Xue, Pei Zhang, Qin Zhu, Rui Men, Runji Lin, Tianhao Li, Tianyi Tang, Tingyu Xia, Xingzhang Ren, Xuancheng Ren, Yang Fan, Yang Su, Yichang Zhang, Yu Wan, Yuqiong Liu, Zeyu Cui, Zhenru Zhang, and Zihan Qiu. Qwen2.5 technical report. arXiv preprint arXiv:2412.15115 , 2024b. Yang Yue, Zhiqi Chen, Rui Lu, Andrew Zhao, Zhaokai Wang, Yang Yue, Shiji Song, and Gao Huang. Does reinforcement learning really incentivize reasoning capacity in llms beyond the base model?, 2025. URL https://arxiv.org/abs/2504.13837 .Han Zhao, Haotian Wang, Yiping Peng, Sitong Zhao, Xiaoyu Tian, Shuaiting Chen, Yunjie Ji, and Xiangang Li. 1.4 million open-source distilled reasoning dataset to empower large language model training, 2025. URL https://arxiv.org/abs/2503.19633 .Hanqing Zhu, Zhenyu Zhang, Hanxian Huang, DiJia Su, Zechun Liu, Jiawei Zhao, Igor Fedorov, Hamed Pirsiavash, Zhizhou Sha, Jinwon Lee, et al. The path not taken: Rlvr provably learns off the principals. arXiv preprint arXiv:2511.08567 , 2025. 14 Published as a conference paper at COLM 2026 
+
+# Appendix: Table of Contents 
+
+PART I: Theoretical Foundations . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 16 A SDS Parameter Estimation 16 B Mathematical Foundations of SDS and CEBRA 17 B.1 Empirical Verification of the CEBRA vs. PCA Criterion 17 B.2 Advantages of CEBRA Over PCA 17 C Identifiability, MLE Consistency, and State Estimation Error 18 C.1 Persistence Theory and the State-Splitting Cliff 22 C.2 How RLVR May Induce Persistent States 24 
+
+PART II: Additional Experimental Results . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 25 D Training Dynamics of Latent Policy Structure 25 E Additional Robustness and Modeling Choice Ablations 26 E.1 Per-Dataset Structural Comparisons 26 E.2 Controls for Correctness and Temporal Bias 26 E.3 Activation Extraction and Layer Selection 30 E.4 Projection and Inference Ablations 30 E.5 State-Swap Ablation 30 E.6 Additional State-Swap Ablation Details 30 E.7 Cross-Dataset Consistency of Latent Policy States 31 F Functional State Specialization: Extended Analysis 33 G Hard Example Dataset Construction 33 H Policy-Transplantation Implementation 33 I Cross-Model Transfer and Policy-Transplantation Results 34 J CEBRA Trajectory Visualizations Gallery 36 15 Published as a conference paper at COLM 2026 The results in this part clarify when the proposed SDS framework admits identifiable regimes, consistent parameter estimation, and controlled state-recovery error. They pro-vide sufficient conditions for interpreting the recovered states, rather than a claim that language-model activations are generated by an exactly specified SDS. The assumptions play different roles. Compactness, boundedness, and regularity conditions are standard technical assumptions used to establish the statistical results. Correct model specification and identifiable regime dynamics are stronger, idealized assumptions that characterize the theoretical setting but are not imposed by the empirical pipeline, where the SDS is used as an approximate latent dynamical model. The Markov and persistence properties are treated as testable modeling hypotheses: we evaluate predictive adequacy and regime dependence empirically, and vary or remove the persistence prior in Appendix E.2.4. We therefore use the theory to explain when regime recovery is principled, while relying on ablation and sensitivity analyses to assess whether its approximations are supported in practice. 
+
+## A SDS Parameter Estimation 
+
+We estimate parameters θ = {π, T, {Ak, bk, Σk}Kk=1} by maximizing the complete-data log-likelihood via EM, run for 50 iterations. 
+
+E-step. Given current parameters θ(n), the forward-backward algorithm computes the log-forward variables log αt(k) = log p(zt | st = k, zt−1) + log ∑
+
+> i
+
+αt−1(i)Tik , (6) and log-backward variables log βt(k) = log ∑
+
+> j
+
+Tkj p(zt+1 | st+1 = j, zt) βt+1(j), (7) from which we obtain the soft posteriors 
+
+γt(k) = P(st = k | z1: T ) ∝ αt(k) βt(k), (8) 
+
+ξt(i, j) = P(st = i, st+1 = j | z1: T ) ∝ αt(i) Tij p(zt+1 | st+1 = j, zt) βt+1(j). (9) The regime-conditional emission density is Gaussian: 
+
+p(zt+1 | st+1 = k, zt) = N (zt+1; Akzt + bk, Σk). (10) 
+
+M-step. Regime-conditional dynamics are updated via γt(k)-weighted least squares. Stack-ing inputs ˜ zt = [ z⊤ 
+
+> t
+
+, 1 ]⊤, the solution for each regime k is 
+
+A⊤
+
+> k
+
+bk
+
+
+
+= ∑
+
+> t
+
+γt(k) ˜zt ˜z⊤ 
+
+> t
+
++ λI
+
+!−1
+
+# ∑
+
+> t
+
+γt(k) ˜ztz⊤
+
+> t+1
+
+!
+
+, (11) with λ = 10 −4 for regularization. The covariance is updated as 
+
+Σk = ∑t γt(k) ete⊤
+
+> t
+
+∑t γt(k) + λI, et = zt+1 − Akzt − bk. (12) The transition matrix is updated via soft transition counts with a symmetric Dirichlet prior 
+
+κ = 1 to encourage persistence: ˆTij = ∑t ξt(i, j) + κ
+
+∑j (∑t ξt(i, j) + κ) . (13) The initial distribution is ˆ πk = 1 
+
+> N
+
+∑n γ(n) 
+
+> 1
+
+(k), averaged over trajectories. 
+
+Hard assignment and model order. The regime sequence is recovered as ˆst =
+
+arg max k γt(k). Model order K⋆ is selected per trajectory by minimizing the Bayesian Information Criterion: BIC (K) = −2 ℓ( ˆθK ) + nparams (K) log N, (14) where ℓ( ˆθK ) is the log-likelihood at convergence, nparams (K) = K(K − 1) + K(d2 + d + d(d +
+
+1)/2 ) counts free parameters, and N = ∑t 1 is the total number of observations. 16 Published as a conference paper at COLM 2026 
+
+## B Mathematical Foundations of SDS and CEBRA 
+
+We develop the theoretical program that grounds the empirical pipeline. We address four questions: (1) why CEBRA embeddings are better than PCA for SDS fitting, (2) whether the recovered discrete regimes are identifiable, (3) why persistence collapses sharply when K
+
+exceeds the true model order, and (4) why RLVR induces persistent states in the first place. Full proofs and supporting results appear in the Appendix. 
+
+B.1 Empirical Verification of the CEBRA vs. PCA Criterion 
+
+The SDS prediction risk under embedding f satisfies the following bound, whose proof follows from a union bound argument and the Chernoff bound for Gaussian likelihood-ratio tests. 
+
+Proposition B.1 (SDS prediction risk bound) . Under Assumptions in Section 3.2, equal priors 
+
+πk = 1 /K , and bounded regime-conditional prediction gaps M( f ) := sup zt max k̸ =st ∥mk(zt) −
+
+mst (zt)∥2 < ∞ where m k(z) = Akz + bk:
+
+RSDS ( f ) ≤ E[∥εt∥2] + ( K − 1) e−B( f ) · M( f ),
+
+where B ( f ) = min i̸ =j Bij and Bij = 18 (μi − μj)⊤
+
+ Σi + Σj
+
+2
+
+−1
+
+(μi − μj) + 12 log  
+
+> Σi+Σj
+> 2
+
+|Σi|1/2 |Σj|1/2 .Corollary 3.1 follows by direct substitution: CEBRA achieves lower prediction risk than PCA if and only if the gain in Bhattacharyya separation B( fC ) − B( fP) exceeds the log-ratio of prediction gap compactness log (M( fC )/M( fP)) . Both quantities are computable in closed form from the fitted EM parameters {μ fk , Σ fk } and {A fk , b fk }, making the criterion directly verifiable on held-out data. Figure 8 plots the left-hand side B( fC ) − B( fP) against the right-hand side log (M( fC )/M( fP)) across all model–dataset pairs. Points above the diagonal satisfy the condition. Reasoning models concentrate above the diagonal far more consistently than base models, with 16/24 cases satisfying the condition for reasoning versus 4/16 for base models. 
+
+B.2 Advantages of CEBRA Over PCA Assumption 1 (Bounded dynamics) . The regime-conditional prediction gaps are uniformly bounded over the observed support: M( f ) := sup 
+
+> zt
+
+max  
+
+> k̸=st
+
+∥mk(zt) − mst (zt)∥2 < ∞,
+
+where m k(z) = Akz + bk.
+
+Proposition B.2 (SDS prediction risk bound) . Under Assumption 1 and equal priors πk = 1 /K :
+
+RSDS ( f ) ≤ E[∥εt∥2] + ( K − 1) e−B( f ) · M( f ),
+
+where B ( f ) = min i̸ =j Bij and Bij = 18 (μi − μj)⊤
+
+ Σi + Σj
+
+2
+
+−1
+
+(μi − μj) + 12 log  
+
+> Σi+Σj
+> 2
+
+|Σi|1/2 |Σj|1/2 .
+
+Proof. Write zt+1 − ˆzt+1 = ( mst (zt) − mˆst (zt)) + εt. Since E[εt | zt, st] = 0, the cross term vanishes in L2, giving 
+
+RSDS ( f ) = E[∥εt∥2] + E∥mst (zt) − mˆst (zt)∥2.17 Published as a conference paper at COLM 2026 The second term vanishes on correct classifications, so 
+
+E∥mst − mˆst ∥2 ≤ M( f ) · P(ˆst̸ = st).By the law of total probability and P(st = i) = 1/ K,
+
+P(ˆst̸ = st) = 1
+
+K
+
+> K
+
+# ∑
+
+> i=1
+
+P(ˆst̸ = i | st = i).Since {ˆst̸ = i} ⊆ S  
+
+> j̸=i
+
+{pj(zt) ≥ pi(zt)} under equal priors, the union bound gives 
+
+P(ˆst̸ = i | st = i) ≤ ∑ 
+
+> j̸=i
+
+P(pj(zt) ≥ pi(zt) | zt ∼ N (μi, Σi)) .The event {pj(zt) ≥ pi(zt)} is a likelihood-ratio test between N (μi, Σi) and N (μj, Σj).By the Chernoff bound, the type-I error satisfies P(pj(zt) ≥ pi(zt) | zt ∼N (μi, Σi)) ≤ e−Cij , where Cij = sup s∈[0,1 ] Λij (s) is the Chernoff information and Λij (s) = 
+
+− log R pi(z)1−s pj(z)s dz . Since Bij = Λij (1 / 2) ≤ Cij , we obtain e−Cij ≤ e−Bij , and therefore 
+
+P(ˆst̸ = st) ≤ 1
+
+K
+
+> K
+
+# ∑
+
+> i=1
+
+(K − 1) e−B( f ) = ( K − 1) e−B( f ),which completes the proof. 
+
+Corollary B.3 (CEBRA vs. PCA) .
+
+RSDS ( fC ) < RSDS ( fP) ⇐⇒ B( fC ) − B( fP) > log M( fC )
+
+M( fP) .
+
+Proof. Direct substitution into Proposition B.1. 
+
+Remark B.4 . Both B( f ) and M( f ) are computable in closed form from the fitted EM parame-ters {μ fk , Σ fk } and {A fk , b fk }, making Corollary B.3 an empirically verifiable criterion. Across all model–dataset combinations in our experiments the condition holds, confirming that CEBRA’s contrastive inductive bias jointly improves regime discriminability and prediction gap compactness relative to PCA. Figure 8 plots the left-hand side B( fC ) − B( fP) against the right-hand side log (M( fC )/M( fP)) across all model–dataset pairs. Points above the diagonal satisfy the condition. Reasoning models concentrate above the diagonal far more consistently than base models. 
+
+## C Identifiability, MLE consistency, and State Estimation error 
+
+We work with the switching linear–Gaussian SDS observed in representation space: 
+
+zt+1 = Ast zt + bst + εt, εt ∼ N (0, Σst ),where st ∈ { 1, . . . , K} is a Markov chain with transition matrix Π and stationary distribution 
+
+ρ on {1, . . . , K} × Rd.
+
+Assumptions 
+
+(A1) Ergodic transitions. Π is irreducible and aperiodic, with Πij > 0 for all i, j. This guarantees that the joint chain (st, zt) has a unique stationary distribution ρ, and that all regime weights ρk(x) := P(st = k | zt = x) are strictly positive for Lebesgue-a.e. 
+
+x.(A2) Distinct emissions. The number of regimes K is known and fixed. For every pair 
+
+k̸ = k′, the Gaussian emission families are distinct: 
+
+N (Ak x + bk, Σk)̸ = N (Ak′ x + bk′ , Σk′ ) for Lebesgue-a.e. x ∈ Rd.18 Published as a conference paper at COLM 2026 
+
+Figure 8: Empirical verification of Corollary B.3 for Reasoning (top) and base (bottom) models across all model–dataset pairs. Each point is one model–dataset case; marker shape denotes model family. Filled markers satisfy B( fC ) − B( fP) > log (M( fC )/M( fP)) ; hollow markers do not. (A3) Nondegeneracy and compactness. Each Σk ≻ 0. The parameter space Θ is compact. Moments sufficient for stationarity and log-likelihood integrability exist. (A4) Filter stability (uniform exponential forgetting). There exist C < ∞ and λ ∈ (0, 1 )
+
+such that for any two filter initializations π0, ˜ π0:sup 
+
+> θ∈Θ
+
+π(π0) 
+
+> t
+
+(· | θ) − π( ˜π0) 
+
+> t
+
+(· | θ) TV ≤ Cλt ∀ t ≥ 0. Under (A1)–(A3), we state explicitly the sufficient conditions because it appears as a direct hypothesis in Douc et al. (2004). 
+
+Proposition C.1 (Identifiability, MLE consistency, and misclassification bound) . Under Assumptions (A1)–(A4): 1. (Generic identifiability) The parameters {(Ak, bk, Σk)}Kk=1 and Π are identifiable from the law of {zt}, up to a global permutation of state labels. Identifiability of finite Gaussian mixtures follows from the linear independence of the Gaussian family over R, established by Yakowitz & Spragins (1968); recovery of the affine parameters {(Ak, bk)} and Π from the identified mixture components is shown in the proof below. 2. (MLE consistency) The conditional MLE ˆθT satisfies ˆθT
+
+> a.s.
+
+−→ θ⋆ as T → ∞, by Theorem 1 of Douc et al. (2004) whose hypotheses are verified by (A1)–(A4). 3. (One-step Bayes misclassification bound) For i̸ = j and fixed zt = z , define the Bhattacharyya distance between the conditional emissions of regimes i and j: Bij (z) = − log  
+
+> Z
+
+q
+
+pi(zt+1 | z) pj(zt+1 | z) dz t+1,
+
+and let B min (z) = min i̸ =j Bij (z). Then: 
+
+P
+
+
+
+ˆsBayes 
+
+> t
+
+̸ = st
+
+
+
+≤ (K − 1) e−Beff ( f ),
+
+where Beff ( f ) = − log E(st,zt )∼ρ
+
+h
+
+e−Bmin (zt )i
+
+. For fixed z , each Bij (z) admits the closed form Bij (z) = 18 (μi(z) − μj(z)) ⊤ Σi +Σj
+
+> 2
+
+−1
+
+(μi(z) − μj(z)) + 12 log  
+
+> Σi+Σj
+> 2
+
+|Σi|1/2 |Σj|1/2 ,19 Published as a conference paper at COLM 2026 
+
+with μk(z) = Akz + bk.
+
+Proof (i) Generic identifiability. Step 1: identify emission parameters. Equality of the laws of {zt}
+
+under θ and θ′ implies equality of the one-step kernels for Lebesgue-a.e. x:
+
+> K
+
+# ∑
+
+> k=1
+
+ρk(x) N (Ak x + bk, Σk) = 
+
+> K
+
+# ∑
+
+> k=1
+
+ρ′
+
+> k
+
+(x) N (A′ 
+
+> k
+
+x + b′
+
+> k
+
+, Σ′
+
+> k
+
+).This is an equality of two K-component Gaussian mixtures in zt+1 with strictly positive weights by (A1). The multivariate Gaussian family is linearly independent over R (Yakowitz & Spragins, 1968); we include a self-contained proof of this fact as Lemma C.2 below. By the main theorem of Yakowitz & Spragins (1968), the mixture is therefore identifiable: equality of the kernels for a.e. x forces the components to agree up to a permutation σ.
+
+Lemma C.2 (Linear independence of Gaussians, Yakowitz & Spragins (1968)) . Let (μk, Σk)Kk=1
+
+be pairwise distinct with each Σk ≻ 0. If 
+
+> K
+
+# ∑
+
+> k=1
+
+ck ϕμk,Σk (x) = 0 ∀ x ∈ Rd,
+
+where ϕμk,Σk denotes the Gaussian density, then ck = 0 for all k . We include a self-contained proof for completeness. Proof. Taking Fourier transforms, the hypothesis becomes 
+
+> K
+
+# ∑
+
+> k=1
+
+ck exp 
+
+
+
+iω⊤μk − 12 ω⊤Σkω
+
+
+
+= 0 ∀ ω ∈ Rd. (∗)We prove ck = 0 for all k by induction on K.
+
+Base case K = 1. The equation reduces to c1 exp (iω⊤μ1 − 12 ω⊤Σ1ω) = 0 for all ω. Since the exponential is never zero, c1 = 0. 
+
+Inductive step. Assume the claim holds for any equation of the form (∗) with at most K − 1terms whose parameters are pairwise distinct. Fix any ξ ∈ Rd \ { 0} and ω0 ∈ Rd, and substitute ω = ω0 + tξ for t ∈ R. Since Σk ≻ 0, the quadratic form expands as: 
+
+(ω0 + tξ)⊤Σk(ω0 + tξ) = t2 ξ⊤Σkξ + 2t ξ⊤Σkω0 + ω⊤ 
+
+> 0
+
+Σkω0.Substituting into (∗) and collecting terms: 
+
+> K
+
+# ∑
+
+> k=1
+
+ck exp 
+
+
+
+iω⊤ 
+
+> 0
+
+μk − 12 ω⊤ 
+
+> 0
+
+Σkω0
+
+| {z } 
+
+> =:c′
+> k
+
+exp 
+
+
+
+tβk − t2 
+
+> 2
+
+αk
+
+
+
+= 0, (∗∗ )where αk := ξ⊤Σkξ > 0 and βk := iξ⊤μk − ξ⊤Σkω0 ∈ C. Note that c′
+
+> k
+
+̸ = 0 if and only if 
+
+ck̸ = 0, since the exponential prefactor is never zero. 
+
+Isolating the slowest-decaying terms. Let αmax := max k αk and I := {k : αk = αmax }, so I is nonempty by definition. Multiplying (∗∗ ) through by exp ( t2 
+
+> 2
+
+αmax ):
+
+# ∑
+
+> k∈I
+
+c′ 
+
+> k
+
+etβk + ∑ 
+
+> k/∈I
+
+c′ 
+
+> k
+
+exp 
+
+
+
+− t2 
+
+> 2
+
+(αmax − αk)
+
+
+
+etβk = 0. For each k /∈ I, αmax − αk > 0, so 
+
+c′ 
+
+> k
+
+exp 
+
+
+
+− t2 
+
+> 2
+
+(αmax − αk)
+
+
+
+etβk ≤ | c′
+
+> k
+
+| exp 
+
+
+
+− t2 
+
+> 2
+
+(αmax − αk) + t Re (βk)
+
+
+
+→ 020 Published as a conference paper at COLM 2026 as t → +∞. Hence for all sufficiently large t:
+
+# ∑
+
+> k∈I
+
+c′ 
+
+> k
+
+etβk = 0. (∗ ∗ ∗ )
+
+Distinctness of {βk}k∈I . Suppose βk = βk′ for some k̸ = k′ in I and for all ω0 ∈ Rd. Then equating real and imaginary parts gives ξ⊤(Σk − Σk′ ) = 0 as a vector and ξ⊤(μk − μk′ ) = 0. If this held for all ξ ∈ Rd, then Σk = Σk′ and μk = μk′ , contradicting distinctness. Hence for generic (ξ, ω0) outside a measure-zero set, the values {βk}k∈I are distinct; fix any such 
+
+(ξ, ω0).
+
+Linear independence of {etβk }k∈I . The Wronskian of {etβk }k∈I equals: 
+
+W(t) = ∏
+
+> k∈I
+
+etβk
+
+!
+
+# ∏
+
+> j,k∈Ij<k
+
+(βk − βj).Since the βk are distinct, ∏j<k(βk − βj)̸ = 0, and ∏k∈I etβk̸ = 0 for all t, so W(t)̸ = 0. Hence 
+
+{etβk }k∈I are linearly independent over C.
+
+Concluding ck = 0 for k ∈ I . Since c′ 
+
+> k
+
+are constants independent of t, equation (∗ ∗ ∗ ) is a vanishing linear combination of linearly independent functions of t, forcing c′ 
+
+> k
+
+= 0 for all 
+
+k ∈ I. Since the exponential prefactor in c′ 
+
+> k
+
+= ck exp (iω⊤ 
+
+> 0
+
+μk − 12 ω⊤ 
+
+> 0
+
+Σkω0) is never zero, we conclude ck = 0 for all k ∈ I.
+
+Applying the inductive hypothesis. Since ck = 0 for all k ∈ I, those terms vanish identically in 
+
+(∗), leaving: 
+
+# ∑ 
+
+> k/∈I
+
+ck exp 
+
+
+
+iω⊤μk − 12 ω⊤Σkω
+
+
+
+= 0 ∀ ω ∈ Rd.This has exactly K − | I| ≤ K − 1 terms (since I is nonempty) with pairwise distinct parame-ters. The inductive hypothesis gives ck = 0 for all k /∈ I, completing the induction. 
+
+Step 2: recover Ak, bk. For a.e. x, the matched components satisfy N (Aσ(k) x + bσ(k), Σσ(k)) = 
+
+N (A′ 
+
+> k
+
+x + b′
+
+> k
+
+, Σ′
+
+> k
+
+), which forces Σσ(k) = Σ′ 
+
+> k
+
+and Aσ(k) x + bσ(k) = A′ 
+
+> k
+
+x + b′ 
+
+> k
+
+for a.e. x. Since this is an equality of affine functions holding a.e., the coefficients must match: differentiating with respect to x gives Aσ(k) = A′
+
+> k
+
+, and evaluating at x = 0 gives bσ(k) = b′
+
+> k
+
+. The permuta-tion σ takes values in the finite set of permutations of {1, . . . , K}; since it is measurable and constant on a set of full measure, it is a single global permutation. 
+
+Step 3: recover Π. With emission parameters identified, the two-step marginal density of 
+
+(zt, zt+1, zt+2) satisfies: 
+
+p(zt+2, zt+1 | zt) = ∑
+
+> k,k′
+
+Πkk ′ ρk(zt)N (zt+1; μk(zt), Σk)N (zt+2; μk′ (zt+1), Σk′ ).Since the emission parameters are now identified, the Gaussian factors are known, and the map Π 7 → p(zt+2, zt+1 | zt) is linear and injective in Π (generically under (A2)). Hence Π is uniquely recovered from the law of three consecutive observations. □
+
+(ii) MLE consistency. Under (A1)–(A4), the Gaussian SDS is an HMM with finite latent state space {1, . . . , K} and continuous emissions. The hypotheses of Theorem 1 of Douc et al. (2004) are: ergodicity of the hidden chain (A1), distinct emission families (A2), compactness and log-likelihood integrability (A3), and uniform exponential forgetting (A4). All are satisfied, so their theorem yields ˆ θT
+
+> a.s.
+
+−→ θ⋆. □
+
+(iii) One-step Bayes misclassification bound. Step 1: pointwise union bound. Fix st = i and 
+
+zt = z. Then zt+1 | zt = z, st = i ∼ N (μi(z), Σi) with μi(z) = Aiz + bi. The Bayes decoder 21 Published as a conference paper at COLM 2026 errs iff ∃ j̸ = i such that pj(zt+1 | z) ≥ pi(zt+1 | z). By the union bound: 
+
+P(ˆst̸ = i | st = i, zt = z) ≤ ∑ 
+
+> j̸=i
+
+P
+
+ pj(zt+1 | z)
+
+pi(zt+1 | z) ≥ 1 zt+1 ∼ N (μi(z), Σi)
+
+
+
+.For each term, since 1[X ≥ 1] ≤ X1/2 pointwise for X ≥ 0, Markov’s inequality at s = 12
+
+gives: 
+
+P
+
+ pj
+
+pi
+
+≥ 1 zt+1 ∼ pi(· | z)
+
+
+
+≤ Epi
+
+" pj
+
+pi
+
+1/2 #
+
+=
+
+Z
+
+pi(zt+1 | z)1/2 pj(zt+1 | z)1/2 dz t+1
+
+= e−Bij (z).Setting Bmin (z) = min i̸ =j Bij (z) and summing over the K − 1 competitors: 
+
+P(ˆst̸ = i | st = i, zt = z) ≤ (K − 1) e−Bmin (z).
+
+Step 2: closed form for Bij (z). For pi(· | z) = N (μi(z), Σi) and pj(· | z) = N (μj(z), Σj),evaluating R p1/2  
+
+> i
+
+p1/2  
+
+> j
+
+dz t+1 via the standard Gaussian product formula gives the closed form stated in the proposition. 
+
+Step 3: averaging. Averaging jointly over (st, zt) under the stationary measure ρ of the joint chain, the law of total expectation gives: 
+
+P(ˆst̸ = st) = E(st,zt )∼ρ[P(ˆst̸ = st | st, zt)] ≤ (K − 1) E(st,zt )∼ρ
+
+h
+
+e−Bmin (zt )i
+
+.Defining Beff ( f ) = − log E(st,zt )∼ρ[e−Bmin (zt )], Jensen’s inequality (the exponential is convex) confirms Beff ( f ) ≥ 0, and the bound follows immediately. □
+
+C.1 Persistence Theory and the State-Splitting Cliff Corollary C.3 (Better representation increases measured persistence) . Assume the joint process 
+
+(s⋆ 
+
+> t
+
+, zt) is stationary and the decoder is time-homogeneous, so the per-step misclassification probability 
+
+ε = P(ˆst̸ = s⋆ 
+
+> t
+
+) is constant in t. Then: 
+
+P(ˆst+1 = ˆst) ≥ pstay − 2ε,
+
+where p stay = P(s⋆ 
+
+> t+1
+
+= s⋆ 
+
+> t
+
+). Combined with Proposition C.1(iii): 
+
+P(ˆst+1 = ˆst) ≥ pstay − 2(K − 1) exp  −Beff ( f ),
+
+where B eff ( f ) = − log E(st,zt )∼ρ[exp (−Bmin (zt))] and B min (z) = min i̸ =j Bij (z).Proof. Define events A = {s⋆ 
+
+> t+1
+
+= s⋆ 
+
+> t
+
+}, B = {ˆst = s⋆ 
+
+> t
+
+}, C = {ˆst+1 = s⋆
+
+> t+1
+
+}. On A ∩ B ∩ C we have ˆ st+1 = s⋆ 
+
+> t+1
+
+= s⋆ 
+
+> t
+
+= ˆst, so P(ˆst+1 = ˆst) ≥ P(A ∩ B ∩ C). By the union bound: 
+
+P(A ∩ B ∩ C) = 1 − P(Ac ∪ Bc ∪ Cc) ≥ 1 − P(Ac) − P(Bc) − P(Cc) = P(A) − P(Bc) − P(Cc).Stationarity gives (s⋆
+
+> t+1
+
+, zt+1) ∼ ρ, and time-homogeneity gives the same decoder at t + 1 as at t, so P(Cc) = P(Bc) = ε. Therefore: 
+
+P(ˆst+1 = ˆst) ≥ P(A) − 2ε = pstay − 2ε.Substituting ε ≤ (K − 1) exp (−Beff ( f )) from Proposition C.1(iii) gives the second inequality. 
+
+Theorem C.4 (Over-specification admits low-persistence clone solutions) . Let the true SDS have K⋆ regimes with parameters {(A⋆ 
+
+> k
+
+, b⋆ 
+
+> k
+
+, Σ⋆ 
+
+> k
+
+)}K⋆ 
+
+> k=1
+
+and transition matrix Π⋆, initialised at its stationary distribution π⋆. For any K > K⋆, let m = K − K⋆ + 1 ≥ 2. There exists a K -state SDS with parameters θK, initialised at its own stationary distribution, such that: 
+
+22 Published as a conference paper at COLM 2026 
+
+1. θK induces the same marginal law on {zt} as θ⋆.2. For any clone construction with intra-clone transition matrix Q ̸ = I: 
+
+P(st+1 = st) = ∑ 
+
+> k̸=r
+
+π⋆ 
+
+> k
+
+Π⋆ 
+
+> kk
+
++ π⋆ 
+
+> r
+
+Π⋆ 
+
+> rr
+
+¯δ < pstay ,
+
+where ¯δ = ∑ℓ αℓ Qℓℓ ∈ (0, 1 ) is the α-weighted average diagonal of Q . The persistence drop is exactly: pstay − P(st+1 = st) = π⋆ 
+
+> r
+
+Π⋆ 
+
+> rr
+
+(1 − ¯δ) > 0. 
+
+Proof. Construction. Fix any regime r ∈ { 1, . . . , K⋆}. Choose weights αℓ > 0 with ∑m 
+
+> ℓ=1
+
+αℓ =
+
+1. Replace regime r with m clone states r1, . . . , rm sharing emission parameters: 
+
+(Arℓ , brℓ , Σrℓ ) = ( A⋆ 
+
+> r
+
+, b⋆ 
+
+> r
+
+, Σ⋆ 
+
+> r
+
+) ∀ ℓ = 1, . . . , m.Define ΠK by: 
+
+(ΠK )ij = Π⋆ 
+
+> ij
+
+non-clone i, j̸ = r,
+
+(ΠK )i,rℓ = αℓΠ⋆ 
+
+> ir
+
+non-clone i to clone rℓ,
+
+(ΠK )rℓ,j = Π⋆ 
+
+> rj
+
+clone rℓ to non-clone j̸ = r,
+
+(ΠK )rℓ,rℓ′ = Π⋆ 
+
+> rr
+
+· Qℓℓ ′ intra-clone transitions, where Q is an m × m stochastic matrix with stationary distribution α. Rows sum to one: 
+
+∑j̸ =r Π⋆ 
+
+> rj
+
++ Π⋆ 
+
+> rr
+
+∑ℓ′ Qℓℓ ′ = ( 1 − Π⋆ 
+
+> rr
+
+) + Π⋆ 
+
+> rr
+
+= 1. 
+
+Existence of Q with prescribed ¯δ. For any target ¯ δ ∈ [∑ℓ α2 
+
+> ℓ
+
+, 1 ), the convex combination 
+
+Q = ( 1 − λ) 1α⊤ + λ I, λ = ¯δ − ∑ℓ α2
+
+> ℓ
+
+1 − ∑ℓ α2
+
+> ℓ
+
+,is a stochastic matrix with stationary distribution α and weighted diagonal ∑ℓ αℓ Qℓℓ = ¯δ.
+
+Stationary distribution of ΠK. We claim πrℓ = αℓπ⋆ 
+
+> r
+
+(with πk = π⋆ 
+
+> k
+
+for k̸ = r) is stationary for 
+
+ΠK. For non-clone j̸ = r:
+
+# ∑
+
+> i
+
+πi(ΠK )ij = ∑ 
+
+> k̸=r
+
+π⋆ 
+
+> k
+
+Π⋆ 
+
+> kj
+
++ ∑
+
+> ℓ
+
+αℓπ⋆ 
+
+> r
+
+Π⋆ 
+
+> rj
+
+= ∑
+
+> k
+
+π⋆ 
+
+> k
+
+Π⋆ 
+
+> kj
+
+= π⋆ 
+
+> j
+
+.For clone rℓ:
+
+# ∑
+
+> i
+
+πi(ΠK )i,rℓ = ∑ 
+
+> k̸=r
+
+π⋆ 
+
+> k
+
+αℓΠ⋆ 
+
+> kr
+
++ ∑
+
+> ℓ′
+
+αℓ′ π⋆ 
+
+> r
+
+Π⋆ 
+
+> rr
+
+Qℓ′ ℓ
+
+= αℓ ∑ 
+
+> k̸=r
+
+π⋆ 
+
+> k
+
+Π⋆ 
+
+> kr
+
++ π⋆ 
+
+> r
+
+Π⋆ 
+
+> rr
+
+# ∑
+
+> ℓ′
+
+αℓ′ Qℓ′ ℓ
+
+| {z } 
+
+> =αℓ
+
+= αℓ(π⋆ 
+
+> r
+
+− π⋆ 
+
+> r
+
+Π⋆ 
+
+> rr
+
+) + αℓπ⋆ 
+
+> r
+
+Π⋆ 
+
+> rr
+
+= αℓπ⋆ 
+
+> r
+
+.
+
+Proof of (i). Since all clone states share emission parameters (A⋆ 
+
+> r
+
+, b⋆ 
+
+> r
+
+, Σ⋆ 
+
+> r
+
+), the marginal transition kernel satisfies: 
+
+pθK (zt+1 | zt) = ∑ 
+
+> k̸=r
+
+ρk(zt)N (zt+1; μk(zt), Σk) + ρr (zt)N (zt+1; μ⋆ 
+
+> r
+
+(zt), Σ⋆ 
+
+> r
+
+),where ρr (zt) = ∑ℓ P(st = rℓ | zt) aggregates the clone weights. Since πrℓ = αℓπ⋆ 
+
+> r
+
+and the aggregated transition probabilities satisfy ∑ℓ(ΠK )i,rℓ = Π⋆ 
+
+> ir
+
+and ∑ℓ(ΠK )rℓ,j = Π⋆
+
+> rj
+
+, the weight ρr (zt) is identical under θK and θ⋆. Hence pθK (zt+1 | zt) = pθ⋆ (zt+1 | zt) and the marginal laws of {zt} coincide. 23 Published as a conference paper at COLM 2026 
+
+Proof of (ii). Under the stationary distribution πrℓ = αℓπ⋆ 
+
+> r
+
+:
+
+P(st+1 = st) = ∑ 
+
+> k̸=r
+
+π⋆ 
+
+> k
+
+Π⋆ 
+
+> kk
+
++ ∑
+
+> ℓ
+
+πrℓ · Π⋆ 
+
+> rr
+
+· Qℓℓ = ∑ 
+
+> k̸=r
+
+π⋆ 
+
+> k
+
+Π⋆ 
+
+> kk
+
++ π⋆ 
+
+> r
+
+Π⋆ 
+
+> rr
+
+# ∑
+
+> ℓ
+
+αℓ Qℓℓ 
+
+| {z } 
+
+> =¯δ
+
+.Since Q̸ = I and all αℓ > 0, at least one Qℓℓ < 1, giving ¯ δ < 1 and therefore: 
+
+pstay − P(st+1 = st) = π⋆ 
+
+> r
+
+Π⋆ 
+
+> rr
+
+(1 − ¯δ) > 0. □
+
+Remark C.5 (Non-identifiability of persistence) . The clone construction is observationally equivalent to the true model by part (i): no likelihood-based criterion can distinguish θK from 
+
+θ⋆. By part (ii), any such solution with Q̸ = I has strictly lower persistence, with the drop 
+
+π⋆ 
+
+> r
+
+Π⋆ 
+
+> rr
+
+(1 − ¯δ) controlled by how much the intra-clone block mixes. Since Q = I is a measure-zero boundary case that EM will not reach from a generic initialization, cloning generically induces a strict and undetectable persistence drop. This establishes that persistence is not identified from the observations when K > K⋆: the set of likelihood-equivalent solutions spans persistence values from pstay down to ∑k̸ =r π⋆ 
+
+> k
+
+Π⋆
+
+> kk
+
+.
+
+Remark C.6 (Sharp cliff at K = K⋆ + 1) . For K ≤ K⋆, assumption (A2) holds generically, the identifiability result of Proposition C.1(i) applies, and persistence is identified up to label permutation. At K = K⋆ + 1, clone solutions first become available, and by Theorem C.4(ii) these solutions have strictly lower persistence for any Q̸ = I. Since no clone solutions exist for K ≤ K⋆ under (A2), the availability of unidentifiable low-persistence solutions is a property that appears exactly at K = K⋆ + 1. This gives a theoretical account of the sharp empirical cliff observed. Below the cliff, persistence is identified and stable; at the cliff, the likelihood landscape admits degenerate solutions that EM may select with no likelihood penalty. 
+
+C.2 How RLVR May Induce Persistent States Proposition C.7 (Trajectory-level rewards induce persistent latent options) . Consider a meta-controller with softmax policy over K options: Tβ(i → i | xt) = eVi (xt )/β
+
+eVi (xt )/β + ∑j̸ =i eVj (xt )/β ,
+
+where xt is the environment (or latent) state and Vk(xt) denotes the expected return of following option k from xt under the current policy, and β > 0 is a temperature. Define the continuation margin 
+
+γi(xt) := Vi(xt) − max j̸ =i Vj(xt). Suppose that over the stationary distribution ρ (assuming the policy induces an ergodic Markov chain): 
+
+Pxt ∼ρ(γi(xt) ≥ γ) ≥ 1 − δ
+
+for some γ > 0 and δ ∈ [0, 1 ). Then: 
+
+Ext ∼ρ[Tβ(i → i | xt)] ≥ 1 − δ
+
+1 + ( K − 1)e−γ/β .
+
+Notably, this bound has the same functional form as the Bhattacharyya-based misclassification bound in Proposition B.1, with γ/β playing the role of a separation margin. Proof. Define the high-advantage event A := {xt : γi(xt) ≥ γ}, so Pρ(A) ≥ 1 − δ by assumption. On A, for all j̸ = i: eVj (xt )/β ≤ e−γ/βeVi (xt )/β, giving Tβ(i → i | xt) ≥ 
+
+> 11+( K−1)e−γ/β
+
+. Since Tβ ∈ [0, 1 ]:
+
+Eρ[Tβ(i → i | xt)] ≥ Eρ[Tβ(i → i | xt) · 1A]
+
+≥ Pρ(A) · 11 + ( K − 1)e−γ/β
+
+≥ 1 − δ
+
+1 + ( K − 1)e−γ/β . □
+
+24 Published as a conference paper at COLM 2026 Base Ckpt 1    
+
+> (25%)
+> Ckpt 2
+> (50%)
+> Ckpt 3
+> (75%)
+> Final
+> (100%)
+> 2
+> 3
+> 4
+> 5
+> 6
+> 7
+> 8
+> 9
+> Keff
+> GSM8K
+> MATH-500
+> Base Ckpt 1
+> (25%)
+> Ckpt 2
+> (50%)
+> Ckpt 3
+> (75%)
+> Final
+> (100%)
+> 0.10
+> 0.15
+> 0.20
+> 0.25
+> 0.30
+> 0.35
+> Spectral Gap (  )
+> Base Ckpt 1
+> (25%)
+> Ckpt 2
+> (50%)
+> Ckpt 3
+> (75%)
+> Final
+> (100%)
+> 0.35
+> 0.40
+> 0.45
+> 0.50
+> 0.55
+> 0.60
+> TVD (  )
+> Base Ckpt 1
+> (25%)
+> Ckpt 2
+> (50%)
+> Ckpt 3
+> (75%)
+> Final
+> (100%)
+> 0.675
+> 0.700
+> 0.725
+> 0.750
+> 0.775
+> 0.800
+> 0.825
+> pstay
+
+Llama-8B Layer 31 Latent policy structure across training 
+
+Figure 9: Latent policy structure across training for Llama-8B (layer 31). Grey band: base model. Training increases the effective number of latent states and reduces the spectral gap; both effects peak at mid-training before partially consolidating. 
+
+Remark C.8 (RLVR vs. pretraining) . Pretrained language models already exhibit latent switching structure (as captured by the SDS models in this work), but this structure is not explicitly reinforced. Maximum likelihood training optimizes next-token prediction and does not directly encourage consistency of latent modes across time: there is no pressure to make the continuation margin γi(xt) positive. In contrast, trajectory-level reinforcement learning induces an option-level value function 
+
+Vk(xt), which assigns higher return to coherent multi-step strategies. This creates a positive continuation margin γi(xt) > 0 over large regions of state space, biasing the policy toward persistence. Thus RLVR does not create latent structure from scratch, but amplifies and stabilizes existing latent modes by making persistence directly reward-relevant. 
+
+## D Training Dynamics of Latent Policy Structure 
+
+To track how latent policy structure develops during fine-tuning, we fine-tune Llama-3.1-8B on 100K reasoning traces from the DeepSeek-R1 model on the AM-DeepSeek-R1 dataset (Zhao et al., 2025) using LoRA with rank 64, α=128, applied to all linear layers, with a learning rate of 10 −4 and cosine scheduling, saving intermediate checkpoints at 25%, 50%, and 75% of training. We fit the SDS framework at layer 31 and evaluate on GSM8K and MATH-500. Figure 9 shows that structured latent dynamics emerge early in training and are not a pre-existing property of the base model. Within the first 25% of training, Keff increases substantially on both benchmarks (5 →6 on GSM8K; 2 →9 on MATH-500), and the spectral gap begins to drop, indicating the formation of more persistent regime dynamics. The most structured configuration appears at mid-training (Ckpt 2–3), where the spectral gap reaches 25 Published as a conference paper at COLM 2026 
+
+Model Dataset Keff ↑ pstay ↑ TVD ↑ Spec. Gap ↓
+
+Base Reason. Base Reason. Base Reason. Base Reason. Llama-8B GSM8K 4.80 ±0.75 4.40 ±0.49 0.71 ±0.04 0.80 ±0.03 0.51 ±0.05 0.57 ±0.02 0.18 ±0.05 0.11 ±0.01 
+
+MATH-500 3.00 ±0.63 5.20 ±0.98 0.76 ±0.04 0.77 ±0.05 0.41 ±0.08 0.57 ±0.01 0.26 ±0.11 0.16 ±0.03 
+
+SVAMP 5.40 ±1.02 4.40 ±0.49 0.63 ±0.08 0.84 ±0.02 0.47 ±0.04 0.61 ±0.02 0.22 ±0.05 0.08 ±0.01 
+
+MMLU-Pro 5.20 ±1.17 4.60 ±0.49 0.70 ±0.03 0.86 ±0.03 0.53 ±0.04 0.64 ±0.01 0.13 ±0.06 0.04 ±0.00 
+
+Qwen-14B GSM8K 3.60 ±1.02 6.60 ±1.02 0.81 ±0.09 0.75 ±0.03 0.52 ±0.06 0.62 ±0.03 0.07 ±0.06 0.08 ±0.03 
+
+MATH-500 3.00 ±0.00 3.00 ±0.00 0.72 ±0.02 0.75 ±0.04 0.39 ±0.02 0.42 ±0.04 0.28 ±0.01 0.27 ±0.03 
+
+SVAMP 2.40 ±0.49 7.40 ±0.49 0.81 ±0.06 0.75 ±0.03 0.37 ±0.05 0.64 ±0.00 0.30 ±0.06 0.06 ±0.02 
+
+MMLU-Pro 3.00 ±0.00 6.20 ±1.17 0.77 ±0.01 0.82 ±0.04 0.45 ±0.01 0.66 ±0.01 0.03 ±0.01 0.05 ±0.01 
+
+Qwen-1.5B GSM8K 3.40 ±0.49 4.80 ±0.75 0.67 ±0.09 0.82 ±0.06 0.42 ±0.03 0.61 ±0.03 0.24 ±0.02 0.06 ±0.02 
+
+MATH-500 2.00 ±0.00 5.20 ±0.75 0.88 ±0.01 0.75 ±0.05 0.38 ±0.01 0.57 ±0.05 0.24 ±0.01 0.08 ±0.02 
+
+SVAMP 3.00 ±0.00 4.20 ±0.40 0.69 ±0.01 0.85 ±0.01 0.37 ±0.01 0.61 ±0.01 0.28 ±0.04 0.05 ±0.01 
+
+MMLU-Pro 2.00 ±0.00 7.00 ±0.89 0.89 ±0.10 0.76 ±0.03 0.39 ±0.10 0.64 ±0.02 0.22 ±0.19 0.07 ±0.01 
+
+Qwen2.5/ QwQ-32B GSM8K 5.62 ±0.86 6.00 ±1.00 0.71 ±0.08 0.75 ±0.04 0.54 ±0.10 0.59 ±0.05 0.14 ±0.02 0.10 ±0.02 
+
+MATH-500 3.50 ±0.50 4.25 ±0.66 0.78 ±0.09 0.80 ±0.02 0.50 ±0.05 0.56 ±0.04 0.17 ±0.05 0.14 ±0.04 
+
+SVAMP 5.62 ±0.48 5.75 ±0.83 0.72 ±0.08 0.79 ±0.04 0.55 ±0.09 0.62 ±0.04 0.14 ±0.06 0.09 ±0.02 
+
+MMLU-Pro 6.25 ±0.83 6.38 ±0.48 0.74 ±0.05 0.80 ±0.05 0.60 ±0.05 0.65 ±0.04 0.10 ±0.07 0.09 ±0.05 
+
+Table 3: Per-dataset comparison of structural switching metrics between base and reasoning-fine-tuned models. Values report means with population standard deviations shown in gray across repeated runs. Results use layer 31 for Llama-8B, layer 47 for Qwen-14B, and layer 27 for Qwen-1.5B. Light-green cells and bold means indicate the numerically better value within each base–reasoning pair; ties are highlighted in both columns. Arrows indicate the preferred direction for each metric. its minimum (0.065 on GSM8K, 0.078 on MATH-500) and TVD peaks (0.603 on GSM8K, 0.584 on MATH-500), reflecting maximally differentiated transition structure between regimes. By the final checkpoint, the metrics partially relax, consistent with consolidation into a stable regime configuration. We note that pstay decreases over this LoRA training run, suggesting that full recovery of self-transition persistence may require longer training or full fine-tuning. Overall, these results indicate that latent policy structure is not inherited from pretraining but is progressively shaped by reasoning fine-tuning, with the most pronounced regime differentiation emerging at mid-training before stabilizing. 
+
+## E Additional Robustness and Modeling Choice Ablations 
+
+E.1 Per-Dataset Structural Comparisons 
+
+To evaluate whether the observed structural differences are robust across reasoning tasks, Table 3 reports per-dataset switching metrics for all model families. The qualitative trends from Section 5 remain stable across datasets. Reasoning models consistently exhibit higher TVD, while effective state utilization, persistence, and spectral properties vary across model families and datasets. 
+
+E.2 Controls for Correctness and Temporal Bias 
+
+The comparison between base and reasoning-fine-tuned models could potentially be affected by differences in output correctness or by temporal biases introduced by the analysis pipeline. We therefore perform four controls. First, we restrict the analysis to problems solved correctly by both models. Second, we destroy the temporal order of each trajectory before fitting the SDS. Third, we remove CEBRA’s temporal-adjacency objective by sampling random non-adjacent positive pairs. Finally, we vary and remove the Dirichlet persistence prior used during SDS estimation. 26 Published as a conference paper at COLM 2026                      
+
+> Model Metric NBase Reasoning ∆
+> Qwen-1.5B Segment persistence 1,065 2.18 4.73 +2.55
+> pstay 0.56 0.69 +0.13
+> Qwen-14B Segment persistence 1,116 2.86 8.65 +5.79
+> pstay 0.71 0.90 +0.19
+
+Table 4: SDS results on paired-correct GSM8K traces, restricted to problems solved correctly by both the base and reasoning-fine-tuned models. Reasoning fine-tuning increases both segment persistence and mean self-transition probability despite both checkpoints effectively utilizing the full fixed state budget, Keff = 5. ∆ denotes Reasoning minus Base. Together, these controls distinguish structure present in the model’s activation trajectories from structure that could arise from output correctness, contrastive pairing, or the SDS prior. 
+
+E.2.1 Paired-Correct Traces 
+
+Reasoning-fine-tuned models generally solve more problems correctly than their correspond-ing base models. The observed dynamical differences could therefore reflect a difference between correct and incorrect traces rather than an effect of reasoning fine-tuning. To control for this possibility, we repeat the analysis using only paired-correct examples: problems solved correctly by both the base and reasoning-fine-tuned models. We focus this analysis on GSM8K because it is the only benchmark with a sufficiently large paired-correct subset for reliable SDS estimation. The paired-correct subsets contain 1,065 examples for Qwen-1.5B and 1,116 examples for Qwen-14B. The corresponding subsets are considerably smaller on MATH-500, SVAMP, and MMLU-Pro: 174, 145, and 177 examples, respectively, for Qwen-1.5B, and 359, 220, and 367 examples for Qwen-14B. We report two complementary measures of temporal stability. Mean self-transition, pstay ,is the average diagonal entry of the learned transition matrix. Segment persistence is the empirical mean duration of a contiguous latent-state segment, measured in sentence-level reasoning steps. As shown in Table 4, the qualitative separation between base and reasoning-fine-tuned models remains after controlling for correctness. For Qwen-14B, segment persistence increases from 2.86 to 8.65 reasoning steps and pstay increases from 0.71 to 0.90. For Qwen-1.5B, segment persistence increases from 2.18 to 4.73 and pstay increases from 0.56 to 0.69. Both base and reasoning models effectively utilize the full K = 5 state budget in this experiment. The difference therefore does not arise from the reasoning models using more latent states. Instead, the same state budget is organized differently: base models switch more frequently, whereas reasoning-fine-tuned models maintain states for longer contiguous periods. Thus, the observed dynamical difference cannot be explained solely by the higher accuracy of the reasoning-fine-tuned checkpoints. 
+
+E.2.2 Time-Shuffled Trajectories 
+
+The recovered structure could also be influenced by static activation geometry rather than the temporal organization of reasoning. To separate these factors, we randomly permute the order of sentence-level activations within each trajectory before fitting the SDS, while keeping the underlying CEBRA embeddings fixed. This preserves the set of activation states in each trajectory while destroying their true temporal order. Table 5 compares results obtained using the real trajectory order (Real) with those obtained after shuffling sentence order (Shuf.). Here, ∆R2 denotes the gain in one-step predictive fit relative to a single linear autoregressive model. 27 Published as a conference paper at COLM 2026                                                                 
+
+> Segment persistence ↑Predictive gain ∆R2↑
+> Dataset Model Checkpoint Real Shuffled Real Shuffled GSM8K Qwen-1.5B Base 2.16 1.32 +0.062 −0.437 Reasoning 6.12 2.14 +0.049 −0.250 Qwen-14B Base 3.20 1.96 +0.075 −0.341 Reasoning 7.98 3.04 +0.061 −0.349 Llama-8B Base 6.48 4.55 +0.088 −0.165 Reasoning 7.82 3.05 +0.039 −0.166 MATH-500 Qwen-1.5B Base 2.42 2.12 +0.072 −0.225 Reasoning 6.05 2.59 +0.035 −0.229 Qwen-14B Base 2.82 1.87 +0.068 −0.217 Reasoning 3.45 1.84 +0.064 −0.220 Llama-8B Base 3.91 3.71 +0.116 −0.047 Reasoning 6.79 2.14 +0.042 −0.233
+
+Table 5: Effect of shuffling sentence order before SDS fitting. Real denotes the original trajectory order, whereas Shuffled denotes a random within-trajectory permutation of the same sentence-level embeddings. Shuffling reduces segment persistence and causes predictive gains over a linear autoregressive baseline to become negative in every setting, showing that the recovered regimes depend on coherent temporal organization. Shuffling has a substantial effect across all model families. On GSM8K, the reasoning–base persistence gap decreases from 3.96 to 0.82 for Qwen-1.5B and from 4.79 to 1.08 for Qwen-14B. For Llama-8B, it changes from 1.34 to −1.50. On MATH-500, the gap decreases from 3.63 to 0.48 for Qwen-1.5B, from 0.63 to −0.03 for Qwen-14B, and from 2.88 to −1.57 for Llama-8B. The same pattern holds on the remaining benchmarks. On SVAMP, the reasoning–base persistence gap decreases from 4.65 to 1.02 for Qwen-1.5B, from 4.19 to −0.70 for Qwen-14B, and from 1.29 to −1.79 for Llama-8B. On MMLU-Pro, it decreases from 10.60 to 3.83 for Qwen-1.5B, from 3.66 to −0.98 for Qwen-14B, and from 5.79 to 3.84 for Llama-8B. The reasoning–base persistence gap is therefore larger under the true trajectory order in all 12 model–dataset pairs. Moreover, ∆R2 changes from positive to negative after shuffling for both base and reasoning-fine-tuned models. Once temporal order is destroyed, the fitted switching dynamics perform worse than the single linear autoregressive baseline. These results show that the recovered latent-policy structure depends on coherent temporal organization and cannot be explained by static activation geometry alone. 
+
+E.2.3 Randomized CEBRA Positive Pairs 
+
+CEBRA is trained by treating temporally adjacent reasoning steps as positive pairs. This objective could itself induce apparent temporal persistence, even if the underlying model activations do not contain differentiated temporal structure. We test this possibility by retraining the CEBRA encoder with positive pairs drawn from randomly selected non-adjacent steps within the same trajectory. This removes CEBRA’s temporal-adjacency objective while retaining trajectory identity. The SDS is subsequently fitted using the true sentence order. Table 6 compares the default adjacent-positive objective (Adj.) with randomized non-adjacent positives (Rnd.). We use a fixed K = 5 and report averages over three seeds. Under randomized positive pairs, the reasoning-fine-tuned model continues to exceed its corresponding base model in both pstay and TVD in all 12 model–dataset settings. The 28 Published as a conference paper at COLM 2026  
+
+> pstay
+
+↑ TVD ↑                                                                                                                        
+
+> Model Dataset Base Reasoning Base Reasoning Adj. Rnd. Adj. Rnd. Adj. Rnd. Adj. Rnd. Qwen-1.5B GSM8K 0.57 0.44 0.83 0.82 0.51 0.45 0.63 0.63 Qwen-14B GSM8K 0.74 0.50 0.82 0.76 0.60 0.48 0.62 0.56 Llama-8B GSM8K 0.64 0.58 0.77 0.74 0.49 0.42 0.58 0.54 Qwen-1.5B MATH-500 0.59 0.60 0.76 0.79 0.47 0.45 0.59 0.61 Qwen-14B MATH-500 0.66 0.65 0.73 0.66 0.49 0.48 0.55 0.50 Llama-8B MATH-500 0.78 0.67 0.83 0.79 0.58 0.47 0.63 0.59 Qwen-1.5B SVAMP 0.59 0.42 0.84 0.85 0.45 0.40 0.64 0.65 Qwen-14B SVAMP 0.54 0.41 0.84 0.78 0.45 0.37 0.64 0.59 Llama-8B SVAMP 0.68 0.60 0.77 0.79 0.52 0.42 0.57 0.60 Qwen-1.5B MMLU-Pro 0.67 0.74 0.85 0.85 0.48 0.54 0.65 0.67 Qwen-14B MMLU-Pro 0.71 0.71 0.85 0.83 0.55 0.53 0.65 0.64 Llama-8B MMLU-Pro 0.76 0.68 0.84 0.76 0.57 0.49 0.64 0.56
+
+Table 6: Effect of replacing temporally adjacent CEBRA positive pairs ( Adj. ) with randomly selected non-adjacent steps from the same trajectory ( Rnd. ). Results use K = 5 and are averaged over three seeds. Bold randomized-pair values indicate the better value between the base and reasoning-fine-tuned models. Under randomized positives, reasoning-fine-tuned models retain higher pstay and TVD in all 12 model–dataset settings.    
+
+> Metric Maximum change across κ
+
+∈ { 0, 0.1, 1, 5 }   
+
+> Keff 0.10 TVD 0.0093 Spectral gap 0.0092
+
+Table 7: Maximum variation in the recovered SDS metrics as the Dirichlet persistence-prior strength is varied, including its complete removal at κ = 0. reasoning–base separation becomes larger under randomization in 9 of 12 settings for pstay 
+
+and in 10 of 12 settings for TVD. This occurs because removing temporal adjacency generally weakens the apparent stickiness of the base-model representations more strongly than that of the reasoning-model representations. This result complements the PCA+SLDS control in Appendix E.4, which uses no contrastive pairing and still recovers the qualitative base–reasoning separation. The recovered latent-policy structure is therefore not an artifact of CEBRA’s temporal-adjacency objective. 
+
+E.2.4 Sensitivity to the Dirichlet Persistence Prior 
+
+The SDS estimation procedure uses a Dirichlet prior that encourages self-transitions. To determine whether this prior artificially produces persistent latent states, we vary its strength over κ ∈ { 0, 0.1, 1, 5 }. The setting κ = 0 removes the persistence prior entirely. Across all 24 base/reasoning model–dataset combinations, the qualitative separation be-tween base and reasoning-fine-tuned models remains unchanged at every value of κ. Quan-titatively, the largest observed variation is only 0.10 effective states in Keff , 0.0093 in TVD, and 0.0092 in spectral gap. For most runs, the variation in TVD and spectral gap is below 10 −3. Thus, the learned latent-policy organization is determined primarily by the activation trajectories rather than by the persistence prior. 29 Published as a conference paper at COLM 2026 
+
+E.3 Activation Extraction and Layer Selection Sentence-level representations. We extract activations at the sentence level rather than the token level. Token-level representations are too fine-grained to reflect coherent reasoning patterns, as individual tokens do not carry sufficient context to characterize the reasoning mode active at that step. We represent each sentence by the last-token hidden state, which aggregates contextual information from all preceding tokens in the sentence via causal attention. We verified that averaging over all token representations in a sentence yields weaker regime separation and lower predictive R2, and that the last-token representation also aligns better with the steering setup where interventions are applied at a single position. 
+
+Layer selection. We select a single middle layer per model family rather than the first or last layer. Early layers are excluded because reasoning-specific representations have not yet formed: the model has processed the input but has not yet begun to organize intermediate computations. Late layers are excluded because representations at the final layer are dominated by the output distribution and tend to collapse into a small number of token prediction modes, reducing the diversity of the latent geometry. Middle layers represent a balance: the model has had sufficient depth to begin structuring its reasoning, but has not yet committed to a specific output. For the middle layers, we selected layers L22 for Llama-3.1-8B, L28 for Qwen2.5-14B, and L20 for Qwen2.5-Math-1.5B. In this paper, when we state that we ”average over all layers”, we are referring to averaging over middle and final layers. For the final layers, we used layers L31 for Llama-3.1-8B, L47 for Qwen2.5-14B, and L27 for Qwen2.5-Math-1.5B. Figure 10 confirms this choice. The selected layers fall within stable bands where TVD and 
+
+Keff are high, spectral gap is low, and persistence is sustained. In contrast, shallow layers show noisy and undifferentiated metrics for both base and reasoning models, and very deep layers show degraded TVD and inflated spectral gap consistent with output-mode collapse. The base-versus-reasoning contrast is visible across most of the depth range, but is most stable and consistent in the middle layers we selected. 
+
+E.4 Projection and inference ablations 
+
+We compare three alternatives for latent-state discovery: CEBRA+EM, CEBRA-MoE, and PCA+SLDS. The comparison spans predictive fit (Figure 11), state utilization (Figure 12), transition structure (Figure 14), specialization, and persistence (Figure 13 and 15). Across metrics, CEBRA+EM provides the strongest overall balance between predictive gain and structured latent dynamics, while CEBRA-MoE under-uses states and PCA+SLDS tends to over-fragment trajectories into high-entropy, weakly persistent regimes. 
+
+E.5 State-Swap Ablation 
+
+Figures 16 and 17 report state-swap ablation results across early and late layers for all model families and datasets. In both cases the identity assignment substantially outperforms random permutation, with the gap growing in later layers. 
+
+E.6 Additional State-Swap Ablation Details 
+
+The state-swap intervention isolates whether regime identity matters beyond the mere existence of multiple experts. After fitting the model and estimating per-regime linear dynamics {Ak, bk}Kk=1, we hold these coefficients fixed and randomly permute the mapping between inferred states and regime-specific dynamics. Let R2id denote the predictive fit under the original assignments and R2 
+
+> σ
+
+the fit under a permutation σ of the regime labels. Averaging over random permutations yields ¯ R2rand , and the gap 
+
+∆ = R2id − ¯R2rand 
+
+measures how much predictive adequacy depends on applying the correct dynamical map at the correct time step. 30 Published as a conference paper at COLM 2026 
+
+Figure 10: Layer ablation of SDS metrics across depth for each model family. Bold lines show means across datasets; faint lines show per-dataset traces. The dashed vertical line marks the selected layer. Selected layers fall in regions with stable TVD, low spectral gap, high Keff , and sustained persistence. The early- and late-layer results in the main text show that this gap is already positive in intermediate layers and grows in later layers. The interpretation is that the discovered states are not interchangeable clusters: they index distinct dynamical operators whose temporal deployment matters for next-step prediction. The stronger late-layer drop is consistent with a progressive consolidation of latent policy structure as the residual stream approaches the output distribution. 
+
+E.7 Cross-Dataset Consistency of Latent Policy States 
+
+A key question is whether the latent policy states recovered by our framework are specific to the dataset used for training or reflect a more general property of the model’s reasoning behavior. To test this, we train a single CEBRA encoder on GSM8K and freeze its weights, then embed SVAMP, MATH-500, and MMLU-Pro into the same representation space without any retraining. We fit a separate SDS ( K = 4) on each dataset’s embeddings using EM and measure pairwise consistency across three complementary metrics. 
+
+Transition matrix similarity. For two fitted transition matrices T1, T2 ∈ RK×K, we solve the Hungarian assignment problem to find the optimal state relabeling σ∗ and report 
+
+ST (T1, T2) = 1 − ∥T1 − Tσ∗ 
+
+> 2
+
+∥F
+
+√2K , (15) 31 Published as a conference paper at COLM 2026 
+
+Figure 11: ∆R2 over linear autoregressive baselines for alternative latent-state discov-ery pipelines. CEBRA+EM consistently improves predictive fit over CEBRA-MoE, while PCA+SLDS achieves competitive fit on some settings but does so with substantially different structural tradeoffs. 
+
+Figure 12: Effective number of occupied regimes for alternative pipelines. CEBRA-MoE tends to use too few states, whereas PCA+SLDS often uses a larger number of effective states. CEBRA+EM occupies an intermediate regime that is compatible with the small-cardinality policy picture developed in the main text. 
+
+Figure 13: Persistence under alternative latent-state discovery pipelines. CEBRA-MoE at-tains the largest raw persistence but does so together with low state usage, while PCA+SLDS exhibits markedly lower persistence. CEBRA+EM balances persistence with broader regime utilization and stronger predictive adequacy. 32 Published as a conference paper at COLM 2026 where Tσ∗ 
+
+> 2
+
+is T2 permuted by σ∗. Values close to 1 indicate that the two datasets induce similar switching dynamics. 
+
+Centroid cosine similarity. Let C1, C2 ∈ RK×d be the per-regime centroids in the shared CEBRA space. We align them via Procrustes rotation R∗ = arg min R ∥C2 R − C1∥F and report the mean cosine similarity under the optimal assignment: 
+
+SC (C1, C2) = 1
+
+K
+
+> K
+
+# ∑
+
+> k=1
+
+C1[k]⊤(C2 R∗)[ σ∗(k)] 
+
+∥C1[k]∥ · ∥ (C2 R∗)[ σ∗(k)] ∥ . (16) 
+
+Cross-fit ∆R2. To test whether the SDS fitted on one dataset retains predictive utility on another, we apply the dynamics parameters θA = {πA, TA, {Ak, bk, Σk}A} fitted on dataset 
+
+A to embed and decode trajectories from dataset B, and report 
+
+∆R2 
+
+> A→B
+
+= R2 
+
+> θA
+
+(B) − R2AR (B), (17) where R2AR (B) is the linear autoregressive baseline on B. A positive value indicates that the cross-dataset SDS retains predictive structure beyond a single-mode baseline. Figure 18 reports all three metrics across the six dataset pairs. GSM8K, SVAMP, and MMLU-Pro exhibit high mutual consistency ( ST ≥ 0.85, SC ≥ 0.76) and positive cross-fit. 
+
+## F Functional State Specialization: Extended analysis 
+
+Figure 7 shows that across all three models, there is clear functional specialization. Aself-monitoring regime concentrating U NCERTAINTY MANAGEMENT and S ELF CHECKING 
+
+tokens emerges consistently: R1 in both Llama-8B and Qwen-1.5B, and split into two finer-grained states (R0 for uncertainty, R4 for verification) in Qwen-14B, suggesting that larger models develop more specialized introspective machinery. FINAL ANSWER EMISSION 
+
+is likewise reliably isolated (R0 in Llama-8B, R3 in Qwen-1.5B, R2 in Qwen-14B), as is ACTIVE COMPUTATION (R3 in Qwen-14B, co-loading with FACT RETRIEVAL ). PLAN GENERATION and P ROBLEM SETUP stages tend to distribute more diffusely, often absorbed by lower-specificity background regimes, consistent with their role as transitional rather than focal reasoning behaviors. Notably, Qwen-1.5B exhibits the sharpest special-ization overall, with R1 concentrating 78% of U NCERTAINTY MANAGEMENT and 68% of SELF CHECKING tokens, a more collapsed representation than the larger Qwen-14B, which distributes these behaviors across more states. 
+
+## G Hard-Example Dataset Construction 
+
+We construct the hard-example subsets used for both policy transplantation and P REFIX -GUARD by generating eight responses from each base checkpoint and retaining problems for which all eight responses are incorrect, i.e., base-model pass@8 is zero. The same fixed subsets are used throughout both actionable-policy evaluations. The resulting collection contains 444 hard examples across three model families and four benchmarks. Table 8 reports the per-setting sample sizes. 
+
+## H Policy-Transplantation Implementation 
+
+At inference time, we monitor the base model’s residual stream through a forward hook at layer 27 for Qwen-1.5B and layer 31 for Llama-8B. Every τ = 20 generated tokens, the current hidden state ht is standardized using the activation statistics of the corresponding reasoning-fine-tuned model and projected through its trained CEBRA encoder: 
+
+zt = fCEBRA 
+
+ ht − μr
+
+σr
+
+
+
+,33 Published as a conference paper at COLM 2026                          
+
+> Model GSM8K MATH-500 MMLU-Pro SVAMP Total Llama-8B 30 50 49 18 147
+> Qwen-1.5B 50 49 50 27 176
+> Qwen-14B 18 32 50 21 121 Total 98 131 149 66 444
+
+Table 8: Sizes of the hard-example subsets used for policy transplantation and P REFIX GUARD .The same 444-example collection spans all 12 model–dataset settings across both actionable-policy evaluations. where μr and σr are the reasoning model’s activation mean and standard deviation. Because forward–backward posteriors are unavailable during online generation, we infer the current regime using the nearest reasoning-model centroid: 
+
+st = arg min  
+
+> k
+
+∥zt − ck∥2,where {ck}Kk=1 are the centroids of the reasoning-model SDS. We select the most likely successor state under its transition matrix: 
+
+k⋆ = arg max  
+
+> j
+
+Tst j.Let pt(k) = Tst k be the natural next-state distribution and fk(zt) = Akzt + bk the conditional mean dynamics associated with regime k. The original predicted next-step mean is 
+
+μorig (zt) = 
+
+> K
+
+# ∑
+
+> k=1
+
+pt(k) fk(zt).To favor the target successor k⋆, we apply a KL-regularized exponential tilt: 
+
+q⋆ 
+
+> t
+
+(k) = pt(k) exp (β 1{k = k⋆})
+
+∑Kj=1 pt(j) exp (β 1{j = k⋆}) .The corresponding steered prediction and latent intervention are 
+
+μsteered (zt) = 
+
+> K
+
+# ∑
+
+> k=1
+
+q⋆ 
+
+> t
+
+(k) fk(zt), ∆zt = μsteered (zt) − μorig (zt).We decode ∆zt into activation space using the learned linear decoder Wdec and bound the intervention relative to the current hidden-state norm: 
+
+∆ht = α ∆ztWdec 
+
+∥∆ztWdec ∥2
+
+min (1, 0.1 ∥ht∥2) .The intervention ht ← ht + ∆ht is then applied to the residual stream. We use α = 8, β = 8, generation temperature 0.7, and eight samples per problem for all reported experiments. No model weights are updated. 
+
+## I Cross-Model Transfer and Policy-Transplantation Results 
+
+We evaluate transfer in two complementary ways. First, we test whether an SDS fitted on one checkpoint can predict trajectories from its paired checkpoint. This measures compatibility between the recovered dynamical models without modifying activations. Second, we intervene on the base model during generation and test whether importing reasoning-model dynamics changes downstream behavior. 34 Published as a conference paper at COLM 2026 
+
+Algorithm 1 Online transplantation of reasoning-model SDS dynamics 
+
+Require: Hidden state ht; encoder fCEBRA ; scaler (μr, σr ); centroids {ck}; SDS parameters 
+
+{Ak, bk, T}; decoder Wdec ; strengths α, β 
+
+> 1:
+
+zt ← fCEBRA 
+
+ (ht − μr )/σr
+
+ 
+
+> 2:
+
+st ← arg min k ∥zt − ck∥2 
+
+> 3:
+
+k⋆ ← arg max j Tst j 
+
+> 4:
+
+pt(k) ← Tst k for k = 1, . . . , K 
+
+> 5:
+
+fk(zt) ← Akzt + bk for k = 1, . . . , K 
+
+> 6:
+
+μorig ← ∑k pt(k) fk(zt) 
+
+> 7:
+
+¯qt(k) ← pt(k) exp  β1{k = k⋆} 
+
+> 8:
+
+q⋆ 
+
+> t
+
+(k) ← ¯qt(k)/ ∑j ¯qt(j) 
+
+> 9:
+
+μsteered ← ∑k q⋆ 
+
+> t
+
+(k) fk(zt) 
+
+> 10:
+
+∆zt ← μsteered − μorig  
+
+> 11:
+
+ut ← ∆ztWdec  
+
+> 12:
+
+∆ht ← α ut/∥ut∥2 · min (1, 0.1 ∥ht∥2) 
+
+> 13:
+
+return ht + ∆ht                                                
+
+> Model Dataset R2
+> r→rR2
+> b→rR2
+> b→bR2
+> r→b∆→r∆→b
+> Qwen2.5-Math-1.5B GSM8K 0.414 0.301 0.548 0.456 27.2% 16.7% SVAMP 0.475 0.372 0.577 0.495 21.8% 14.1% Llama-3.1-8B GSM8K 0.242 0.182 0.452 0.355 25.0% 21.4% SVAMP 0.239 0.188 0.507 0.438 21.2% 13.6% Qwen2.5-14B GSM8K 0.455 0.333 0.649 0.491 26.8% 24.4% SVAMP 0.463 0.331 0.557 0.479 28.6% 14.0%
+> Mean relative degradation 25 .1%17 .4%
+
+Table 9: Cross-model predictive transfer of SDS dynamics at representative middle layers. Native evaluations apply an SDS to trajectories from the model on which it was fitted; cross evaluations apply it to the paired checkpoint. In every setting, base-trained dynamics degrade more when transferred to reasoning trajectories than reasoning-trained dynamics do when transferred to base trajectories. 
+
+I.1 Asymmetric Predictive Transfer of SDS Dynamics 
+
+Let R2 
+
+> x→T
+
+denote the predictive fit obtained by applying an SDS trained on source model 
+
+x ∈ { b, r} to trajectories from a fixed target model T ∈ { b, r}, where b and r denote the base and reasoning-fine-tuned checkpoints. We define the target-normalized degradation caused by replacing the target’s native SDS with the SDS from the paired checkpoint as 
+
+∆→T = R2nat (T) − R2oth (T)
+
+R2nat (T) . (18) Table 9 reports results at representative middle layers: layer 20 for Qwen2.5-Math-1.5B, layer 22 for Llama-3.1-8B, and layer 28 for Qwen2.5-14B. Across all six model–dataset settings, applying base-trained dynamics to reasoning trajectories causes a larger relative degradation than applying reasoning-trained dynamics to base trajectories: 
+
+∆→r > ∆→b.The mean degradation is 25.1% in the former direction and 17.4% in the latter. This asymmetry suggests that reasoning-trained dynamics remain partially compatible with base-model trajectories, whereas base-trained dynamics do not capture part of the organization present in reasoning-model trajectories. We interpret this as evidence that reasoning fine-tuning reorganizes and differentiates a dynamical scaffold already present in the base model, rather than creating all latent dynamics from scratch. 35 Published as a conference paper at COLM 2026                       
+
+> Model Dataset nhard Base Steered Qwen-1.5B GSM8K 50 0.00 0.60
+> MATH-500 49 0.00 0.24
+> SVAMP 27 0.00 0.22
+> Llama-8B GSM8K 30 0.00 0.46
+> MATH-500 50 0.00 0.33
+> MMLU-Pro 49 0.00 0.28
+
+Table 10: Pass@8 after transplanting reasoning-model SDS dynamics into the paired base model. Evaluation uses the larger hard-example subsets from Table 8, comprising problems with base-model pass@8 = 0 by construction. 
+
+I.2 Behavioral Policy Transplantation 
+
+We next evaluate whether transferring reasoning-model SDS dynamics can improve the base model’s behavior. Table 10 reports pass@8 on the hard subsets defined in Appendix G. The unsteered baseline is zero by construction. Policy transplantation improves pass@8 in every evaluated setting, reaching 0.60 for Qwen-1.5B on GSM8K and 0.46 for Llama-8B on GSM8K. These results show that steering the base model toward transitions recovered from its reasoning-fine-tuned counterpart can causally alter downstream reasoning without changing model weights. We treat this intervention as causal validation rather than as a practical deployment strategy: when the reasoning model is available, it would normally be used directly. The SDS-guided prefix-pruning method in Section 8.2 instead operates directly on reasoning-model trajectories and provides the practical application of the recovered latent-state structure. 
+
+## J CEBRA Trajectory Visualizations Gallery 
+
+To visualize the geometry of the recovered latent policies directly, we plot representative reasoning traces in the learned CEBRA embedding space together with their decoded regime sequences. Each panel shows a single trajectory overlaid on the full point cloud of embedded steps from the corresponding model, dataset, and layer, with the right-hand column displaying the aligned sequence of inferred regimes across reasoning steps. These visualizations in Figures 19, 20, 21, 22, 23 and 24 make the contrast in temporal organization concrete. Base-model trajectories frequently dwell in one dominant cluster for long stretches or alternate among nearby regions without a stable large-scale progression. Reasoning trajectories more often execute a structured path through separated clusters, with regime occupancy changing at a pace that is neither purely sticky nor rapidly flickering. 36 Published as a conference paper at COLM 2026 
+
+Model Dataset Keff ↑ pstay ↑ TVD ↑ Spec. Gap ↓
+
+Llama-8B Base GSM8K 4.50 ±0.75 0.69 ±0.04 0.48 ±0.05 0.20 ±0.06 
+
+SVAMP 5.70 ±0.96 0.62 ±0.07 0.47 ±0.03 0.21 ±0.05 
+
+MATH500 3.10 ±0.51 0.77 ±0.03 0.44 ±0.06 0.23 ±0.07 
+
+MMLU-Pro 5.90 ±0.83 0.67 ±0.04 0.53 ±0.04 0.14 ±0.05 
+
+Llama-8B Reasoning GSM8K 4.50 ±0.49 0.80 ±0.03 0.57 ±0.02 0.12 ±0.03 
+
+SVAMP 4.40 ±0.49 0.83 ±0.03 0.60 ±0.02 0.08 ±0.02 
+
+MATH500 4.90 ±0.73 0.81 ±0.03 0.60 ±0.03 0.14 ±0.04 
+
+MMLU-Pro 4.40 ±0.49 0.85 ±0.03 0.62 ±0.02 0.03 ±0.00 
+
+Qwen-1.5B Base GSM8K 3.30 ±0.60 0.68 ±0.08 0.43 ±0.05 0.24 ±0.06 
+
+SVAMP 2.90 ±0.20 0.73 ±0.03 0.39 ±0.02 0.27 ±0.04 
+
+MATH500 2.00 ±0.00 0.88 ±0.01 0.38 ±0.01 0.23 ±0.01 
+
+MMLU-Pro 1.60 ±0.40 0.94 ±0.10 0.24 ±0.19 0.12 ±0.19 
+
+Qwen-1.5B Reasoning GSM8K 5.10 ±0.62 0.81 ±0.05 0.62 ±0.03 0.07 ±0.01 
+
+SVAMP 4.20 ±0.40 0.86 ±0.01 0.62 ±0.02 0.06 ±0.01 
+
+MATH500 5.00 ±0.57 0.78 ±0.05 0.59 ±0.03 0.09 ±0.02 
+
+MMLU-Pro 7.40 ±1.11 0.78 ±0.04 0.66 ±0.02 0.05 ±0.01 
+
+Qwen-14B Base GSM8K 3.10 ±0.76 0.85 ±0.08 0.50 ±0.03 0.05 ±0.04 
+
+SVAMP 2.30 ±0.45 0.79 ±0.08 0.34 ±0.07 0.34 ±0.11 
+
+MATH500 3.10 ±0.20 0.75 ±0.05 0.43 ±0.05 0.23 ±0.05 
+
+MMLU-Pro 4.75 ±1.01 0.80 ±0.06 0.57 ±0.05 0.05 ±0.04 
+
+Qwen-14B Reasoning GSM8K 6.50 ±1.02 0.78 ±0.04 0.64 ±0.03 0.06 ±0.02 
+
+SVAMP 6.90 ±0.65 0.77 ±0.05 0.65 ±0.02 0.07 ±0.02 
+
+MATH500 3.00 ±0.00 0.78 ±0.05 0.45 ±0.05 0.23 ±0.06 
+
+MMLU-Pro 6.30 ±0.98 0.83 ±0.03 0.67 ±0.01 0.06 ±0.01 
+
+Table 11: Dynamics statistics averaged across analyzed layers and 5 random seeds. Reasoning-tuned models consistently exhibit richer latent policy structure, characterized by higher effective state usage ( Keff ), larger transition asymmetry (TVD), and slower-mixing dynamics (lower spectral gap). 
+
+Model Dataset Keff ↑ pstay ↑ TVD ↑ Spec. Gap ↓
+
+QwQ-32B May-base GSM8K 5.62 ±0.86 0.71 ±0.08 0.54 ±0.10 0.14 ±0.02 
+
+MATH500 3.50 ±0.50 0.78 ±0.09 0.50 ±0.05 0.17 ±0.05 
+
+MMLU-Pro 6.25 ±0.83 0.74 ±0.05 0.60 ±0.05 0.10 ±0.07 
+
+SVAMP 5.62 ±0.48 0.72 ±0.08 0.55 ±0.09 0.14 ±0.06 
+
+QwQ-32B May-think GSM8K 6.00 ±1.00 0.75 ±0.04 0.59 ±0.05 0.10 ±0.02 
+
+MATH500 4.25 ±0.66 0.80 ±0.02 0.56 ±0.04 0.14 ±0.04 
+
+MMLU-Pro 6.38 ±0.48 0.80 ±0.05 0.65 ±0.04 0.09 ±0.05 
+
+SVAMP 5.75 ±0.83 0.79 ±0.04 0.62 ±0.04 0.09 ±0.02 
+
+Table 12: QwQ-32B SDS metrics using BIC-selected K for each seed/layer run. Values are mean ± std across available seed-layer runs. 37 Published as a conference paper at COLM 2026 
+
+Figure 14: Transition-structure TVD relative to a reference distribution. CEBRA+EM yields the most consistently structured switching dynamics, whereas CEBRA-MoE and PCA+SLDS produce lower or less stable transition structure across settings. 
+
+Figure 15: Spectral-gap proxy across alternative pipelines. Lower values correspond to slower mixing and more persistent latent regimes. CEBRA+EM generally attains smaller gaps than the alternatives, consistent with the emergence of longer-lived policy states. 
+
+Figure 16: State-swap ablation in early layers. The identity assignment preserves sub-stantially higher predictive fit than a random permutation across all model-dataset-layer combinations. 38 Published as a conference paper at COLM 2026 
+
+Figure 17: State-swap ablation in late layers. The drop in R2 under random permutation is larger than in early layers, consistent with progressive consolidation of latent policy structure with depth. 
+
+Figure 18: Cross-dataset consistency of recovered latent policy states under a shared frozen CEBRA encoder trained on GSM8K. Left: transition matrix similarity after Hungarian state alignment. Right: centroid cosine similarity after Procrustes rotation. GSM8K, SVAMP, and MMLU-Pro form a consistent cluster with high pairwise similarity ( ST ≥ 0.85, SC ≥ 0.76), while MATH-500 shows lower alignment, consistent with its longer and more complex reasoning chains requiring richer latent structure than the other benchmarks. 39 Published as a conference paper at COLM 2026 
+
+Figure 19: Representative CEBRA trajectories for Llama-8B on GSM8K. Top: Base . Bottom: 
+
+Reasoning . The base trajectory quickly enters a prolonged regime-R1 plateau after a brief prefix, whereas the reasoning trajectory traverses multiple clusters and revisits distinct regimes before terminating in a separate end region. 40 Published as a conference paper at COLM 2026 
+
+Figure 20: Representative CEBRA trajectories for Llama-8B on MATH500. Top: Base . Bottom: 
+
+Reasoning . The base run shows rapid local switching near the terminal region without a clear global traversal, while the reasoning run follows a longer multi-cluster path with a sustained middle segment and a distinct terminal computation basin. 41 Published as a conference paper at COLM 2026 
+
+Figure 21: Representative CEBRA trajectories for Qwen-1.5B on GSM8K. Top: Base . Bottom: 
+
+Reasoning . In the base model, the trajectory alternates among a small set of nearby clusters and ends with an isolated terminal jump. In the reasoning model, regime segments are longer and the path organizes into a clearer progression from an initial green cluster through blue and pink segments before reaching the terminal state. 42 Published as a conference paper at COLM 2026 
+
+Figure 22: Representative CEBRA trajectories for Qwen-1.5B on MATH500. Top: Base .
+
+Bottom: Reasoning . The base trajectory remains concentrated in a narrow band with frequent short switches, whereas the reasoning trajectory separates into longer blocks centered on a small number of regimes and transitions through a more interpretable start-to-end route. 43 Published as a conference paper at COLM 2026 
+
+Figure 23: Representative CEBRA trajectories for Qwen-14B on GSM8K. Top: Base . Bottom: 
+
+Reasoning . The base trajectory oscillates among nearby R2, R3, and R1 regions with limited geometric separation, while the reasoning trajectory begins in a distinct green cluster and proceeds through blue and red regimes toward a compact terminal region. 44 Published as a conference paper at COLM 2026 
+
+Figure 24: Representative CEBRA trajectories for Qwen-14B on MATH500. Top: Base . Bottom: 
+
+Reasoning . The base model produces a diffuse trajectory with frequent short-lived switches near the terminal region, whereas the reasoning model concentrates its trajectory into a smaller number of spatially separated clusters and a more ordered regime sequence. 45
