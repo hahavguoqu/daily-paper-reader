@@ -1,0 +1,55 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-07-23T21:03:57.820669+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 0,
+    "deep_cap": 6,
+    "deep_selected": 0,
+    "quick_candidates": 1,
+    "quick_skim_target": 11,
+    "quick_selected": 1
+  },
+  "deep_dive": [],
+  "quick_skim": [
+    {
+      "id": "2607.19967v1",
+      "source": "arxiv",
+      "title": "When Shippers Become Algorithms: Candidate Exposure, Information Design, and the Concentration of LLM-Mediated Freight Markets",
+      "abstract": "Shippers are beginning to delegate carrier selection to large language model (LLM) agents. We ask what such delegation does to a freight matching market, and which platform design choices contain it. We carried out agent-based simulations in which fifty shipper agents, built on commercial LLMs from OpenAI (GPT), Anthropic (Claude), and Google (Gemini), procure truckload capacity for thirty days. The market implements the rules of digital freight matching: each load is offered down the shipper's ranked list of carriers (waterfall tendering), carriers have daily capacity limits, spot prices respond to congestion, and carrier ratings accumulate with transactions. We found three risks and one remedy that works. Agents converged at once: for a fixed sampled carrier population, the same carrier was the modal first choice of every model on day one, attracting up to 76% of requests. Because each agent picks from its own randomly drawn list of displayed candidates, the platform controls how many options each shipper sees; concentration rose steeply once lists exceeded about ten carriers, with the onset differing across models. Which carriers ended up dominant varied widely from one sampled market to another, and displaying true quality instead of estimated ratings changed neither the level nor this variability (by design, quality affects only what agents see, never delivery outcomes). Against these risks, disclosing each carrier's remaining daily capacity cut concentration by a third and doubled shipper surplus, while vendor diversification, list-order randomization, and popularity display showed no clearly detectable effect. Platform information design, ahead of model choice or model regulation, is the lever that works.",
+      "authors": [
+        "Takahiro Ezaki",
+        "Naoto Imura",
+        "Katsuhiro Nishinari"
+      ],
+      "primary_category": "physics.soc-ph",
+      "categories": [
+        "physics.soc-ph",
+        "cs.AI",
+        "cs.CY"
+      ],
+      "published": "2026-07-22T09:51:56+00:00",
+      "link": "https://arxiv.org/pdf/2607.19967v1",
+      "tags": [
+        "query:vlm-cot"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "simulates freight market using commercial LLMs from OpenAI, Anthropic, and Google",
+      "llm_evidence_cn": "使用OpenAI、Anthropic、Google的商业LLM模拟货运市场",
+      "llm_evidence": "使用OpenAI、Anthropic、Google的商业LLM模拟货运市场",
+      "canonical_evidence": "使用OpenAI、Anthropic、Google的商业LLM模拟货运市场",
+      "llm_tldr_en": "Agent-based simulation using GPT, Claude, and Gemini reveals risks of LLM-mediated freight matching and proposes a remedy.",
+      "llm_tldr_cn": "托运人开始委托LLM代理选择承运商。本文使用OpenAI、Anthropic、Google的商用LLM构建代理模拟，发现瀑布招标下市场集中度风险，并提出信息设计补救措施。研究表明大厂模型在现实市场应用中可能带来系统风险，需审慎设计平台规则。",
+      "llm_tldr": "托运人开始委托LLM代理选择承运商。本文使用OpenAI、Anthropic、Google的商用LLM构建代理模拟，发现瀑布招标下市场集中度风险，并提出信息设计补救措施。研究表明大厂模型在现实市场应用中可能带来系统风险，需审慎设计平台规则。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "large model by big tech companies",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}

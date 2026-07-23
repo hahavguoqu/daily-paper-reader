@@ -6,33 +6,24 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-22
-- 运行时间：2026-07-22 20:10:04 UTC
+- 最新运行日期：2026-07-23
+- 运行时间：2026-07-23 21:04:42 UTC
 - 运行状态：成功
-- 本次总论文数：4
-- 精读区：4
-- 速读区：0
+- 本次总论文数：1
+- 精读区：0
+- 速读区：1
 
 ### 今日简报（AI）
-今日精读4篇论文，重点聚焦推理微调与大语言模型卷积方法。最值得关注：推理微调可诱导持久隐策略状态（9.0分）和LLM卷积架构（8.0分）。建议深入探索推理微调内部机制，并关注卷积在LLM中的应用潜力。
-- 详情：[/202607/22/README](/202607/22/README)
+今日速读一篇关于LLM中介货运市场集中化的论文。关键发现：算法作为候选曝光工具，信息设计可能加剧市场集中，值得物流与AI交叉领域关注。建议读者思考算法透明度对市场公平性的影响，并可延伸阅读相关博弈论或实证研究。
+- 详情：[/202607/23/README](/202607/23/README)
 
 ### 精读区论文标签
-1. [Reasoning Fine-Tuning Induces Persistent Latent Policy States](/202607/22/2607.18532v1-reasoning-fine-tuning-induces-persistent-latent-policy-states)  
-   标签：评分：9.0/10、query:vlm-cot
-   evidence：直接将大模型中的思维链推理建模为切换动态系统进行分析
-2. [Convolution for Large Language Models](/202607/22/2607.18413v1-convolution-for-large-language-models)  
-   标签：评分：8.0/10、query:vlm-cot
-   evidence：在阿里大模型Qwen3上提出卷积改进
-3. [LatentMT: Machine Translation with Latent Reasoning](/202607/22/2607.18618v1-latentmt-machine-translation-with-latent-reasoning)  
-   标签：评分：8.0/10、query:vlm-cot
-   evidence：潜在推理循环语言模型，替代显式思维链
-4. [Reasoning Error from Known Fact: Step-Level Self-Consistency Group Relative Policy Optimization for LLM](/202607/22/2607.18915v1-reasoning-error-from-known-fact-step-level-self-consistency-group-relative-policy-optimization-for-llm)  
-   标签：评分：8.0/10、query:vlm-cot
-   evidence：面向LLM推理错误的步级自一致性优化
+- 本次无精读推荐。
 
 ### 速读区论文标签
-- 本次无速读推荐。
+1. [When Shippers Become Algorithms: Candidate Exposure, Information Design, and the Concentration of LLM-Mediated Freight Markets](/202607/23/2607.19967v1-when-shippers-become-algorithms-candidate-exposure-information-design-and-the-concentration-of-llm-mediated-freight-markets)  
+   标签：评分：6.0/10、query:vlm-cot
+   evidence：使用OpenAI、Anthropic、Google的商业LLM模拟货运市场
 
 
 <div class="dpr-home-promo-card">
