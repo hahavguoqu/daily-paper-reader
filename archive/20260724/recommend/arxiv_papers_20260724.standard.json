@@ -1,0 +1,213 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-07-24T21:07:02.430065+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 3,
+    "deep_cap": 6,
+    "deep_selected": 3,
+    "quick_candidates": 2,
+    "quick_skim_target": 11,
+    "quick_selected": 2
+  },
+  "deep_dive": [
+    {
+      "id": "2607.19962v1",
+      "source": "arxiv",
+      "title": "EvoThink: Evolving Thinking in Large Reasoning Models via Self-Pruning and Aha-Moment Preference Optimization",
+      "abstract": "Large Reasoning Models (LRMs) often suffer from overthinking due to redundant verification steps. Existing approaches for mitigating overthinking, such as fast-slow thinking switching and reasoning trajectory compression, fail to make a fine-grained distinction between beneficial and redundant steps within the LRM's reasoning process, and may thus impair reasoning capability in their pursuit of efficiency. To simultaneously improve reasoning efficiency and capability, we propose EvoThink, a framework that reduces redundant verification and encourages the exploration of new reasoning paths. EvoThink comprises two key components: Self-Pruning Training (SPT), an unsupervised method that iteratively prunes redundant reasoning steps and self-trains on the concise trajectories; and Aha-Moment Preference Optimization (AMPO), which, inspired by genetic algorithms, identifies valuable failed reasoning attempts, synthesizes from-wrong-to-right aha-moment data, and optimizes the model to internalize this reasoning pattern. Extensive evaluations across mathematical reasoning and code generation benchmarks demonstrate that EvoThink not only substantially reduces inference-time token usage but also improves the reasoning capability of LRMs.",
+      "authors": [
+        "Xinbang Dai",
+        "Zheyu Xin",
+        "Huikang Hu",
+        "Lin Ren",
+        "Rihui Jin",
+        "Guohui Xiao",
+        "Guilin Qi",
+        "Kuicai Dong",
+        "Zhaocheng Du",
+        "Yuyang Zhang"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-07-22T09:40:22+00:00",
+      "link": "https://arxiv.org/pdf/2607.19962v1",
+      "tags": [
+        "keyword:vlm-cot",
+        "query:vlm-cot"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "improves chain-of-thought reasoning by pruning redundant steps and encouraging exploration",
+      "llm_evidence_cn": "通过剪枝冗余步骤和鼓励探索来改进链式推理",
+      "llm_evidence": "通过剪枝冗余步骤和鼓励探索来改进链式推理",
+      "canonical_evidence": "通过剪枝冗余步骤和鼓励探索来改进链式推理",
+      "llm_tldr_en": "EvoThink reduces overthinking in large reasoning models by self-pruning redundant verification steps and using Aha-Moment preference optimization to encourage new reasoning paths.",
+      "llm_tldr_cn": "针对大推理模型（LRM）因冗余验证步骤导致的过度思考问题，本文提出EvoThink框架。它包含两个核心组件：自我剪枝训练（SPT），一种无监督方法迭代剪枝冗余验证步骤；以及顿悟时刻偏好优化，鼓励模型探索新的推理路径。在多个推理基准上的实验表明，EvoThink在保持甚至提升推理能力的同时，显著提高了推理效率，使模型避免过度思考并产生更简洁的链式推理。",
+      "llm_tldr": "针对大推理模型（LRM）因冗余验证步骤导致的过度思考问题，本文提出EvoThink框架。它包含两个核心组件：自我剪枝训练（SPT），一种无监督方法迭代剪枝冗余验证步骤；以及顿悟时刻偏好优化，鼓励模型探索新的推理路径。在多个推理基准上的实验表明，EvoThink在保持甚至提升推理能力的同时，显著提高了推理效率，使模型避免过度思考并产生更简洁的链式推理。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.21433v1",
+      "source": "arxiv",
+      "title": "Token Budget Saturation and Mechanistic Early Detection of Reasoning Non-Convergence in Chain-of-Thought Models",
+      "abstract": "Chain-of-thought reasoning models such as DeepSeek-R1-Distill-Qwen-7B exhibit a bimodal convergence pattern: generations either terminate within a token budget (converged) or exhaust it without reaching a conclusion (non-converged). We characterize this phenomenon empirically, showing that converged generations achieve 90.3% accuracy on AIME 1983-2024 while non-converged ones achieve only 6.6%, with an overall convergence rate of 62.0%. We then ask whether this outcome is detectable early in the thinking chain using internal model representations. Training linear probes on hidden-state activations at token positions 50-300, we find that layer-20 activations at token 150 achieve AUC 0.608 (+-0.080, 5-fold CV), reliably above chance even at token 50. Activation probes consistently outperform behavioral baselines derived from token entropy and repetition statistics. A sweep-level permutation test yields p=0.063 (100,000 permutations), consistent with a modest signal that our sample size cannot confirm at conventional thresholds. These findings suggest that convergence fate is partially encoded in intermediate representations well before the generation ends, opening a path toward early-exit inference and adaptive compute allocation.",
+      "authors": [
+        "Renuka Oladri",
+        "Niveda Jawahar",
+        "Abdirisak Mohamed"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL",
+        "cs.AI",
+        "cs.LG"
+      ],
+      "published": "2026-07-23T15:37:04+00:00",
+      "link": "https://arxiv.org/pdf/2607.21433v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "chain-of-thought convergence detection in LLMs",
+      "llm_evidence_cn": "大模型链式思维收敛性检测",
+      "llm_evidence": "大模型链式思维收敛性检测",
+      "canonical_evidence": "大模型链式思维收敛性检测",
+      "llm_tldr_en": "Characterizes bimodal convergence in CoT models and uses linear probes on internal states for early detection of non-convergence, achieving AUC 0.608 at token 150.",
+      "llm_tldr_cn": "该论文实证研究了链式思维推理模型（如DeepSeek-R1-Distill-Qwen-7B）的双峰收敛现象：部分生成在预算内收敛，部分耗尽预算且答案极差。通过训练线性探针利用隐藏层激活，在token位置150处达到AUC 0.608，实现早期检测非收敛。该工作有助于理解CoT模型的内在推理机制，并为动态分配token预算提供了依据。",
+      "llm_tldr": "该论文实证研究了链式思维推理模型（如DeepSeek-R1-Distill-Qwen-7B）的双峰收敛现象：部分生成在预算内收敛，部分耗尽预算且答案极差。通过训练线性探针利用隐藏层激活，在token位置150处达到AUC 0.608，实现早期检测非收敛。该工作有助于理解CoT模型的内在推理机制，并为动态分配token预算提供了依据。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.20268v1",
+      "source": "arxiv",
+      "title": "PoTRE: Test-Time Reasoning inspired by Cognitive Heterogeneity",
+      "abstract": "While Large Language Models (LLMs) excel at many tasks, they frequently struggle with complex reasoning that requires long-horizon planning and iterative error correction. Furthermore, standard single-stream prompting proves brittle when models encounter novel abstractions or rigorous domain constraints. We introduce PoTRE (Poly-Topological Reasoning Ensembles), a heterogeneous framework that decouples inference into four agents: (1) Adversarial Refinement Agent, (2) Hierarchical strategic Planning Agent, (3) Spectrum Search Agent, and (4) Direct Chain Agent. A final Task-Adaptive Aggregation Layer dynamically reconciles these perspectives -- via final candidate selection, semantic synthesis, or neuro-symbolic verification -- to produce a robust global solution. We evaluate PoTRE on three frontier benchmarks: ARC-AGI-2, Humanity's Last Exam (HLE), and PRBench Finance. PoTRE achieves state-of-the-art accuracy of 49.92% on HLE, surpassing the previous best official score. We demonstrate that this architectural heterogeneity achieves improved reasoning performance using similar or fewer inference tokens compared to heavily scaled homogeneous baselines.",
+      "authors": [
+        "Anmol Kankariya",
+        "Sercan Ö. Arık"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.CL"
+      ],
+      "published": "2026-07-22T15:20:53+00:00",
+      "link": "https://arxiv.org/pdf/2607.20268v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "multi-agent reasoning framework with chain-of-thought agent",
+      "llm_evidence_cn": "包含链式推理智能体的多智能体推理框架",
+      "llm_evidence": "包含链式推理智能体的多智能体推理框架",
+      "canonical_evidence": "包含链式推理智能体的多智能体推理框架",
+      "llm_tldr_en": "PoTRE is a heterogeneous reasoning framework with four agents including a Direct Chain Agent, using adaptive aggregation to improve LLM reasoning on complex problems.",
+      "llm_tldr_cn": "针对大语言模型在面对长程规划和迭代纠错等复杂推理任务时的脆弱性，本文提出PoTRE（多拓扑推理集成）框架，将推理过程解耦为四个智能体：对抗性精炼智能体、层次化战略规划智能体、谱搜索智能体和直接链智能体。最终通过任务自适应聚合层动态调和这些视角，生成鲁棒的全局解决方案。该框架在测试时显著提升了推理的可靠性和效果，特别适用于需要链式推理的场景。",
+      "llm_tldr": "针对大语言模型在面对长程规划和迭代纠错等复杂推理任务时的脆弱性，本文提出PoTRE（多拓扑推理集成）框架，将推理过程解耦为四个智能体：对抗性精炼智能体、层次化战略规划智能体、谱搜索智能体和直接链智能体。最终通过任务自适应聚合层动态调和这些视角，生成鲁棒的全局解决方案。该框架在测试时显著提升了推理的可靠性和效果，特别适用于需要链式推理的场景。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2607.18481v1",
+      "source": "arxiv",
+      "title": "Search-on-Graph-R1: Training Large Language Models to Search Knowledge Graphs with Reinforcement Learning",
+      "abstract": "Knowledge graph question answering (KGQA) requires navigating from topic entities to an answer several relations away. Recent methods prompt a frontier LLM to explore the graph through a retrieval tool, but their reliance on frontier-scale inference makes them costly to deploy. We present Search-on-Graph-R1 (\\sogrone{}), which internalizes this navigation into a compact 8B model through supervised fine-tuning (SFT) followed by reinforcement learning (RL). Our central idea is to scaffold a frontier teacher with each question's gold SPARQL query, so the teacher traverses a known answer-bearing path with a live \\texttt{Search} tool rather than having to discover the path itself. Since every call executes against a live Freebase server, the resulting trajectories are grounded in the knowledge graph by construction. On WebQSP, CWQ, and GrailQA, \\sogrone{} at 8B surpasses every frozen frontier-LLM system in our comparison and posts the strongest results on CWQ of any system we compare against. It does so using no auxiliary module at inference and no LLM judge during training. Isolating each training stage shows that SFT and RL contribute complementary gains, our approach transfers across model families, and RL learns to reach answers in fewer \\texttt{Search} calls than its SFT initialization.",
+      "authors": [
+        "Jia Ao Sun",
+        "Hao Yu",
+        "Fengran Mo",
+        "Zhan Su",
+        "Yuchen Hui",
+        "Bang Liu",
+        "Jian-Yun Nie"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL",
+        "cs.IR"
+      ],
+      "published": "2026-07-20T19:58:32+00:00",
+      "link": "https://arxiv.org/pdf/2607.18481v1",
+      "tags": [
+        "keyword:vlm-cot",
+        "query:vlm-cot"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "RL-based graph search for KGQA, multi-step reasoning akin to CoT",
+      "llm_evidence_cn": "基于RL的知识图谱搜索，多步推理类似CoT",
+      "llm_evidence": "基于RL的知识图谱搜索，多步推理类似CoT",
+      "canonical_evidence": "基于RL的知识图谱搜索，多步推理类似CoT",
+      "llm_tldr_en": "Trains a compact 8B model to navigate knowledge graphs via RL, using a frontier teacher with SPARQL guidance, achieving strong KGQA performance.",
+      "llm_tldr_cn": "为解决前沿LLM进行知识图谱问答时推理成本高的问题，提出Search-on-Graph-R1，通过有监督微调和强化学习将路径搜索能力内化到8B模型中。利用黄金SPARQL查询引导教师模型遍历知识图谱，学生模型学会高效搜索。在KGQA任务上以更低成本超越前沿模型。",
+      "llm_tldr": "为解决前沿LLM进行知识图谱问答时推理成本高的问题，提出Search-on-Graph-R1，通过有监督微调和强化学习将路径搜索能力内化到8B模型中。利用黄金SPARQL查询引导教师模型遍历知识图谱，学生模型学会高效搜索。在KGQA任务上以更低成本超越前沿模型。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2607.17266v1",
+      "source": "arxiv",
+      "title": "Debate-on-Graph: Reliable and Adaptive Reasoning of Large Language Model on Uncertain Knowledge Graph",
+      "abstract": "Large language models (LLMs) have demonstrated remarkable capabilities in natural language processing. However, LLMs often suffer from hallucinations and lack of relevant knowledge when dealing with question answering (QA) tasks. To mitigate these issues, knowledge graphs (KGs) have been utilized to enhance LLM reasoning. Nevertheless, KGs often contain noise and errors, while existing KG-enhanced LLM approaches are generally unable to identify and filter such noisy and erroneous content, which can instead amplify hallucinations and pose challenges for reliable reasoning. Uncertain knowledge graphs (UKGs), which associate each triple with a confidence score to quantify uncertainty, offer a promising direction to address this challenge. Compared with prior work, we investigate how to leverage UKGs to support LLMs for QA. We propose Debate-on-Graph (DoG), a new framework that enables LLMs and UKGs to collaborate adaptively for reliable reasoning. Specifically, we first design a heuristic search algorithm tailored for UKGs to extract reliable and question-relevant subgraphs, thereby reducing noise and errors in retrieved knowledge. We then introduce a Multi-Agent Debate mechanism, which yields reliable answers through adaptive adversarial debates, aiming to fully exploit the knowledge in UKGs while preserving the reliability of retrieved evidence. Extensive experiments on four benchmark QA datasets show that DoG achieves state-of-the-art performance over existing LLM reasoning methods and KG-based baselines, while enabling reliable and adaptive reasoning. Our code is available at https://github.com/seucoin/Debate-on-Graph.",
+      "authors": [
+        "Peiji Yu",
+        "Xin Chen",
+        "Tianxing Wu"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL",
+        "cs.AI"
+      ],
+      "published": "2026-07-19T14:17:37+00:00",
+      "link": "https://arxiv.org/pdf/2607.17266v1",
+      "tags": [
+        "keyword:vlm-cot",
+        "query:vlm-cot"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "uses debate mechanism and uncertain knowledge graphs to enhance LLM reasoning",
+      "llm_evidence_cn": "利用辩论机制和不确定知识图增强大语言模型推理",
+      "llm_evidence": "利用辩论机制和不确定知识图增强大语言模型推理",
+      "canonical_evidence": "利用辩论机制和不确定知识图增强大语言模型推理",
+      "llm_tldr_en": "Debate-on-Graph enhances LLM reasoning on uncertain knowledge graphs by introducing debate mechanism to filter noise and improve reliability.",
+      "llm_tldr_cn": "针对知识图谱中的噪声和错误可能放大LLM幻觉的问题，本文提出Debate-on-Graph框架，利用不确定知识图谱（UKG）中的置信度分数，结合辩论机制来识别和过滤不可靠信息。该方法能够在推理过程中自适应地权衡图谱证据，提升在不确定环境下的推理可靠性和准确性。实验表明，该方法有效降低了噪声的影响，增强了LLM在问答任务中的表现。",
+      "llm_tldr": "针对知识图谱中的噪声和错误可能放大LLM幻觉的问题，本文提出Debate-on-Graph框架，利用不确定知识图谱（UKG）中的置信度分数，结合辩论机制来识别和过滤不可靠信息。该方法能够在推理过程中自适应地权衡图谱证据，提升在不确定环境下的推理可靠性和准确性。实验表明，该方法有效降低了噪声的影响，增强了LLM在问答任务中的表现。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}

@@ -1,0 +1,379 @@
+Title: EvoThink: Evolving Thinking in Large Reasoning Models via Self-Pruning and Aha-Moment Preference Optimization
+
+URL Source: https://arxiv.org/pdf/2607.19962v1
+
+Published Time: Thu, 23 Jul 2026 00:40:46 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+# EvoThink: Evolving Thinking in Large Reasoning Models via Self-Pruning and Aha-Moment Preference Optimization 
+
+## Xinbang Dai 1∗ , Zheyu Xin 1∗ , Huikang Hu 1∗ , Lin Ren 1 , Rihui Jin 1 ,
+
+## Guohui Xiao 1 , Guilin Qi 1 , Kuicai Dong 2 , Zhaocheng Du 2 , Yuyang Zhang 21Southeast University 
+
+2Noah’s Ark Lab 
+
+## {xbdai, huikanghu }@seu.edu.cn 
+
+## Abstract 
+
+Large Reasoning Models (LRMs) often suffer from 
+
+overthinking due to redundant verification steps. Existing approaches for mitigating overthinking, such as fast-slow thinking switching and reasoning trajectory compression, fail to make a fine-grained distinction between beneficial and redundant steps within the LRM’s reasoning process, and may thus impair reasoning capability in their pursuit of ef-ficiency. To simultaneously improve reasoning ef-ficiency and capability, we propose E VO THINK , a framework that reduces redundant verification and encourages the exploration of new reasoning paths. EVO THINK comprises two key components: Self-Pruning Training (SPT), an unsupervised method that iteratively prunes redundant reasoning steps and self-trains on the concise trajectories; and Aha-Moment Preference Optimization (AMPO), which, inspired by genetic algorithms, identifies valu-able failed reasoning attempts, synthesizes from-wrong-to-right aha-moment data, and optimizes the model to internalize this reasoning pattern. Ex-tensive evaluations across mathematical reason-ing and code generation benchmarks demonstrate that EVO THINK not only substantially reduces inference-time token usage but also improves the reasoning capability of LRMs. 
+
+## 1 Introduction 
+
+Large reasoning models (LRMs) have demonstrated signif-icant performance improvements in solving complex tasks such as mathematical reasoning and code generation [Guo et al. , 2025; Team et al. , 2025]. However, they often exhibit 
+
+overthinking , wherein they repeatedly solve and verify the same problem during inference, leading to a substantial in-crease in output length [Chen et al. , 2024; Sui et al. , 2025]. This verbose content incurs considerable computational costs and token consumption but offers minimal improvement in final task accuracy, sometimes even degrading performance through noise accumulation [Cuadron et al. , 2025]. As illus-trated in Figure 1, while some verification is beneficial for 
+
+> *
+
+Equal contribution. Problem: What is the smallest positive perfect cube that can be written as the sum of three consecutive integers?         
+
+> <think> We need to find the smallest positive perfect cube (a cube of a positive integer) that is equal to the sum of three consecutive integers. Let the three consecutive integers be n-1, n, n+1 ... we need to find the smallest positive perfect cube that is divisible by 3.
+> But wait: is that all? … The smallest positive perfect cube is 1, but 1 is not a multiple of 3. Next is 8, not a multiple of 3. Next is 27 … 27/3=9, so the integers would be 8,9,10. Their sum is indeed 27.
+> But is it the smallest? Check 1: 1 is not the sum of three consecutive integers … Check 2: … Check 3: … So 27 seems to be the answer.
+> But wait: The problem says "the sum of three …So 27 seems to be the answer.
+> But maybe we should check if there is a smaller positive perfect cube that is a multiple of 3 …
+> But wait: The problem might be trickier … the answer is 27.
+> </think>
+> The sum of three consecutive integers … Thus, t he smallest such perfect cube is 27 .
+
+… 
+
+> 175 tokens
+> 112 tokens
+> 541 tokens Inefficient Reasoning
+> Final Answer
+> Atomic Reasoning Unit
+> Atomic Reasoning Unit
+> Atomic Reasoning Unit
+> Atomic Reasoning Unit
+> Atomic Reasoning Unit
+> Atomic Reasoning Unit
+
+Figure 1: An example of overthinking in DeepSeek-R1. The model’s reasoning trajectory can be decomposed into a sequence of independent Atomic Reasoning Units: self-contained text segments, each capturing a single reasoning step and leading to a local conclu-sion. While beneficial units (green) effectively deepen the reason-ing, inefficient units (purple) consist of redundant self-verification that consumes tokens without adding new insights. 
+
+in-depth analysis, over 65% of the tokens are spent on redun-dant computations that retrace previously established reason-ing paths, substantially reducing inference efficiency. Existing efforts to mitigate overthinking in LRMs fall into two broad categories. The first line of work focuses on switching between fast and slow thinking: for difficult prob-lems, it aims to exploit the reasoning capability of LRMs via step-by-step inference, whereas for simple problems, it encourages the model to bypass reasoning and respond directly. In essence, this approach makes a binary deci-sion before reasoning begins [Pan et al. , 2024; Su et al. ,2025]. However, it is inherently vulnerable to misclassifi-arXiv:2607.19962v1 [cs.AI] 22 Jul 2026 cation, which can propagate errors and lead to reasoning fail-ures. The second line of work targets reasoning trajectory compression, aiming to reduce the number of tokens pro-duced during inference [Luo et al. , 2025a; Hou et al. , 2025; Chen et al. , 2025]. In particular, methods that leverage a model’s own capabilities to compress reasoning trajecto-ries have attracted attention. They do not require supervi-sion from human experts or stronger models; instead, they compress output length via lightweight heuristic rules dur-ing training. However, existing compression methods typi-cally do not distinguish between beneficial verification steps that support deeper reasoning and redundant checks at a fine granularity. As a result, they tend to shorten reasoning tra-jectories indiscriminately, which may disrupt beneficial rea-soning steps and thereby undermine the reasoning capabil-ity of LRMs. Overall, existing methods that switch reason-ing modes based on problem difficulty or compress overall output length do not specifically address the issue of redun-dant reasoning steps, thereby limiting further improvements in reasoning efficiency. Moreover, prior efforts to mitigate overthinking largely overlook enhancing reasoning capability [Cheng et al. ,2025b; Hou et al. , 2025]. They typically regard the slight performance drop of the optimized model relative to a vanilla LRM–attributable to shorter reasoning traces–as an acceptable trade-off. This perspective suggests that current overthinking-mitigation strategies do not focus on recovering the model’s potentially undermined reasoning ability. To address these challenges, we propose E VO THINK , a two-stage framework that optimizes both reasoning efficiency and capability. First, to improve reasoning efficiency, we in-troduce Self-Pruning Training (SPT), an unsupervised pro-cedure that iteratively identifies and removes redundant rea-soning steps and then performs self-training on the pruned trajectories. Second, we propose Aha-Moment Preference Optimization (AMPO) to enhance reasoning capability. In-spired by genetic algorithms, AMPO treats failed reasoning trajectories as a population and uses a fitness function to quantify the diversity of reasoning attempts, thereby selecting high-potential failures. Based on these curated failures, we construct aha-moment data that captures the from-wrong-to-right transitions. We then apply direct preference optimiza-tion (DPO) [Rafailov et al. , 2023] to drive the model to inter-nalize this reasoning pattern. We conduct extensive evalua-tions on mathematical reasoning and code generation bench-marks, revealing that E VO THINK consistently improves both reasoning efficiency and capability. Furthermore, we find that, compared to optimizing the model using only correct so-lutions, our aha-moment data construction pattern better em-ulates the exploratory process of discovering new reasoning paths, thereby facilitating improvements in reasoning perfor-mance. In summary, our contributions are: • We identify overthinking as a reasoning quality issue and introduce SPT, an unsupervised method to prune re-dundant verification steps from reasoning trajectories. • We propose AMPO, a method to encourage exploration of new reasoning paths by learning from curated from-wrong-to-right transitions on high-potential failures. • Through extensive experiments on math and code benchmarks, we demonstrate that E VO THINK signifi-cantly enhances both reasoning efficiency and overall task performance. 
+
+## 2 Related Works 
+
+Slow-fast thinking mode switching. This line of research typically assesses reasoning complexity to determine whether to invoke a fast or slow reasoning mode. Dynathink [Pan 
+
+et al. , 2024] introduces a dynamic framework allowing an LLM to autonomously choose between strategies: a fast mode for tasks with quickly identifiable answers, and a slow mode for more complex problems. Dualformer [Su et al. ,2025] proposes controllable fast-slow reasoning by learn-ing stochastic reasoning trajectories, enabling the model to adaptively select reasoning modes during inference. Sim-ilarly, ACPO [Cheng et al. , 2025a] introduces control to-kens such as <fast think> and <slow think> to en-able dynamic transitions between different reasoning depths. Thinkswitcher [Liang et al. , 2025] determines when to en-gage in deep versus rapid reasoning by analyzing the impact of switching on computation time, thereby reducing decoding FLOPs. Despite their effectiveness, these approaches fun-damentally rely on a classification mechanism to select an appropriate reasoning mode; this dependence may introduce binary decision errors and lead to selecting an incorrect rea-soning mode due to error propagation. 
+
+Reasoning trajectory compression. Although complex reasoning is more likely to yield correct answers, the as-sociated lengthy reasoning processes substantially increase both inference latency and computational costs. To pro-mote efficient reasoning, recent studies incorporate effi-ciency considerations into training frameworks. For exam-ple, Kimi [Team et al. , 2025], O1-Pruner [Luo et al. , 2025a], and ThinkPrune [Hou et al. , 2025] introduce length-based penalties into reinforcement learning reward functions, en-couraging models to produce more concise reasoning while maintaining accuracy. In addition, DAST [Shen et al. , 2025] and DIET [Chen et al. , 2025] construct preference datasets to train models to generate reasoning sequences that match the complexity of the query. Beyond training-based approaches, several training-free methods improve test-time reasoning ef-ficiency via advanced prompting techniques, such as Sketch-of-Thought [Aytes et al. , 2025], Token-Budget [Han et al. ,2025], and No Think [Ma et al. , 2025]. However, these meth-ods generally lack a fine-grained distinction between benefi-cial steps that deepen reasoning and redundant, unproductive steps. Consequently, compression-based strategies may in-discriminately remove essential information, potentially im-pairing the model’s reasoning capability. 
+
+## 3 Method 
+
+As illustrated in Figure 2, E VO THINK comprises two se-quential stages designed to improve the reasoning efficiency of LRMs by reducing redundant verification and optimizing reasoning patterns. The first stage, Self-Pruning Training 
+
+(SPT), follows an iterative loop in which the model generates an initial solution, prunes redundant reasoning trajectories, Problem: 2+3=?                     
+
+> Original Solution Generation
+> 2 plus 3 … you get 5.
+> But wait … 2 plus 3 equals 5.
+> …
+> Wait, let … 2+3 = 5.
+> 2 plus 3 … you get 5.
+> SFT
+> Self-Pruning Training
+> Iterative
+> Self-Training
+> Problem: 2+3=?
+> 𝒖𝒖 𝟏𝟏
+> 𝒖𝒖 𝟐𝟐
+> 𝒖𝒖 𝒕𝒕
+> Length
+> ×𝑲𝑲
+> Problem: 6 ×2=?
+> Wrong Answer
+> Group Initialization  6 multiply 2 … you get 14.
+> 6×2 … the answer is 17.
+> 6×2 … the answer is 14
+> 6×2 … which is 17.
+> 6×2 … which is 17.
+> 6 multiply 2 … you get 13.
+> …𝓕𝓕̇ 𝒓𝒓 =𝟐𝟐
+> 𝓕𝓕̇ 𝒓𝒓 =𝟑𝟑
+> Fitness Calculation Based on Diversity
+> 6×2=12.
+> 𝒎𝒎𝒎𝒎𝒎𝒎
+> 6×2 … the answer is 14
+> 6×2 … which is 17.
+> 6 multiply 2 … you get 13.
+> But is this correct? I think I missed something.
+> …
+> 6 multiply 2 equals 12.
+> Mutation Data Synthesis
+> chosen
+> rejected
+> Acc
+> Aha-Moment
+> Preference Optimization
+> Aha-Moment Learning
+> mutation data
+
+Figure 2: Self-Pruning Training learns concise reasoning by pruning redundant units, whereas Aha-Moment Preference Optimization uses a fitness function to select the most valuable failed reasoning trajectories, then synthesizes mutation examples and trains the model using DPO. 
+
+and then performs self-training on the resulting pruned data. In the second stage, Aha-Moment Preference Optimization 
+
+(AMPO), we initialize a population of incorrect responses and apply a fitness function F(.) to identify valuable failure cases. We then create mutated data by strategically connect-ing the incorrect reasoning paths in failure cases to the correct answers, yielding explicitly aha-moment instances. Finally, the model learns this reasoning pattern via DPO, thereby im-proving its reasoning capability. 
+
+3.1 Self-Pruning Training 
+
+Original Solution Generation 
+
+In this step, the LRM generates preliminary reasoning for a given query. Formally, we define Mi as the LRM at the i-th iteration of the self-training process. Specifically, M0 de-notes the initial model prior to any optimization. This ini-tial model serves as the annotator (denoted by A) and pro-cesses all data using our task-specific prompts within the EVO THINK framework. Given a query q, the model gener-ates an output sequence formulated as oi = ri ⊕ ˆai. Specif-ically, ri represents the reasoning trajectory (enclosed within 
+
+<think> and </think> tokens) capturing the model’s step-by-step thought process, ˆai represents the final predicted answer generated after the reasoning trajectory, and ⊕ signi-fies sequence concatenation. 
+
+Redundant Reasoning Trajectory Pruning 
+
+This step removes repetitive self-verification loops within the generated reasoning trajectory ri while preserving useful rea-soning progress. We first introduce the concept of the atomic reasoning unit to formalize the pruning process. 
+
+Atomic reasoning unit. Given ri, we prompt A to decom-pose it into a sequence of complete reasoning sub-steps, de-noted as ri = {u(t) 
+
+> i
+
+} for t ∈ { 1, . . . , T }. Each u(t) 
+
+> i
+
+consti-tutes an atomic reasoning unit : a contiguous text span that starts when the model initiates a new self-contained reason-ing attempt (understandable without relying on later units) and ends when that attempt reaches a local conclusion (e.g., a candidate direction, intermediate claim, or tentative answer). Empirically, with the exception of the first unit, such units often begin with discourse markers indicating a restart or re-check (e.g., wait , alternatively , but , however , double-check ). 
+
+Pruning redundant atomic units. The LRM first segments the reasoning trajectory into atomic reasoning units and sub-sequently examines the redundancy of consecutive units. Concretely, the model compares the local conclusion implied by u(t) 
+
+> i
+
+with that of u(t−1)  
+
+> i
+
+; if they are the same (i.e., the new unit does not expand the explored solution space and only re-derives or re-verifies an already reached conclusion), the model marks u(t) 
+
+> i
+
+as redundant and removes it. This yields a pruned reasoning trajectory ˜ri, and the corresponding pruned output sequence ˜oi = ˜ ri ⊕ ˆai, where the predicted answer ˆai
+
+remains unchanged during this step. 
+
+Pruning-induced efficient reasoning patterns. Our prun-ing strategy establishes an efficient reasoning pattern in the model. Specifically, (1) when a reasoning unit is consis-tently correct yet repeatedly revisited, pruning encourages the model to halt upon reaching the conclusion, thereby reducing unnecessary over-verification. (2) When a reasoning unit is incorrect yet repeatedly invoked, pruning removes consecu-tively repeated conclusions so that each attempt explores a new subspace, alleviating the model’s over-concentration on high-likelihood but incorrect solutions. (3) When the model initially oscillates among incorrect conclusions but ultimately reaches the correct answer (i.e., an aha moment ), pruning re-duces the number of prior repeated attempts spent on incor-rect trajectories, enabling the reasoning process to reach the correct answer faster. 
+
+Iterative Self-Training 
+
+Following the i-th pruning step, the model Mi−1 undergoes unsupervised fine-tuning on a set of concise solutions that it self-generates, yielding the subsequent model Mi. The size of the concise solution set is fixed at 100 for each iter-ation. This design encourages the model to internalize the generalizable skill of concise reasoning (the process ) rather than simply memorize efficient paths to known correct an-swers (the results ). Let ¯Li denote the average token length of the pruned outputs generated by Mi across all queries at the i-th iteration. We define the relative length reduction as 
+
+S(i) = ( ¯Li−1 − ¯Li)/ ¯Li−1 for i ≥ 1. The procedure ter-minates when the compression gain becomes negligible, i.e., when S(i) ≤ ϵL, where the threshold hyperparameter ϵL is set to 0.1. We justify this choice in § 4.3. The self-training process utilizes a standard next-token pre-diction loss, formulated as: 
+
+LSPT = − 1
+
+|˜oi|
+
+> |˜oi|
+
+X
+
+> w=1
+
+log PMi (˜ oi,w | q, ˜oi,<w )
+
+where q is the input query, ˜oi denotes the pruned output se-quence consisting of tokens ˜oi,w , and PMi represents the probability distribution of the model at iteration i. By min-imizing this loss, the model learns to internalize a more effi-cient reasoning pattern. 
+
+3.2 Aha-Moment Preference Optimization 
+
+Wrong Answer Group Initialization 
+
+In this stage, we employ a genetic algorithm to extract valu-able learning signals from failures. These signals are then used to construct mutation data, which trains the LRM to acquire new reasoning patterns. The process starts with the model MI obtained at the final iteration (the I-th round) of the SPT stage. We specifically select this warm-started model because it has internalized efficient reasoning patterns. This trait proves particularly advantageous when generating erro-neous reasoning trajectories: compared to a vanilla model lacking such internalized patterns, MI requires significantly fewer tokens to produce the same number of atomic reasoning units, as discussed in § 4.3. For each query q, we use this model to produce K re-sponses, where K is a hyperparameter. If all K attempts yield incorrect answers, we mark the query as a hard query , repre-senting the current reasoning boundary of the model. This process forms a subset Dhard . For every q ∈ D hard , the K
+
+incorrect reasoning outputs { ˙o1, . . . , ˙ok} constitute the initial population for evolution, termed the Wrong Answer Group .The choice of K is detailed in § 4.5. 
+
+Fitness Calculation Based on Diversity 
+
+To select the most informative failure cases for evolution, we define a diversity-based fitness function F. For a reasoning trajectory ˙r, we first decompose it into m atomic reasoning units, ˙r = ( u1, u 2, . . . , u m). Let A be a parser that extracts from each unit ui a local conclusion ci = A(ui). We then define the set of distinct local conclusions in ˙r as C( ˙ r) = 
+
+{ci}mi=1 , and compute the fitness as the number of unique conclusions: F( ˙ r) = |C( ˙ r)| = |{A (ui) : i = 1 , . . . , m }| .A larger F( ˙ r) indicates that the trajectory explores a broader range of intermediate conclusions, and is therefore more in-formative. In practice, we prompt A to extract {ci} and count the number of distinct conclusions. 
+
+Mutation Data Synthesis 
+
+To construct valid mutation data, we select the erroneous tra-jectory with the highest fitness score and prompt the annota-tor A to synthesize an aha-moment transition. Specifically, for a given query q, the model retains the entire incorrect reasoning prefix, while we prompt it to initiate a shift to-ward the correct answer a with the starting sentence, “But is this correct? I think I missed something.” This creates a synthetic trajectory that begins with plausible but flawed rea-soning (aligning with the model’s internal distribution) and gradually bridges to the correct solution (aligning with the gold answer distribution). Unlike direct supervision with cor-rect answers, this from-wrong-to-right pattern offers a softer learning curve, effectively mitigating the model’s overconfi-dence in high-likelihood incorrect paths while demonstrating how to recover from errors. We analyze this setting in § 4.4 and present a case study in § 4.6. 
+
+Aha-Moment Learning 
+
+To help the model learn the synthesized aha-moment reason-ing patterns, we train it using DPO. For each hard query 
+
+q ∈ D hard , we construct a preference pair (och , o re ), where the chosen response och is the synthesized mutation trajec-tory and the rejected response ore is the original incorrect trajectory with the highest fitness score. This pairing forces the model to distinguish between a dead-end reasoning path and a successful aha-moment correction. For q / ∈ D hard , och 
+
+is the shortest correct response among K sampled outputs, while ore is the longest response, which is not necessarily correct. The objective of AMPO is formulated as:                   
+
+> LAMPO =−
+> "
+> log σβlog PM(och |q)
+> Pref (och |q)−βlog PM(ore |q)
+> Pref (ore |q)
+> !#
+
+where M is the policy model under optimization (initialized from MI ), and Pref is the reference model (typically a copy of MI before DPO begins). The hyperparameter β controls the strength of the preference optimization; we set β=0.5 to enforce closer fitting to the preference data. The function σ(·)
+
+is the standard sigmoid function. By minimizing LAMPO , the model is trained to assign higher probability to och relative to 
+
+ore .
+
+## 4 Experiments 
+
+4.1 Experimental Setups 
+
+Baselines. In our experiments, we evaluate three open-source backbone LRMs: Distill-Qwen-1.5B [Guo et al. ,2025], DeepScaleR-1.5B [Luo et al. , 2025b], and QwQ-32B [Yang et al. , 2024]. We compare E VO THINK with three groups of baselines. (1) The vanilla model without compres-sion. (2) Supervised Fine-tuning (SFT) and DPO baselines: Kimi 1.5 SFT[Team et al. , 2025], fine-tuned on the short-est correct responses, and Kimi 1.5 DPO[Team et al. , 2025], which treats the shortest correct response as a positive exam-ple and incorrect or longer ones as negative examples. (3) RL-based methods, including O1-Pruner [Luo et al. , 2025a], ThinkPrune [Hou et al. , 2025], and DIET [Chen et al. , 2025]. We follow the settings established in these baselines. For ThinkPrune, we adopt the ThinkPrune-2k variant from the series, which achieves the greatest reduction in output length. 
+
+Datasets. We comprehensively evaluate all baselines on four benchmarks covering distinct domains: MATH-500 [Hendrycks et al. , 2021], AIME24 [Muennighoff et al. ,2025] and AIME25 * (mathematics), as well as TACO [Li et al. , 2023] (code generation). For MATH-500, we train ex-clusively on the standard MATH training set. For AIME24 and AIME25, we construct a training set from AIME 
+
+> *https://huggingface.co/datasets/math-ai/aime25
+
+Backbone Method MATH500 AIME24 AIME25 TACO 
+
+P@1 ↑ #Tok ↓ P@1 ↑ #Tok ↓ P@1 ↑ #Tok ↓ P@1 ↑ #Tok ↓
+
+DeepScaleR-1.5B Vanilla 80.3 3171 29.2 6436 30.8 8282 4.2 7678 Kimi 1.5 SFT 79.3 2911 27.5 6399 29.2 8185 3.5 7420 Kimi 1.5 DPO 81.5 2883 35.0 6739 26.7 6751 3.7 7350 O1-Pruner 79.6 2430 28.3 5205 33.3 6441 5.5 7622 ThinkPrune-2k 80.1 1838 26.7 3862 27.5 4392 3.5 6117 
+
+DIET 81.5 2255 29.2 5147 32.5 5881 5.8 7241 EVO THINK SPT 80.2 1861 26.7 4321 26.7 5470 6.4 6234 EVO THINK AMPO 84.7 3441 37.5 7044 37.5 8783 7.7 8013 EVO THINK SPT+AMPO 82.1 2146 36.7 5287 35.8 6254 7.4 6919 Distill-Qwen-1.5B Vanilla 75.4 3752 16.7 7337 24.2 8319 4.2 7680 Kimi 1.5 SFT 68.7 3643 17.5 6688 19.2 7120 3.4 7450 Kimi 1.5 DPO 70.6 3688 20.0 7423 20.8 6976 3.6 7380 O1-Pruner 69.7 3451 14.2 6436 29.2 7371 4.1 7481 ThinkPrune-2k 72.1 2659 13.3 5402 20.8 5731 3.7 7029 DIET 72.9 3142 16.7 6870 26.7 6702 3.5 7406 EVO THINK SPT 73.5 2481 20.0 5988 22.5 5946 5.2 6645 
+
+EVO THINK AMPO 78.0 3827 35.8 8071 30.0 9151 6.6 8448 EVO THINK SPT+AMPO 76.3 2778 30.8 6633 28.3 6572 6.2 7024 QwQ-32B Vanilla 87.6 4289 46.7 7290 33.3 8749 10.7 9003 Kimi 1.5 SFT 87.4 4115 44.2 7025 31.7 7409 10.5 8735 Kimi 1.5 DPO 85.8 4075 42.5 6950 30.8 7330 10.0 8640 O1-Pruner 83.1 3002 37.5 6939 27.5 6598 8.4 8472 ThinkPrune-2k 88.7 2336 45.8 5824 32.5 6465 8.7 7198 DIET 83.6 3740 49.2 6314 34.2 7125 9.8 7219 EVO THINK SPT 86.0 2406 50.8 6225 35.8 6224 9.4 6947 
+
+EVO THINK AMPO 90.1 4718 55.8 8019 38.3 9224 12.6 9903 EVO THINK SPT+AMPO 89.5 3016 52.5 6299 36.7 6395 11.9 7281 
+
+Table 1: Average performance (Pass@1, %) and token length (#Tok) across different models and baselines on four benchmarks. For each benchmark, bold denotes the best result and underline denotes the second-best. 
+
+(1983–2023). We obtain the gold solutions for all AIME problems from the Art of Problem Solving community †. For TACO, we use its official training sets. To ensure a fair com-parison, all baselines are trained and evaluated on identical data splits. We use veRL [Sheng et al. , 2025] as the training framework and train models on 8 H100 GPUs. 
+
+Evaluation. Following the established metrics from DIET [Chen et al. , 2025], we primarily evaluate performance using two metrics: Pass@1 (P@1) and the average response length in tokens (#Tok). To estimate P@1, we sample 8 independent responses per question for AIME and 4 for all other datasets. For MATH-500 and AIME, we require the model to enclose its final answer in \\ boxed {} to enable exact matching with the ground-truth answer; for TACO, we use the official evaluation script provided by the dataset. During the evaluation, we employed a temperature of 0.6, a top-p value of 0.95. For both the baseline and E VO THINK ,we set the maximum token limit per instance to 32,768 tokens. If generation reaches this limit before completing the reasoning process, we mark the instance as incorrect and set its response length to 32,768. This policy ensures that models failing to produce a complete solution within the token limit are penalized during accuracy computation. 
+
+> †
+
+https://artofproblemsolving.com/wiki/index.php?title= AIME Problems and Solutions 
+
+4.2 Main Results 
+
+Table 1 presents a comprehensive quantitative evaluation of our E VO THINK framework across diverse LRMs and bench-marks. The integrated method, E VO THINK SPT+AMPO , consis-tently achieves a superior balance between reasoning accu-racy (Pass@1) and computational efficiency (token length). When comparing fine-grained performance, we observe that while baselines like ThinkPrune-2k achieve substantial token reduction (e.g., reducing DeepScaleR-1.5B to 1838 tokens on MATH500), they often suffer significant performance degra-dation. For instance, on the MATH-500, when the vanilla model is DeepScaleR-1.5B, ThinkPrune-2k’s Pass@1 drops to 72.1% compared to the vanilla model’s 75.4%, whereas our EVO THINK SPT+AMPO maintains a higher Pass@1 of 76.3% with comparable efficiency gains. Overall, our approach outperforms other compression-focused baselines in Pass@1 while maintaining similar output lengths, demonstrating con-sistency across varying model scales. The ablation variants, EVO THINK SPT and EVO -THINK AMPO , represent models trained exclusively with either SPT or AMPO, respectively. Through the E VO THINK SPT 
+
+stage alone, the LRM achieves reasoning performance comparable to or even better than most existing baselines while effectively reducing token consumption. For instance, on the TACO dataset, our DeepScaleR-1.5B model attains a score of 6.4% during the E VO THINK SPT stage, outperforming all baselines. More importantly, E VO THINK SPT training is unsupervised, requires only a few iterations, and uses much less data, whereas all competing baselines rely on gold answers and are trained on the full dataset. This suggests that, in addressing overthinking, improving reasoning qual-ity by suppressing redundant atomic reasoning units is a more effective strategy than merely compressing the length of reasoning trajectories. Furthermore, EVO THINK AMPO 
+
+yields substantial performance gains; for example, on AIME24, QwQ-32B achieves 55.8% Pass@1, compared to 46.7% for the vanilla model. Consequently, the combined EVO THINK SPT+AMPO framework achieves optimal overall performance, confirming the complementary advantages of its components. SPT minimizes token consumption, while AMPO significantly boosts the performance of the warm-started efficient models, thereby achieving a robust balance between performance and efficiency. 0 1 2 3 4 5    
+
+> Iterations
+> 2000
+> 4000
+> 6000
+> 8000
+> #Tok
+> MATH
+> AIME
+> TACO
+> 1234
+> Local Conclusions
+> 0
+> 2000
+> 4000
+> 6000
+> 8000 Vanilla
+> Evothink SPT
+> Evothink SPT + AMPO
+
+Figure 3: Evolution of reasoning length under E VO THINK SPT on MATH (left). Correlation between reasoning length and the number of local conclusions on MATH (right). 
+
+4.3 Improvement of Reasoning Efficiency 
+
+Figure 3 (left) presents the evolution of the generated reason-ing length of DeepScaleR-1.5B on the MATH-500 training set under the SPT algorithm. We observe that the length typ-ically stabilizes within five iterations, at which point S(i) <
+
+0.1. Accordingly, we set the length-tolerance threshold ϵL =0.1. On other datasets, the number of iterations required to stabilize and satisfy S(i) < 0.1 remains within ten. Fig-ure 3 (right) reports the average reasoning length associated with local conclusions produced by DeepScaleR-1.5B on the MATH training set under different methods. For the vanilla model, no strict correlation exists between the number of lo-cal conclusions and the inference length. Notably, the token cost for a single local conclusion can even exceed that for two local conclusions in the vanilla model, which indicates redun-dant atomic reasoning units. After applying SPT, our frame-work captures the relationship between local conclusions and reasoning token cost: the reasoning length increases mono-tonically as the number of local conclusions grows. Figure 4 analyzes the output length of DeepScaleR-1.5B on MATH-500, grouped by problem difficulty (Levels 1–5, from easy to difficult). We find that: (1) E VO THINK SPT yields substantially lower medians and interquartile ranges than the vanilla model at every difficulty level, indicating an effective reduction in reasoning length. (2) as difficulty increases, the vanilla model exhibits an increasingly heavy upper tail, sug-gesting that harder instances more frequently trigger extreme computational overhead. In contrast, E VO THINK SPT shows Level 1 Level 2 Level 3 Level 4 Level 5  
+
+> 0
+> 2000
+> 4000
+> 6000+
+> Vanilla EvoThink SPT
+
+Figure 4: Distribution of reasoning lengths across difficulty levels on MATH-500. 
+
+a much milder increase with smaller variance; although its distribution shifts upward with difficulty, the magnitude is far smaller than that of the vanilla model. Overall, E VO -THINK SPT remains more stable and is less prone to excessive output length inflation. 
+
+4.4 Enhancement of Reasoning Capability 
+
+Figure 5 compares different training methods on curated difficult datasets composed of problems that the vanilla DeepScaleR-1.5B model consistently fails to solve. This setup allows for a focused analysis of how reasoning capa-bilities are improved by learning from gold solutions. We compare four approaches: (1) Supervised Fine-Tuning (SFT) directly on gold solutions; (2) DPO, using gold solutions as chosen and model generations as rejected responses; and (3, 4) our E VO THINK AMPO and E VO THINK SPT+AMPO meth-ods, which leverage our constructed mutation data. The re-sults show that, although training directly on human-written, highly condensed gold solutions substantially reduces reason-ing length, SFT and DPO yield only limited improvements in reasoning capability, indicating that the model struggles to in-ternalize this reasoning pattern through direct supervision. In contrast, the AMPO framework proves highly effective: our curated aha-moment data—enriched with diverse reasoning trajectories and aligned with gold solutions—substantially outperforms direct training on gold solutions alone. SFT DPO Evothink    
+
+> AMPO
+> Evothink
+> SPT+AMPO
+> 0
+> 5
+> 10
+> 15
+> 20
+> Pass@1
+> MATH AIME24 AIME25 TACO
+
+Figure 5: Performance improvements of DeepScaleR-1.5B under various training methods on the set of problems initially unanswered by the vanilla model. 
+
+To disentangle whether the observed improvement in rea-soning stems from either memorizing answers or optimiz-ing the reasoning pattern, we train DeepScaleR-1.5B exclu-sively on the MATH dataset and evaluate it on AIME24 and AIME25. As reported in Table 2, after adopting the transfer learning setting, all baselines exhibit performance degradation to varying degrees. In contrast, E VO THINK AMPO 
+
+achieves a performance gain, further indicating that our method produces a more generalizable model. We attribute this improvement to high-quality synthetic data generated by our genetic algorithm, which teaches the model a ro-bust reasoning strategy rather than rote memorization of so-lutions. Moreover, when combined with the SPT stage, E VO -THINK SPT+AMPO reduces output length while preserving its generalization capability. We further find that training on human-written gold solutions effectively reduces token cost; however, the reasoning style in these solutions differs sub-stantially from the model’s native reasoning patterns, and this mismatch markedly undermines LRM’s generalization. As shown in Table 2, when models are trained on MATH with gold solutions, DPO reduces the Pass@1 score on the AIME to less than one-fifth of that of the untrained vanilla model. 
+
+AIME24 AIME25 
+
+P@1 ↑ #Tok ↓ P@1 ↑ #Tok ↓
+
+Vanilla 29.2 6436 30.8 8282 SFT 4.2 4965 3.3 6414 
+
+DPO 5.4 5342 4.6 6778 O1-Pruner 17.5 5937 16.3 7451 ThinkPrune-2k 23.8 5542 24.2 6988 DIET 26.3 5814 25.0 7861 EVO THINK SPT 28.3 4811 30.4 7022 EVO THINK AMPO 30.0 6492 31.3 8330 EVO THINK SPT+AMPO 28.8 5005 30.8 7496 
+
+Table 2: Transfer learning results on AIME24 and AIME25. 
+
+4.5 Analysis of Mutation Data 
+
+Figure 6 illustrates the impact of the initial population size (K) on the final performance of E VO THINK SPT+AMPO with the QwQ-32B model, as evaluated on the MATH-500 and TACO datasets. We observe that as K increases, the variation in 
+
+∆Pass@1 tends to stabilize for K > 6. This observation is consistent across other models and datasets in our experi-ments; therefore, we set K = 6 .1 2 3 4 5 6 7 8 9 10 k  
+
+> 0
+> 1
+> 2
+> 3
+> Pass@1 (%)
+> MATH-500 TACO
+> Max Min
+
+Figure 6: Performance gain vs. initial population size and reasoning trajectory diversity. 
+
+Furthermore, Figure 6 compares the performance of select-ing the reasoning trajectory with maximum diversity (Max, i.e., max( F(rk)) for k ∈ 1, . . . , K ) with that of selecting the one with minimum diversity (Min, i.e., min( F(rk)) ). The results clearly show that high-diversity trajectories yield sub-stantially larger performance gains than their low-diversity counterparts. This finding confirms that high-diversity trajec-tories are more suitable for use as mutation data, underscor-ing the importance of actively exploring new solution spaces to enhance the reasoning capabilities of LRMs. 
+
+4.6 Case Study 
+
+Figure 7 presents a case study of the QwQ-32B model solv-ing an AIME25 problem. The vanilla model fails to exe-cute the necessary reasoning steps, resulting in an incorrect answer and a lengthy output of 13,715 tokens. In contrast, EVO THINK demonstrates the ability to explore new reason-ing paths. As revealed in its thought process, it initially falls into a similar trap but then questions its own conclusion: “But is this correct? I think I missed something.” This moment en-ables it to discard the erroneous path and perform the correct calculations, requiring only 9,048 tokens—a 34% reduction compared to the vanilla model. Query: There are 8!=40320 eight-digit positive integers that use each of the digits 1,2,3,4,5,6,7,8 exactly once. Let N be the number of these integers that are divisible by 22. Find the difference between N and 2025.                       
+
+> <think> Alright, so I need to find the number of eight-digit numbers using each digit from 1 to 8 exactly once that are divisible by 22 … but here, since N is specific, the difference is N-2025. Therefore, the answer is \\boxed{-2025}. </think>
+> … Thus, the final answer is: \\boxed{-2025}.
+> <think> I need to find how many eight-digit numbers made from the digits 1 through 8… Therefore, the answer is \\boxed{-2025}. But is this correct? Ithink Imissed something. In our calculation, when … So confirmed. Thus N = 2304. Now, difference with 2025: 2304 - 2025 = 279. So the answer should be 279. </think>
+> … The difference between N and 2025 is 2304 - 2025 = \\boxed{279}.
+> Vanilla
+> (QwQ-32B)
+> EvoThink
+> 13715 tokens
+> 9048 tokens
+
+Figure 7: A case study on a math problem from AIME25. 
+
+## 5 Conclusion and Future Work 
+
+We introduce E VO THINK , a framework that significantly enhances the reasoning efficiency and capability of LRM through SPT and AMPO. Our approach leverages a from-wrong-to-right data construction process, allowing models to learn from failures and discover new reasoning paths. Ex-tensive evaluations across math and code generation bench-marks demonstrate that E VO THINK preserves performance, substantially reduces the average token count, and improves reasoning capability. For future work, we plan to investi-gate why the from-wrong-to-right learning pattern adopted by AMPO is particularly effective for model training. This ex-ploration is outside the scope of this paper but represents a vital direction for LRM reasoning. 
+
+## Acknowledgements 
+
+This work is partially supported by National Nature Science Foundation of China under No. 62476058. We thank the Big Data Computing Center of Southeast University for provid-ing the facility support on the numerical calculations in this paper. References 
+
+[Aytes et al. , 2025] Simon A Aytes, Jinheon Baek, and Sung Ju Hwang. Sketch-of-thought: Efficient LLM rea-soning with adaptive cognitive-inspired sketching. In Pro-ceedings of the 2025 Conference on Empirical Methods in Natural Language Processing , pages 24296–24320, 2025. [Chen et al. , 2024] Xingyu Chen, Jiahao Xu, Tian Liang, Zhiwei He, Jianhui Pang, Dian Yu, Linfeng Song, Qiuzhi Liu, Mengfei Zhou, Zhuosheng Zhang, et al. Do not think that much for 2+ 3=? on the overthinking of o1-like llms. 
+
+arXiv preprint arXiv:2412.21187 , 2024. [Chen et al. , 2025] Weize Chen, Jiarui Yuan, Tailin Jin, Ning Ding, Huimin Chen, Zhiyuan Liu, and Maosong Sun. The overthinker’s DIET: Cutting token calories with DIfficulty-aware training. In The Thirty-ninth Annual Con-ference on Neural Information Processing Systems , 2025. [Cheng et al. , 2025a] Xiaoxue Cheng, Junyi Li, Zhenduo Zhang, Xinyu Tang, Xin Zhao, XinYu KONG, and Zhiqiang Zhang. Incentivizing dual process thinking for efficient large language model reasoning. In The Thirty-ninth Annual Conference on Neural Information Process-ing Systems , 2025. [Cheng et al. , 2025b] Zhengxiang Cheng, Dongping Chen, Mingyang Fu, and Tianyi Zhou. Optimizing length compression in large reasoning models. arXiv preprint arXiv:2506.14755 , 2025. [Cuadron et al. , 2025] Alejandro Cuadron, Dacheng Li, Wenjie Ma, Xingyao Wang, Yichuan Wang, Siyuan Zhuang, Shu Liu, Luis Gaspar Schroeder, Tian Xia, Huanzhi Mao, et al. The danger of overthinking: Examin-ing the reasoning-action dilemma in agentic tasks. arXiv preprint arXiv:2502.08235 , 2025. [Guo et al. , 2025] Daya Guo, Dejian Yang, Haowei Zhang, Junxiao Song, Ruoyu Zhang, Runxin Xu, Qihao Zhu, Shi-rong Ma, Peiyi Wang, Xiao Bi, et al. Deepseek-r1: In-centivizing reasoning capability in llms via reinforcement learning. arXiv preprint arXiv:2501.12948 , 2025. [Han et al. , 2025] Tingxu Han, Zhenting Wang, Chunrong Fang, Shiyu Zhao, Shiqing Ma, and Zhenyu Chen. Token-budget-aware llm reasoning. In Findings of the Associ-ation for Computational Linguistics: ACL 2025 , pages 24842–24855, 2025. [Hendrycks et al. , 2021] Dan Hendrycks, Collin Burns, Saurav Kadavath, Akul Arora, Steven Basart, Eric Tang, Dawn Song, and Jacob Steinhardt. Measuring mathemat-ical problem solving with the math dataset. In Proceed-ings of the Neural Information Processing Systems Track on Datasets and Benchmarks , volume 1, 2021. [Hou et al. , 2025] Bairu Hou, Yang Zhang, Jiabao Ji, Yu-jian Liu, Kaizhi Qian, Jacob Andreas, and Shiyu Chang. Thinkprune: Pruning long chain-of-thought of llms via re-inforcement learning. arXiv preprint arXiv:2504.01296 ,2025. [Li et al. , 2023] Rongao Li, Jie Fu, Bo-Wen Zhang, Tao Huang, Zhihong Sun, Chen Lyu, Guang Liu, Zhi Jin, and Ge Li. Taco: Topics in algorithmic code generation dataset. arXiv preprint arXiv:2312.14852 , 2023. [Liang et al. , 2025] Guosheng Liang, Longguang Zhong, Ziyi Yang, and Xiaojun Quan. ThinkSwitcher: When to think hard, when to think fast. In Findings of the Associ-ation for Computational Linguistics: EMNLP 2025 , pages 5185–5201, 2025. [Luo et al. , 2025a] Haotian Luo, Li Shen, Haiying He, Yibo Wang, Shiwei Liu, Wei Li, Naiqiang Tan, Xiaochun Cao, and Dacheng Tao. O1-pruner: Length-harmonizing fine-tuning for o1-like reasoning pruning. arXiv preprint arXiv:2501.12570 , 2025. [Luo et al. , 2025b] Michael Luo, Sijun Tan, Justin Wong, Xiaoxiang Shi, William Y. Tang, Manan Roongta, Colin Cai, Jeffrey Luo, Li Erran Li, Raluca Ada Popa, and Ion Stoica. Deepscaler: Sur-passing o1-preview with a 1.5b model by scaling rl. https://pretty-radio-b75.notion.site/DeepScaleR-Surpassing-O1-Preview-with-a-1-5B-Model-by-Scaling-RL-19681902c1468005bed8ca303013a4e2, 2025. Notion Blog. [Ma et al. , 2025] Wenjie Ma, Jingxuan He, Charlie Snell, Tyler Griggs, Sewon Min, and Matei Zaharia. Reasoning models can be effective without thinking. arXiv preprint arXiv:2504.09858 , 2025. [Muennighoff et al. , 2025] Niklas Muennighoff, Zitong Yang, Weijia Shi, Xiang Lisa Li, Li Fei-Fei, Hannaneh Hajishirzi, Luke Zettlemoyer, Percy Liang, Emmanuel Cand` es, and Tatsunori B Hashimoto. s1: Simple test-time scaling. In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing ,pages 20286–20332, 2025. [Pan et al. , 2024] Jiabao Pan, Yan Zhang, Chen Zhang, Zuozhu Liu, Hongwei Wang, and Haizhou Li. DynaThink: Fast or slow? a dynamic decision-making framework for large language models. In Proceedings of the 2024 Con-ference on Empirical Methods in Natural Language Pro-cessing , pages 14686–14695, 2024. [Rafailov et al. , 2023] Rafael Rafailov, Archit Sharma, Eric Mitchell, Christopher D Manning, Stefano Ermon, and Chelsea Finn. Direct preference optimization: Your lan-guage model is secretly a reward model. Advances in neural information processing systems , 36:53728–53741, 2023. [Shen et al. , 2025] Yi Shen, Jian Zhang, Jieyun Huang, Shuming Shi, Wenjing Zhang, Jiangze Yan, Ning Wang, Kai Wang, Zhaoxiang Liu, and Shiguo Lian. DAST: Difficulty-adaptive slow-thinking for large reasoning mod-els. In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing: Industry Track ,pages 2322–2331, 2025. [Sheng et al. , 2025] Guangming Sheng, Chi Zhang, Zil-ingfeng Ye, Xibin Wu, Wang Zhang, Ru Zhang, Yanghua Peng, Haibin Lin, and Chuan Wu. Hybridflow: A flexible and efficient rlhf framework. In Proceedings of the Twen-tieth European Conference on Computer Systems , pages 1279–1297, 2025. [Su et al. , 2025] DiJia Su, Sainbayar Sukhbaatar, Michael Rabbat, Yuandong Tian, and Qinqing Zheng. Dualformer: Controllable fast and slow thinking by learning with ran-domized reasoning traces. In The Thirteenth International Conference on Learning Representations , 2025. [Sui et al. , 2025] Yang Sui, Yu-Neng Chuang, Guanchu Wang, Jiamu Zhang, Tianyi Zhang, Jiayi Yuan, Hongyi Liu, Andrew Wen, Shaochen Zhong, Na Zou, et al. Stop overthinking: A survey on efficient reasoning for large lan-guage models. arXiv preprint arXiv:2503.16419 , 2025. [Team et al. , 2025] Kimi Team, Angang Du, Bofei Gao, Bowei Xing, Changjiu Jiang, Cheng Chen, Cheng Li, Chenjun Xiao, Chenzhuang Du, Chonghua Liao, et al. Kimi k1. 5: Scaling reinforcement learning with llms. 
+
+arXiv preprint arXiv:2501.12599 , 2025. [Yang et al. , 2024] An Yang, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chengyuan Li, Dayiheng Liu, Fei Huang, Haoran Wei, Huan Lin, Jian Yang, Jianhong Tu, Jianwei Zhang, Jianxin Yang, Ji-axi Yang, Jingren Zhou, Junyang Lin, Kai Dang, Keming Lu, Keqin Bao, Kexin Yang, Le Yu, Mei Li, Mingfeng Xue, Pei Zhang, Qin Zhu, Rui Men, Runji Lin, Tian-hao Li, Tianyi Tang, Tingyu Xia, Xingzhang Ren, Xu-ancheng Ren, Yang Fan, Yang Su, Yichang Zhang, Yu Wan, Yuqiong Liu, Zeyu Cui, Zhenru Zhang, and Zihan Qiu. Qwen2.5 technical report. arXiv preprint arXiv:2412.15115 , 2024.
