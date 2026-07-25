@@ -1,0 +1,96 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-07-25T20:04:50.179861+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 1,
+    "deep_cap": 6,
+    "deep_selected": 1,
+    "quick_candidates": 1,
+    "quick_skim_target": 11,
+    "quick_selected": 1
+  },
+  "deep_dive": [
+    {
+      "id": "2607.16492v1",
+      "source": "arxiv",
+      "title": "WeedExpert-R1: Incentivizing Botanical Reasoning in MLLMs with Reinforcement Learning for Precision Weed Grounding",
+      "abstract": "Precision weed control requires species-level identification and instance-level localization. However, conventional object detectors use a closed vocabulary, limiting their deployment across regions, and cannot explain their predictions in complex agricultural scenes. Multimodal large language models (MLLMs) offer visual grounding and reasoning capabilities, but insufficient botanical knowledge can cause hallucinations in fine-grained weed identification. This study introduces WeedExpert-R1, a multimodal model that learns visually grounded botanical reasoning through verifiable rewards. A domain-specific Chain-of-Thought synthesis pipeline combines a human-curated botanical trait dictionary with an Auditor-Synthesizer LLM workflow to generate reasoning data for supervised fine-tuning. Group Relative Policy Optimization is then applied with rewards for format, accuracy, instance count, and response length. Across 37 weed species from six datasets, WeedExpert-R1-4B achieved 75.82 percent exact-set precision at an IoU threshold of 0.5, 89.30 percent precision, and 87.81 percent recall. It outperformed proprietary models, including GPT-5.4 and Gemini-3.1-Pro, and larger open-source models, including Qwen3-VL-30B-Instruct and Gemma-4-31B-it. Results on unseen species further demonstrate its open-vocabulary capability and potential for deployment across diverse regions and crops without retraining.",
+      "authors": [
+        "Zonglin Yang",
+        "Wei-Zhen Liang",
+        "Nevin Lawrence",
+        "Xin Qiao",
+        "Benjamin Riggan",
+        "Chi-En Chiang",
+        "Fuchen Li"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-07-17T20:33:10+00:00",
+      "link": "https://arxiv.org/pdf/2607.16492v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "chain-of-thought synthesis pipeline for botanical reasoning in MLLMs",
+      "llm_evidence_cn": "多模态大模型中植物学推理的链式思维合成管道",
+      "llm_evidence": "多模态大模型中植物学推理的链式思维合成管道",
+      "canonical_evidence": "多模态大模型中植物学推理的链式思维合成管道",
+      "llm_tldr_en": "Uses a domain-specific Chain-of-Thought synthesis pipeline and reinforcement learning with verifiable rewards to train MLLMs for precise weed grounding, reducing hallucinations and improving visual reasoning.",
+      "llm_tldr_cn": "传统目标检测器无法解释复杂农业场景的预测。WeedExpert-R1利用多模态大模型，通过基于可验证奖励的植物学推理训练，结合领域特定链式思维合成管道，实现精确杂草识别与定位，有效降低幻觉并提升视觉推理准确性。",
+      "llm_tldr": "传统目标检测器无法解释复杂农业场景的预测。WeedExpert-R1利用多模态大模型，通过基于可验证奖励的植物学推理训练，结合领域特定链式思维合成管道，实现精确杂草识别与定位，有效降低幻觉并提升视觉推理准确性。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2607.16819v1",
+      "source": "arxiv",
+      "title": "FUSAR-R1: A Large-Scale Reasoning Model for Intelligent Interpretation of SAR Images",
+      "abstract": "In recent years, large-scale vision-language models have been driving a paradigm shift in intelligent remote sensing image interpretation. By incorporating textual semantic information, the cognitive expression, semantic understanding, and human-computer interaction capabilities of interpretation models have been significantly improved, achieving initial progress in the field of Synthetic Aperture Radar (SAR) image interpretation. However, SAR images are affected by factors such as coherent imaging mechanisms, complex scattering characteristics, speckle noise interference, and target-background coupling, resulting in complex and variable image features with significant uncertainties and specializations. Existing SAR vision-language models do not yet possess the step-by-step analysis, logical judgment, and self-correction capabilities of human experts, making it difficult to support reliable intelligent interpretation in complex scenarios. To address this issue, this paper proposes a large-scale reasoning model, FUSAR-R1, for intelligent interpretation of SAR images. The model first constructs explicit chain-of-thought reasoning data by simulating the interpretation process of human experts and uses this data to guide instruction learning, thereby endowing the model with basic reasoning capabilities. Subsequently, a reinforcement learning strategy is introduced to optimize the model's outputs based on inference results, enabling self-correction and more reliable reasoning. Experimental results demonstrate that FUSAR-R1 consistently outperforms existing multimodal large-scale models across various SAR interpretation tasks, including target detection, target counting and classification, and land-cover category recognition.",
+      "authors": [
+        "Yi Yang",
+        "Xiaokun Zhang",
+        "Yuxuan Li",
+        "Ruyi Zhang",
+        "Xinpeng Zhou",
+        "Haipeng Wang"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-07-18T13:31:11+00:00",
+      "link": "https://arxiv.org/pdf/2607.16819v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "large-scale reasoning model for SAR image interpretation, vision-language model with reasoning",
+      "llm_evidence_cn": "用于SAR图像解译的大规模推理模型，视觉语言模型带推理能力",
+      "llm_evidence": "用于SAR图像解译的大规模推理模型，视觉语言模型带推理能力",
+      "canonical_evidence": "用于SAR图像解译的大规模推理模型，视觉语言模型带推理能力",
+      "llm_tldr_en": "Proposes FUSAR-R1, a large-scale reasoning model for SAR image interpretation, leveraging vision-language models and chain-of-thought-like reasoning for intelligent analysis.",
+      "llm_tldr_cn": "针对SAR图像解译中特征复杂、不确定性高的挑战，本文提出FUSAR-R1大规模推理模型。该模型融合视觉语言模型与推理能力，通过文本语义增强认知表达和语义理解。实验表明，FUSAR-R1在SAR图像解译任务上显著提升了准确率和交互性，为遥感智能解译提供了新的推理范式。",
+      "llm_tldr": "针对SAR图像解译中特征复杂、不确定性高的挑战，本文提出FUSAR-R1大规模推理模型。该模型融合视觉语言模型与推理能力，通过文本语义增强认知表达和语义理解。实验表明，FUSAR-R1在SAR图像解译任务上显著提升了准确率和交互性，为遥感智能解译提供了新的推理范式。",
+      "llm_tags": [
+        "query:vlm-cot:composite"
+      ],
+      "matched_query_tag": "query:vlm-cot:composite",
+      "matched_query_text": "Papers central to 视觉大模型CoT及大厂出品，大模型相关且有扎实的工程基础, especially work that connects or combines: chain of thought reasoning large model; large model by big tech companies.",
+      "matched_requirement_id": "req-composite-vlm-cot",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}
