@@ -1,0 +1,837 @@
+Title: PyroDash: Cost-Efficient Token-Level Small-Large Language Model Collaborative Inference
+
+URL Source: https://arxiv.org/pdf/2607.20327v1
+
+Published Time: Thu, 23 Jul 2026 01:15:57 GMT
+
+Number of Pages: 19
+
+Markdown Content:
+> pyromind.ai
+> Research Preprint
+
+# PyroDash: Cost-Efficient Token-Level Small-Large Language Model Collaborative Inference 
+
+Niqi Lyu, Pengtao Shi, Wei Qiu, Jianlin Zhong, Sicong Xia, Jianyao Ma, Yicheng Ding B
+
+> Pyromind Dynamics Inc.
+
+Large language models (LLMs) provide strong reasoning capabilities but are expensive to serve at scale, whereas small language models (SLMs) are cheaper but less reliable on difficult problems. We introduce PyroDash, a cost-aware framework for token-level SLM-LLM collaborative inference. During generation, the SLM decides whether to request assistance by emitting a control token. A Collaborate Engine then sends the query and partial reasoning trace to a frozen LLM for completion through a single handoff. The policy is internalized in the SLM, requiring neither a separate router, LLM retraining, nor access to LLM logits. PyroDash trains the SLM in three stages: control-token embedding learning, offloading-oriented supervised fine-tuning, and cost-aware alignment with Group Relative Policy Optimization. Its reward balances answer accuracy against inference cost normalized by LLM-only inference. Across five mathematical reasoning benchmarks, PyroDash supports different accuracy-cost operating points. With 𝜆 = 0.05 , it achieves 64.04 percent average accuracy, 6.36 percentage points above the LLM-only baseline, while reducing cost by 20.4 percent. With 𝜆 = 0.6, it achieves 54.55 percent accuracy with a 1.90 percent LLM token ratio and 0.012 LLM calls per example, reducing total cost from USD 49.36 to USD 1.78. These results show that learned token-level handoffs can reduce LLM use while preserving strong reasoning performance. 
+
+Keywords: SLM–LLM Collaboration · Token-Level Self-Routing · GRPO · Inference Cost · Collaborative Inference 
+
+# 1. Introduction 
+
+Large language models (LLMs) have demonstrated strong capabilities in logical reasoning, mathematical prob-lem solving, and symbolic computation [Achiam et al., 2023, Touvron et al., 2023, Yang et al., 2024]. Their real-world deployment, however, must balance multiple requirements, including reasoning quality, interac-tion latency, privacy compliance, and inference cost [Chen et al., 2026, Li et al., 2025]. As agentic workflows, long-context interactions, and multi-step reasoning become increasingly common, making inference efficient has become as important as increasing model capacity. Cloud-hosted LLMs provide access to centralized com-pute and strong model capabilities. Yet serving every request with an LLM can produce substantial API bills, particularly in high-frequency or long-generation workloads. Transmitting user inputs to remote servers can also raise privacy and data-governance concerns [Chen et al., 2026, Li et al., 2025]. In contrast, open-weight sub-10B variants from model families such as Gemma 4 [Gemma Team, 2026] and Qwen3.5 [Qwen Team, 2026] make low-cost, self-hosted inference increasingly practical. Their smaller computational cost, however, comes with weaker generalization and a limited ability to solve problems that require difficult or extended reasoning. Quantization [Frantar et al., 2023] and distillation [Gu et al., 2024] can further improve these compact models under a fixed resource budget, but compression alone cannot reliably close the capability gap with LLMs. Consequently, neither model scale is sufficient on its own: SLMs are economical but may fail on hard problems, whereas LLMs are capable but costly to invoke indiscriminately. Collaborative inference provides a promising way to address this dilemma by combining the complementary strengths of small and large language models [Ding et al., 2024, Shen et al., 2024, Zheng et al., 2025, Li et al., 2025]. Instead of routing each request entirely to the SLM or the LLM, we allow the SLM to reason independently and request LLM assistance only when a reasoning step exceeds its capabilities. The central challenge then shifts from 
+
+which model to deploy to when, during reasoning, the stronger model should intervene .Existing methods address only part of this challenge. Request-level routing and cascaded serving choose a model before decoding begins [Chen et al., 2024, Ong et al., 2025, Ding et al., 2024]. Although effective for queries whose difficulty is evident from the input, they cannot react when a seemingly simple problem becomes difficult only at an intermediate reasoning step. Token-level collaboration moves the decision into the generation process [Zheng et al., 2025, Shen et al., 2024, Huang et al., 2026], but existing designs may  
+
+> BCorresponding author(s): kevin.ding@pyromind.ai arXiv:2607.20327v1 [cs.CL] 22 Jul 2026 PyroDash: Cost-Efficient Token-Level Small-Large Model Collaborative Inference
+
+require a separate router, repeated switching between models, or access to the target LLM’s internal out-puts. Speculative decoding similarly coordinates small and large models, yet primarily optimizes latency or throughput and often assumes access to target-model logits or weights [Leviathan et al., 2023, Chen et al., 2023, Xia et al., 2024]. Most importantly, these approaches rarely train the routing policy against the billed inference cost incurred under practical serving prices. Together, these limitations leave two questions unre-solved. (i) Can an SLM recognize, from its own generation trajectory, when stronger assistance is needed? (ii) 
+
+Can it learn this decision under an explicit objective that balances answer accuracy against inference cost? A prac-tical solution should answer both questions while avoiding repeated handoffs, keeping the LLM frozen, and remaining compatible with proprietary APIs. The cost-aware handoff timing is particularly important because commercial APIs commonly price input and output tokens separately: the handoff point determines both the context-prefill cost and the remaining autoregressive-decoding cost of the LLM. We answer the above questions with PyroDash , a novel cost-aware, token-level paradigm for collaborative in-ference between SLMs and LLMs. During autoregressive generation, the SLM either completes the reasoning independently or emits the dedicated control token 𝜏 off when it predicts that stronger assistance is needed. Upon detecting this token, the Collaborate Engine packages the original query together with the partial reason-ing trace. It then transfers this combined context to a frozen LLM, which completes the remaining reasoning in a single handoff. This division of responsibility places the routing policy within the SLM and limits the Col-laborate Engine to executing the handoff protocol. As a result, PyroDash requires no separate learned router. Because the LLM serves only as a frozen continuation model, PyroDash also requires neither LLM retraining nor access to its internal logits, making it compatible with proprietary LLM APIs. Training the SLM to decide when to reason independently and when to offload requires both a reliable rep-resentation of the new control token and an offloading policy aligned with deployment cost. To meet these requirements, PyroDash uses a three-stage progressive training pipeline for the SLM: control-token embedding learning, offloading-oriented supervised fine-tuning for behavioral cold start, and cost-aware policy alignment with Group Relative Policy Optimization (GRPO) [Shao et al., 2024]. The first stage integrates 𝜏 off into the SLM’s representation space, and the second teaches the model both to reason independently and to request assistance conditionally. In the final stage, GRPO updates the SLM’s offloading policy using a reward that com-bines answer accuracy with an inference-cost penalty normalized by the cost of LLM-only inference. Varying the penalty coefficient 𝜆 yields a family of offloading policies for different accuracy–cost preferences. We consider mathematical reasoning tasks a natural testbed for adaptive offloading because they vary widely in difficulty: easier problems test the SLM’s ability to reason independently, whereas harder prob-lems test its ability to recognize when LLM assistance is needed. Thus, we run our evaluation on five benchmarks—GSM8K [Cobbe et al., 2021], Minerva [Lewkowycz et al., 2022], OlympiadBench [He et al., 2024], AIME25 [Lin, 2025], and AIME24 [Hugging Face H4, 2024]. When accuracy is prioritized ( 𝜆 =0.05 ), PyroDash reaches an average accuracy of 64.04%, exceeding the LLM-only baseline’s accuracy of 57.68% by 6.36 percentage points while reducing total cost by 20.4%. When cost reduction is prioritized ( 𝜆 =0.6), Pyro-Dash achieves 54.55% average accuracy with an LLM token ratio of 1.90% and 0.012 LLM calls per example. Under the evaluated pricing model, the resulting policy reduces total inference cost from $49.36 to $1.78, corresponding to a 96.4% reduction. These results show that different values of 𝜆 yield policies with different levels of LLM reliance, enabling PyroDash to support different accuracy–cost preferences. Beyond these em-pirical gains, PyroDash suggests a collaborative scaling paradigm that extends beyond increasing the size of any single model. By organizing heterogeneous SLM and LLM services into a symbiotic mesh, compute and intelligence can be allocated on demand across model endpoints. Such collaboration could make advanced reasoning more accessible while controlling inference cost. Our main contributions are threefold: 
+
+• Token-level Collaborative Inference: We introduce PyroDash, which internalizes single-handoff routing within the SLM, keeps the LLM frozen, and requires no separate learned router. 
+
+• Cost-aware Alignment with RL: We develop a three-stage pipeline to train the offloading policy of the SLM, culminating in alignment with a novel GRPO reward for tunable quality–cost control. 
+
+• Substantial Inference Cost Reduction: Across five mathematical reasoning benchmarks, PyroDash reduces inference cost by 96.4% at 𝜆 =0.6, with an LLM token ratio of 1.90% and average accuracy 3.13 percentage points below the LLM-only baseline; at 𝜆 =0.05 , it exceeds the LLM-only baseline by 6.36 percentage points.  
+
+> Work in Progress 2PyroDash: Cost-Efficient Token-Level Small-Large Model Collaborative Inference
+
+# 2. Related Work 
+
+Request-level routing and cascaded serving. FrugalGPT [Chen et al., 2024] builds API cascades; RouteLLM [Ong et al., 2025] and Hybrid LLM [Ding et al., 2024] route by preference or predicted difficulty; MixLLM [Wang et al., 2025] and LLM Bandit [Li, 2025] adapt selection to model pools or user preferences. Thresholds and cascade order allow these systems to adjust the trade-off between quality and cost, and cas-cades may escalate after scoring an earlier response. Nevertheless, each invocation produces a request-level answer rather than contributing to one shared reasoning trajectory, so escalation repeats generation instead of continuing from a precise failure point. Despite reducing average cost, they decide before decoding, cannot react to hard intermediate steps, and may commit the whole query to either model. PyroDash instead uses the SLM’s partial trajectory to offload only when assistance becomes necessary. 
+
+Token-level collaboration. CITER [Zheng et al., 2025] trains a cost-aware MLP router for per-token model selection, Co-LLM [Shen et al., 2024] learns interleaved decoding as latent model selection, and Re-layLLM [Huang et al., 2026] requests bounded LLM spans before returning control to the SLM. These methods improve routing granularity, but require per-token router evaluation or permit repeated model switches. Inter-leaving also requires the serving loop to coordinate both models and preserve model-specific decoding state. With stateless APIs, the serving loop may resend a growing context after repeated interventions, turning short LLM spans into additional prefill charges that token-share or FLOP-based metrics can obscure. Moreover, Co-LLM lacks an explicit cost objective, while RelayLLM penalizes LLM-token share rather than billed prefill and decoding cost. PyroDash internalizes the decision in the SLM and limits each request to one handoff. 
+
+Decoding acceleration. Speculative decoding uses an SLM to draft blocks for parallel verification by the target LLM, reducing latency while preserving the target distribution [Leviathan et al., 2023, Chen et al., 2023, Xia et al., 2024]. Subsequent systems adapt this paradigm to concrete serving constraints: SpecInfer organizes candidate continuations into token trees for parallel verification in distributed and offloaded serving [Miao et al., 2024]; Medusa replaces a separate draft model with multiple decoding heads and tree attention [Cai et al., 2024]; and MagicDec uses sparse-KV-cache drafting for high-throughput, long-context workloads [Sad-hukhan et al., 2025]. Because the LLM scores every block, classical schemes require its output probabilities and keep it involved throughout generation; rejected drafts can also increase computation. Their speedup de-pends strongly on draft acceptance and hardware parallelism, while poor alignment wastes both drafting and verification work. Moreover, exact verification keeps the target LLM authoritative at every step, so the SLM cannot independently complete easy requests or improve the target model’s answer quality. They therefore depend on close model integration and optimize latency rather than LLM invocation or API bills. PyroDash remains compatible with generation-only APIs and invokes the LLM only after one cost-aware trigger. 
+
+Knowledge distillation and behavioral alignment. Knowledge distillation strengthens an SLM by transfer-ring an LLM’s generation behavior into the smaller model before deployment. MiniLLM [Gu et al., 2024] aligns the student and teacher generation distributions, while GKD [Agarwal et al., 2024] performs on-policy distillation with student-generated samples to reduce the mismatch between training and inference. PyroDash uses SFT only to cold-start the offloading behavior; its subsequent GRPO stage instead learns when the SLM should retain control and when it should hand the partial trajectory to a frozen LLM, making inference-time collaboration complementary to offline distillation. Overall, prior work addresses request-level cost, fine-grained scheduling, decoding latency, or offline capa-bility transfer, but does not align generation with the cost for LLM inference. PyroDash combines an SLM-internalized trigger, one handoff to a frozen LLM and a GRPO reward normalized against the LLM-only infer-ence cost. It learns an explicit accuracy–cost trade-off without a separate router or repeated LLM calls. 
+
+# 3. Method 
+
+This section formalizes cost-aware, token-level SLM–LLM collaborative inference and presents the two com-ponents of PyroDash: an SLM-internalized, single-handoff architecture and a three-stage progressive training pipeline comprising control-token embedding learning, offloading-oriented supervised fine-tuning for behav-ioral cold start, and cost-aware policy alignment with Group Relative Policy Optimization (GRPO). 
+
+3.1. Problem Formulation 
+
+SLM–LLM collaborative inference entails more than deploying a small and a large model within the same serv-ing system. It coordinates their roles during autoregressive decoding by dynamically allocating computation and control subject to practical constraints such as latency, privacy, bandwidth, and inference cost [Chen et al., 2026, Li et al., 2025]. Accordingly, a collaborative inference system can be characterized along three dimen-                                           
+
+> Work in Progress 3PyroDash: Cost-Efficient Token-Level Small-Large Model Collaborative Inference
+> Figure 1 |The collaborative inference architecture of PyroDash (small-model-first, one-shot large-model completion). The data flow is labeled with 1–8:1𝑞 enters the CE; 2the CE sends 𝑃 𝑠 and 𝑞 to 𝑀 𝑠 ;3𝑀 𝑠 streams generated tokens back to the CE; 4𝜏 off appears in the stream; 5the CE terminates SLM decoding and packages C𝑠 ;6the CE initiates a single handoff to 𝑀 𝑙 using 𝑞 + C 𝑠 ;7𝑀 𝑙 returns completion tokens; and 8the CE concatenates 𝑂 𝑠 and 𝑂 𝑙 into the joint output 𝑂 and streams it to the user.
+
+sions: when offloading occurs, which component initiates it, and at what granularity collaboration operates. PyroDash focuses on token-level, SLM-initiated collaboration: the SLM makes the offloading decision from its own generation trajectory and, when it emits 𝜏 off , the Collaborate Engine (CE) transfers the request to the LLM through a single handoff. Formally, let 𝑀 𝑠 denote a trainable small model and 𝑀 𝑙 a frozen large model. Let 𝑃 𝑠 denote the fixed offloading prompt supplied to 𝑀 𝑠 , which specifies the SLM-first reasoning behavior and defines 𝜏 off as an available control action; let 𝑃 𝑙 denote the fixed completion prompt supplied to 𝑀 𝑙 , which instructs it to continue from the user query and the partial trajectory produced by 𝑀 𝑠 after a handoff. Let (𝑞, 𝑦 ) ∼ D denote an example consisting of a user query 𝑞 and its reference answer 𝑦 . The system performs collaborative decoding for 𝑞 under an offloading policy 𝜋 𝑠 parameterized by 𝑀 𝑠 . At each decoding step, 𝜋 𝑠 either continues generation with 𝑀 𝑠 or transfers the partial trajectory to 𝑀 𝑙 for completion. This process produces a joint output 𝑂 (𝑞 ; 𝜋 𝑠 ) and incurs an inference cost Cost (𝑞 ; 𝜋 𝑠 ).
+
+The objective. We seek an SLM-internalized offloading policy that completes reasoning with 𝑀 𝑠 and invokes the frozen LLM through a single handoff only when the SLM generation trajectory reaches a step requiring stronger assistance. To align this token-level decision with different accuracy–cost preferences, PyroDash max-imizes expected answer accuracy while penalizing collaborative inference cost relative to LLM-only inference: 
+
+max 
+
+> 𝜋 𝑠
+
+𝔼 (𝑞,𝑦 )∼D [Acc (𝑂 (𝑞 ; 𝜋 𝑠 ), 𝑦 ) − 𝜆 Cost norm (𝑞 ; 𝜋 𝑠 )] , (1) Here, Acc (𝑂, 𝑦 ) equals 1 if the answer extracted from output 𝑂 is equivalent to the reference answer 𝑦 , and 0 otherwise. Cost norm (·) is the collaborative inference cost normalized by the cost of executing the same query with 𝑀 𝑙 alone. The coefficient 𝜆 ≥ 0 controls the accuracy–cost trade-off: larger values place greater emphasis on reducing inference cost. The remainder of this section introduces the architecture of PyroDash, followed by the three-stage pipeline used to learn 𝜋 𝑠 .
+
+3.2. The Collaborative Inference Architecture of PyroDash 
+
+Having defined the above objective, we now introduce how PyroDash executes the offloading policy 𝜋 𝑠 . The architecture converts a token-level decision within 𝑀 𝑠 into an API-compatible handoff that preserves SLM-generated reasoning without a separate router or repeated model switches. This design comprises three com-ponents and supports two request paths, with context transferred from the SLM to the LLM at most once per request.  
+
+> Work in Progress 4PyroDash: Cost-Efficient Token-Level Small-Large Model Collaborative Inference
+
+Algorithm 1: Single-Handoff Collaborative Decoding in the Collaborate Engine                                                                              
+
+> Input: query 𝑞 ; fixed prompts 𝑃 𝑠 , 𝑃 𝑙 ; SLM 𝑀 𝑠 ; frozen LLM 𝑀 𝑙
+> Output: joint output 𝑂 (streamed)
+> 1𝑂 𝑠 ← ∅ ;// Line 1: initialize the output buffer
+> 2foreach token 𝑡 from 𝑀 𝑠 (𝑃 𝑠 , 𝑞 )do // Line 2: autoregressively decode one SLM token
+> 3if 𝑡 =𝜏 off then // Line 3: detect the offloading control token
+> 4C𝑠 ←Pack (𝑂 𝑠 );// Line 4: construct C𝑠 without 𝜏 off
+> 5stop decoding with 𝑀 𝑠 ;// Line 5: terminate SLM decoding
+> 6𝑂 𝑙 ←𝑀 𝑙 .Complete (𝑃 𝑙 , 𝑞, C𝑠 );// Line 6: invoke the LLM through a single handoff
+> 7stream 𝑂 𝑙 to user; // Line 7: stream the LLM completion
+> 8return 𝑂 𝑠 ∥𝑂 𝑙 ;// Line 8: construct the joint output
+> 9stream 𝑡 to user; // Line 9: stream an SLM-generated token
+> 10 𝑂 𝑠 ←𝑂 𝑠 ∥𝑡 ;// Line 10: append the token to the output buffer
+> 11 return 𝑂 𝑠 ;// Line 11: return the SLM-only output
+
+Figure 1 shows PyroDash as a small-model-first decoding process. An SLM engine hosts the trainable 𝑀 𝑠 , an LLM engine exposes the frozen 𝑀 𝑙 , and a Collaborate Engine (CE) coordinates them. The offloading decision remains inside 𝑀 𝑠 ; the CE only executes token-driven transitions. For query 𝑞 , Lines 1–2 of Algorithm 1 initialize the output buffer and begin autoregressive decoding by 𝑀 𝑠 conditioned on (𝑃 𝑠 , 𝑞 ). The prompt 𝑃 𝑠 
+
+enables 𝜏 off while instructing 𝑀 𝑠 to attempt the solution before offloading. If 𝑀 𝑠 does not emit 𝜏 off , Lines 9– 11 stream and accumulate the SLM-generated tokens, returning 𝑂 = 𝑂 𝑠 without an LLM call. Making the offloading decision during decoding lets the policy use intermediate reasoning rather than the input alone. Lines 3–5 of Algorithm 1 specify the offloading branch. When 𝑀 𝑠 emits 𝜏 off at a capability boundary, the CE detects the offloading control token at Line 3, applies Pack to the preceding partial reasoning trace at Line 4, and terminates SLM decoding at Line 5. The packing operation constructs C𝑠 from the SLM-generated tokens preceding 𝜏 off , thereby excluding the control token itself. The LLM then uses C𝑠 as context to continue the reasoning process. Because the same autoregressive policy generates both the reasoning trace and the offloading control token, the SLM uses its partial generation trajectory to decide when to request assistance, without relying on an external router. Lines 6–8 of Algorithm 1 specify LLM completion and joint-output construction. At Line 6, the CE performs the single handoff by invoking 𝑀 𝑙 with (𝑃 𝑙 , 𝑞, C𝑠 ), streams the LLM completion 𝑂 𝑙 at Line 7, and constructs the joint output 𝑂 𝑠 ∥ 𝑂 𝑙 at Line 8. The prompts have asymmetric roles: 𝑃 𝑠 governs when SLM generation relinquishes control, while 𝑃 𝑙 directs the frozen LLM to continue from the query and partial context to a final answer. The control flow does not return to 𝑀 𝑠 , so a request ends with either SLM-only output or one-shot SLM-to-LLM completion and incurs at most one LLM API call. Because 𝑀 𝑠 expresses its offloading decision by emitting 𝜏 off , PyroDash can operate through standard text-generation APIs. The LLM requires neither retraining nor logit access, while the CE needs only token detection, context packaging, and a standard completion interface. The architecture is therefore model- and provider-independent; Section 4 describes the experimental deployment. 
+
+3.3. The Three-Stage Progressive Training Pipeline for Collaborative Inference 
+
+The preceding subsection introduces how the CE executes an offloading decision, but the CE itself is deliber-ately non-adaptive: all decisions about whether and when to hand off are made by 𝑀 𝑠 within its generation stream. The small model, however, neither represents 𝜏 off as a control action nor associates it with the ca-pability boundary at which an LLM completion becomes worthwhile. It must therefore learn to complete a query without LLM assistance when it can and to request assistance when the reasoning exceeds the SLM’s capabilities. Before handing off, it should produce a useful partial trajectory C𝑠 that can be transferred to the LLM for continuation. This policy must also avoid handoffs whose accuracy benefit does not justify the cost. Training 𝑀 𝑠 therefore turns the deterministic procedure in Section 3.2 into the learned policy 𝜋 𝑠 optimized by Equation 1. PyroDash addresses this learning problem with the progressive pipeline as shown in Figure 2. Stage 1 performs control-token embedding learning to learn a trainable input and output representation for 𝜏 off . Stage 2 uses offloading-oriented supervised fine-tuning (SFT) for behavioral cold start, establishing prompt-conditional SLM-only completion and offloading behavior. Stage 3 performs cost-aware policy alignment with GRPO [Shao et al., 2024], using complete collaborative rollouts to balance answer accuracy against normalized inference cost while keeping 𝑀 𝑙 frozen. The stages thus progress from representing the handoff action to imitating the            
+
+> Work in Progress 5PyroDash: Cost-Efficient Token-Level Small-Large Model Collaborative Inference
+> Figure 2 |The three-stage progressive training pipeline. After easy/hard filtering and 𝜏 off label insertion, Stage 1 performs control-token embedding learning, Stage 2 applies offloading-oriented SFT for behavioral cold start, and Stage 3 performs cost-aware policy alignment with GRPO using an 𝑀 𝑙 -only cost baseline and handoff rollouts, producing the trained 𝑀 𝑠 while 𝑀 𝑙 remains frozen.
+
+two inference paths and finally to optimizing when that action should be taken. We next describe the data that supports these behaviors before introducing each training stage. 
+
+3.3.1. Dataset Curation 
+
+We construct the EasyHard-24k dataset [PyroMind Dynamics, 2026b], which contains 24,061 examples in the standard messages format and can be loaded directly by the training framework. The dataset is designed around three distinctions that the offloading policy must learn: whether a query is within the current capa-bility of 𝑀 𝑠 , whether the collaborative mode is enabled, and where a handoff action may occur within an autoregressive trajectory. Supervising only the presence of 𝜏 off would conflate these decisions and could teach the model to request assistance whenever the token is mentioned, rather than when assistance is useful. We use the capabilities of the base 𝑀 𝑠 as the reference for determining example difficulty. Specifically, we run the base 𝑀 𝑠 on each collected example and compare its response with the ground truth; examples answered correctly form the easy subset, while examples answered incorrectly but for which a correct reasoning tra-jectory can be reconstructed form the hard subset. This criterion is more directly aligned with collaborative inference than a static benchmark difficulty label: an easy example demonstrates that the SLM-only path is sufficient for the current 𝑀 𝑠 , whereas a hard example identifies a candidate for LLM assistance. Because the base-model trajectory of a hard example leads to an incorrect result, using that trajectory as an SFT target would reinforce the very failure that motivates offloading. We instead ask 𝑀 𝑙 to reconstruct a concise chain of thought (CoT) [Wei et al., 2022] that leads to the ground-truth answer or tool_calls . This reconstruction supplies a valid reasoning trajectory in which candidate handoff positions can be introduced without changing the target outcome. The easy/hard split indicates whether assistance may be useful, but it does not indicate whether the offloading action is available in the current prompting mode. PyroDash should emit 𝜏 off only when 𝑃 𝑠 is present and enables the collaborative inference; otherwise, the same model should retain ordinary standalone reasoning. We therefore expand the data into two prompt conditions. Corpus A omits 𝑃 𝑠 , and none of its assistant trajectories contains 𝜏 off , preserving the non-collaborative behavior of 𝑀 𝑠 . Corpus B augments the system message with 𝑃 𝑠 . Its easy targets still omit 𝜏 off because making assistance available should not cause an unnecessary LLM call, while its hard targets contain between one and four dynamically inserted 𝜏 off tokens within the CoT segment to expose the model to possible token-level handoff locations.  
+
+> Work in Progress 6PyroDash: Cost-Efficient Token-Level Small-Large Model Collaborative Inference
+
+These synthetic locations are not assumed to be the final optimal capability boundaries. They provide Stage 2 with a behavioral cold start that distinguishes SLM-only completion from prompt-conditional offloading. Stage 3 subsequently evaluates complete collaborative trajectories and adjusts the policy according to whether a handoff improves answer accuracy enough to justify its normalized cost. The construction therefore supplies the initial action semantics without replacing the end-to-end accuracy–cost objective that ultimately deter-mines when offloading is beneficial. 
+
+3.3.2. Stage 1: Control-Token Embedding Learning 
+
+The constructed trajectories specify where the handoff signal may occur, but the vocabulary of the original 
+
+𝑀 𝑠 does not contain the special control token 𝜏 off . Stage 1 therefore expands the vocabulary and constructs a learnable representation for the new token before the model is trained to do offloading. To avoid the un-stable prediction behavior that can arise from fully random initialization, we initialize the input and output embedding vectors of 𝜏 off using the mean of a set of anchor embeddings and then add Gaussian noise: 
+
+e𝜏 off = 1
+
+|A| ∑︁ 𝑎 ∈ A 
+
+e𝑎 + 𝜖, 𝜖 ∼ N ( 0, 𝜎 2I), (2) where A is a predefined set of anchor tokens representing natural breakpoints, including periods, newline characters, and end-of-sequence tokens, and e𝑎 is the original embedding vector of the corresponding anchor token. We set the noise standard deviation to 𝜎 = 0.1. This scheme places 𝜏 off near common token boundaries in the embedding space, providing a stable initialization for Stage 1. We then perform Stage 1 training on Corpus B constructed in Section 3.3.1. During this stage, the embedding layer and output head are fully fine-tuned, while lightweight LoRA adapters attached to the backbone are updated jointly. These transient adapters allow the backbone to adapt to the semantic embedding of the new control token while avoiding irreversible perturbations to the original base-model weights. After training, we discard the transient LoRA adapters and merge only the trained parameter rows corresponding to 𝜏 off into the base model. The resulting initialization of 𝑀 𝑠 preserves the capabilities of the base model while enabling it to represent and recognize the control token. At this point, 𝜏 off is representable by the model, but its use has not yet been conditioned on query difficulty or the presence of 𝑃 𝑠 ; Stage 2 learns this behavioral distinction. 
+
+3.3.3. Stage 2: Offloading-Oriented SFT for Behavioral Cold Start 
+
+Stage 2 implements the offloading-oriented SFT used for behavioral cold start in Figure 2 and converts the newly represented token into an initial offloading policy. Starting from the 𝑀 𝑠 produced by Stage 1, we perform one round of supervised fine-tuning on a mixture of Corpora A and B so that SLM-only completion and conditional offloading are learned jointly rather than as separate model variants. Let D𝐴 and D𝐵 denote the training-example distributions induced by Corpora A and B, respectively. Their samples are written as 
+
+(𝑥, 𝑧 𝐴 ) ∼ D 𝐴 and (𝑥, 𝑧 𝐵 ) ∼ D 𝐵 , where 𝑥 is the input context preceding the assistant response. The target 
+
+𝑧 𝐴 is a standalone response generated without the offloading prompt, whereas 𝑧 𝐵 is the response under 𝑃 𝑠 :it contains no 𝜏 off for an easy example and includes the inserted control token for a hard example. Stage 2 minimizes the negative log-likelihood over both corpora: 
+
+LSFT (𝜃 ) = −  𝔼 (𝑥,𝑧 𝐴 )∼D 𝐴 
+
+log prob 𝜃 (𝑧 𝐴 | 𝑥 ) + 𝔼 (𝑥,𝑧 𝐵 )∼D 𝐵 
+
+log prob 𝜃 (𝑧 𝐵 | 𝑥, 𝑃 𝑠 )  , (3) where prob 𝜃 (𝑧 | 𝑐 ) denotes the probability that 𝑀 𝑠 with parameters 𝜃 assigns to response sequence 𝑧 given input context 𝑐 . The first term reinforces standalone SLM reasoning, whereas the second teaches prompt-conditional offloading when 𝑃 𝑠 is enabled. During this stage, the embedding layer remains frozen and LoRA is used to update the attention layers. The resulting 𝑀 𝑠 can reproduce the supervised offloading behavior, providing a stable policy initialization for collaborative rollouts in Stage 3. 
+
+3.3.4. Stage 3: Cost-Aware Policy Alignment with GRPO 
+
+The supervised targets establish how SLM-only completion and handoff should appear, but they do not measure the final answer produced after the CE invokes 𝑀 𝑙 or the cost incurred by that joint trajectory. Stage 3 closes this gap by introducing Group Relative Policy Optimization (GRPO) [Shao et al., 2024] and executing the same one-way handoff used at inference time during policy rollouts. This aligns the SLM policy 𝜋 𝑠 with the collaborative reward rather than with the placement of synthetic control-token labels alone. The policy is parameterized by 𝜃 , and 𝜋 𝜃 is used interchangeably with 𝜋 𝑠 below. In the training implementation, the accuracy and normalized-cost terms in Equation 1 correspond to 𝑅 𝑖 𝑗  
+
+> acc
+
+and 𝑅 𝑖 𝑗 
+
+> eff
+
+, respectively, for rollout 𝑂 𝑖 𝑗 of example (𝑞 𝑖 , 𝑦 𝑖 ). 
+
+> Work in Progress 7PyroDash: Cost-Efficient Token-Level Small-Large Model Collaborative Inference
+
+Algorithm 2: Three-stage progressive training of the SLM offloading policy 
+
+Input: base SLM 𝑀 (0) 
+
+> 𝑠
+
+; frozen LLM 𝑀 𝑙 ; training distributions D𝐴 , D𝐵 , D; prompts 𝑃 𝑠 , 𝑃 𝑙 ; control token 𝜏 off ; cost weight 𝜆 
+
+Output: trained SLM 𝑀 ★𝑠 parameterizing the offloading policy 𝜋 𝑠 
+
+Stage 1: Control-Token Embedding Learning  
+
+> 1
+
+Extend the vocabulary of 𝑀 (0) 
+
+> 𝑠
+
+with 𝜏 off ; 
+
+> 2
+
+Initialize its input/output embeddings using Equa-tion 2;  
+
+> 3
+
+Attach transient LoRA adapters;  
+
+> 4
+
+Update the embedding layer, output head, and adapters on D𝐵 ; 
+
+> 5
+
+Discard the adapters; retain the learned rows for 𝜏 off 
+
+in 𝑀 (1) 
+
+> 𝑠
+
+;
+
+Stage 2: Offloading-Oriented SFT  
+
+> 6
+
+Initialize 𝑀 (2) 
+
+> 𝑠
+
+← 𝑀 (1) 
+
+> 𝑠
+
+; 
+
+> 7
+
+Freeze the embedding layer and attach LoRA adapters to the attention layers;  
+
+> 8
+
+foreach minibatch from D𝐴 ∪ D 𝐵 do  
+
+> 9
+
+Minimize LSFT in Equation 3;  
+
+> 10
+
+Learn SLM-only completion and offloading; 
+
+Stage 3: Cost-Aware Policy Alignment with GRPO  
+
+> 11
+
+Initialize 𝜋 𝜃 ← 𝑀 (2) 
+
+> 𝑠
+
+and keep 𝑀 𝑙 frozen;  
+
+> 12
+
+Precompute Cost 𝑖  
+
+> base
+
+for each (𝑞 𝑖 , 𝑦 𝑖 ) ∈ D using Equation 4;  
+
+> 13
+
+while the policy has not converged do  
+
+> 14
+
+foreach example (𝑞 𝑖 , 𝑦 𝑖 ) do  
+
+> 15
+
+Sample 𝐺 SLM trajectories under 𝑃 𝑠 ; 
+
+> 16
+
+Execute Algorithm 1 to obtain joint outputs 𝑂 𝑖 𝑗 ; 
+
+> 17
+
+Set 𝑅 𝑖 𝑗  
+
+> acc
+
+= Acc (𝑂 𝑖 𝑗 , 𝑦 𝑖 ) and compute 𝑅 𝑖 𝑗  
+
+> eff
+
+and 𝑅 𝑖 𝑗  
+
+> total
+
+using Equations 6 and 7;  
+
+> 18
+
+Compute b𝐴 𝑖 𝑗 using Equation 8;  
+
+> 19
+
+Update 𝜃 by minimizing LGRPO in Equation 9;  
+
+> 20
+
+Set 𝑀 ★𝑠 ← 𝜋 𝜃 ; 
+
+> 21
+
+return 𝑀 ★𝑠 
+
+The Reward Function of GRPO. To couple policy learning with deployment cost, we define a baseline-normalized reward. For each example (𝑞 𝑖 , 𝑦 𝑖 ) ∼ D , we first compute the cost Cost 𝑖  
+
+> base
+
+of LLM-only inference on 𝑞 𝑖 using 𝑀 𝑙 . This baseline serves as a reference for evaluating the cost efficiency of the SLM-internalized offloading policy: 
+
+Cost 𝑖  
+
+> base
+
+= 𝐶 pre 𝑇 𝑖  
+
+> in
+
++ 𝐶 dec 𝑇 𝑖 𝑙, dec , (4) where 𝑇 𝑖  
+
+> in
+
+is the input-context length of request 𝑞 𝑖 , 𝑇 𝑖 𝑙, dec is the number of autoregressive tokens produced by 𝑀 𝑙 
+
+during decoding when it executes the request alone, and 𝐶 pre and 𝐶 dec are the respective unit prices for LLM prefill and decoding. We then model the absolute collaborative cost for each request 𝑞 𝑖 . For each request 𝑞 𝑖 ,the policy 𝜋 𝜃 samples 𝐺 joint reasoning trajectories 𝑂 𝑖 𝑗 ( 𝑗 = 1, . . . , 𝐺 ) under the offloading prompt 𝑃 𝑠 . Once 
+
+𝜏 off appears in a trajectory, the training environment replays the offloading path in Lines 3–8 of Algorithm 1: it packages the partial reasoning trace, terminates SLM decoding, invokes the frozen LLM, and constructs the joint trajectory. Consequently, the absolute collaborative cost Cost 𝑖 𝑗  
+
+> act
+
+of each trajectory is defined as 
+
+Cost 𝑖 𝑗  
+
+> act
+
+= (𝐶 𝑠 + 𝐶 pre ) 𝑇 𝑖 𝑗 𝑠 + 𝐶 dec 𝑇 𝑖 𝑗 𝑙, dec , (5) where 𝑇 𝑖 𝑗 𝑠 is the number of tokens generated by the SLM 𝑀 𝑠 before 𝜏 off is emitted, 𝑇 𝑖 𝑗 𝑙, dec is the number of tokens generated by the LLM 𝑀 𝑙 during decoding after the handoff, and 𝐶 𝑠 is a unified per-token price for the SLM. Because the entire output of 𝑀 𝑠 before 𝜏 off becomes part of the prefill context for 𝑀 𝑙 , 𝑇 𝑖 𝑗 𝑠 contributes to both SLM computation and LLM prefill cost. Equation 5 is the compact accounting form used by the training reward. During evaluation, SLM prefill, SLM decoding, LLM prefill, and LLM decoding are measured separately and converted into monetary cost using Equation 11 in Section 4. Thus, the normalized cost relative to the LLM-only baseline is 
+
+𝑅 𝑖 𝑗  
+
+> eff
+
+= Cost 𝑖 𝑗 
+
+> act
+
+Cost 𝑖 
+
+> base
+
+. (6) For each joint trajectory 𝑂 𝑖 𝑗 , the task-accuracy reward is 𝑅 𝑖 𝑗  
+
+> acc
+
+= Acc (𝑂 𝑖 𝑗 , 𝑦 𝑖 ); it is computed by extracting 
+
+\boxed{} answers and applying equivalence checks such as math_verify . Combining this reward with the  
+
+> Work in Progress 8PyroDash: Cost-Efficient Token-Level Small-Large Model Collaborative Inference
+
+normalized efficiency penalty yields the total reward 
+
+𝑅 𝑖 𝑗  
+
+> total
+
+= 𝑅 𝑖 𝑗  
+
+> acc
+
+− 𝜆𝑅 𝑖 𝑗  
+
+> eff
+
+, (7) where 𝜆 ≥ 0 is the efficiency weight; its value can be selected through a sweep on the validation set. When 
+
+𝑅 𝑖 𝑗  
+
+> eff
+
+< 1.0, collaborative inference costs less than LLM-only inference and therefore incurs a smaller penalty in 
+
+𝑅 𝑖 𝑗 
+
+> total
+
+. When 𝑅 𝑖 𝑗  
+
+> eff
+
+> 1.0, redundant SLM generation or ineffective offloading increases the bill, thus reducing the trajectory’s relative advantage within the group in GRPO. 
+
+The Loss Function of GRPO. To apply the accuracy–cost trade-off encoded by Equation 7 to a policy update, GRPO compares the total rewards of the 𝐺 rollouts sampled for the same request. We compute the group-relative advantage as 
+
+b𝐴 𝑖 𝑗 = 𝑅 𝑖 𝑗  
+
+> total
+
+− 𝜇 𝑖 
+
+𝜎 𝑖 + 𝛿 , 𝜇 𝑖 = 1
+
+𝐺 
+
+> 𝐺
+
+∑︁ 
+
+> 𝑗 =1
+
+𝑅 𝑖 𝑗 
+
+> total
+
+, 𝜎 𝑖 =
+
+vut 1
+
+𝐺 
+
+> 𝐺
+
+∑︁ 
+
+> 𝑗 =1
+
+
+
+𝑅 𝑖 𝑗  
+
+> total
+
+− 𝜇 𝑖 
+
+2
+
+, (8) where 𝛿 > 0 ensures numerical stability. This query-wise normalization removes the need for a critic and makes the update depend on relative accuracy–cost performance within each group. Let 𝑎 𝑖 𝑗,𝑡 be the 𝑡 -th token sampled from the SLM policy, ℎ𝑖 𝑗,𝑡 its conditioning history, and 𝑇 𝑖 𝑗 𝜋 the number of SLM policy tokens, including 
+
+𝜏 off when emitted. With the importance ratio 𝜌 𝑖 𝑗,𝑡 (𝜃 ) = 𝜋 𝜃 (𝑎 𝑖 𝑗,𝑡 | ℎ𝑖 𝑗,𝑡 )/ 𝜋 𝜃 old (𝑎 𝑖 𝑗,𝑡 | ℎ𝑖 𝑗,𝑡 ), the GRPO loss is 
+
+LGRPO (𝜃 ) = −𝔼 (𝑞 𝑖 ,𝑦 𝑖 )∼D 
+
+
+
+1
+
+𝐺 
+
+> 𝐺
+
+∑︁ 
+
+> 𝑗 =1
+
+1
+
+𝑇 𝑖 𝑗 𝜋 𝑇 𝑖 𝑗 𝜋 ∑︁ 
+
+> 𝑡 =1
+
+min 
+
+
+
+𝜌 𝑖 𝑗,𝑡 (𝜃 ) b𝐴 𝑖 𝑗 , clip  𝜌 𝑖 𝑗,𝑡 (𝜃 ), 1 − 𝜖, 1 + 𝜖  b𝐴 𝑖 𝑗 
+
+
+
+, (9) where 𝜖 > 0 limits the policy update. Only SLM-generated tokens enter Equation 9; the frozen LLM completion affects the update through 𝑅 𝑖 𝑗  
+
+> acc
+
+and 𝑅 𝑖 𝑗  
+
+> eff
+
+but remains outside the gradient path. Algorithm 2 consolidates the three-stage training pipeline after dataset curation. Stage 1 learns a stable representation of the control action, Stage 2 converts it into an initial prompt-conditional offloading policy, and Stage 3 evaluates complete collaborative rollouts and aligns the policy with the proposed accuracy–cost reward and GRPO loss. The learned SLM state passes from one stage to the next, while only the SLM policy is optimized and both the CE and 𝑀 𝑙 remain unchanged; varying 𝜆 yields the tunable accuracy–cost control described in the Introduction. The resulting 𝑀 𝑠 can therefore be deployed directly in the architecture of Section 3.2, completing the connection from the objective in Equation 1 to the collaborative inference protocol. 
+
+# 4. Experiments 
+
+The key component of PyroDash is the handoff policy: the SLM must learn when to transfer its partial trajectory to the LLM, and the evaluation must consider both answer accuracy and the inference cost incurred by the handoff. Our evaluation therefore answers four questions: (i) Q1 : Does token-level offloading improve the trade-off between accuracy and cost relative to stan-dalone inference? (ii) Q2 : Does the GRPO stage in Stage 3 produce behavior beyond the supervised cold start? (iii) Q3 : Does the efficiency penalty 𝜆 provide useful control over dependence on the LLM? (iv) Q4 : Can the reported dollar savings be traced to measured SLM and LLM token usage? We next describe the experimental setup and answer the above questions with our main results, ablation studies and cost decomposition. 
+
+4.1. Experimental Setup 
+
+4.1.1. Models and Configurations 
+
+In the evaluation, we select Qwen3.5-4B [Qwen Team, 2026] and GLM-5.2-FP8 [Z.ai, 2026] as the SLM 𝑀 𝑠 
+
+and the LLM 𝑀 𝑙 in PyroDash, respectively. This model configuration represents a typical deployment setting for PyroDash: the SLM handles reasoning by default, while the LLM is reserved for requests that the SLM  
+
+> Work in Progress 9PyroDash: Cost-Efficient Token-Level Small-Large Model Collaborative Inference
+
+decides to hand off. We train the SLM with the three-stage pipeline as introduced in Section 3 and keep 𝑀 𝑙 
+
+frozen throughout the process. After the three-stage pipeline, the trained 𝑀 𝑠 is inserted into the Collaborate Engine (CE) used during collaborative inference, so training-time and evaluation-time handoffs follow the same one-way execution path. We use 𝑀 𝑙 only to read C𝑠 and complete a response after the CE initiates a handoff. 
+
+4.1.2. Benchmarks, Baselines, and Metrics 
+
+Benchmarks. Adaptive offloading is meaningful only when the evaluation contains both requests that the SLM can plausibly solve and requests for which stronger assistance from the LLM may be beneficial. An easy suite would reward a policy that never calls the LLM, whereas an excessively hard suite could cause the learned policy to always offload. We therefore choose five mathematical reasoning benchmarks spanning different levels of difficulty: GSM8K [Cobbe et al., 2021] covers grade-school word problems, Minerva [Lewkowycz et al., 2022] evaluates quantitative reasoning in technical domains, and Olympiad-Bench [He et al., 2024], AIME-2024 [Hugging Face H4, 2024], and AIME-2025 [Lin, 2025] emphasize competition-level problems. We report pass@1 accuracy under greedy decoding for Minerva, GSM8K, and Olympiad-Bench, and avg@32 for harder AIME problem sets to reduce sampling variation. The aggregate score is the unweighted mean across the five benchmarks so that larger datasets do not dominate the comparison. 
+
+Baselines. We compare PyroDash with standalone SLM, LLM, SLM + SFT, and two routing baselines: 
+
+• The standalone SLM and LLM baselines execute each request separately. They define the two end-points of the deployment spectrum: the SLM-only result measures what can be obtained without the LLM’s assistance, while the LLM-only result provides the evaluation-time quality and inference cost. 
+
+• SLM+SFT evaluates the SLM after Stages 1–2, including control-token embedding learning and the offloading-oriented behavioral cold start, but without cost-aware policy alignment. 
+
+• RouteLLM [Ong et al., 2025] represents request-level learned routing. Its matrix-factorization router assigns the entire query to either 𝑀 𝑠 or 𝑀 𝑙 before decoding, and its threshold 𝛼 controls the fraction sent to the LLM. 
+
+• GlimpRouter [Zeng et al., 2026] provides a finer, training-free comparison: it uses the entropy of the first token at each reasoning step as an uncertainty signal and may call the LLM repeatedly. We set 𝜏 to 0.9, the temperature to 0.6, top-𝑝 to 0.95 , and use double newlines as step boundaries. Together, RouteLLM and GlimpRouter contrast PyroDash with both coarse request-level assignment and external step-level intervention. 
+
+Metrics. We report four metrics for each method: 
+
+• Accuracy (Acc.) measures each method’s performance on each benchmark. We report per-benchmark accuracy and the average accuracy across all five benchmarks. 
+
+• LLM Token Ratio measures the proportion of decoded tokens produced by the LLM among all tokens decoded by the SLM and the LLM across all benchmarks: LLM Token Ratio =
+
+Í 𝑛 llm out 
+
+Í 𝑛 slm out + Í 𝑛 llm out 
+
+, (10) where 𝑛 slm out and 𝑛 llm out denote the total number of output tokens decoded by 𝑀 𝑠 and 𝑀 𝑙 , respectively, across all benchmarks. This ratio exposes reliance on LLM generation, but it does not include prefill tokens and is therefore not a substitute for monetary cost. 
+
+• Avg. LLM Calls reports the mean number of calls to 𝑀 𝑙 per example across all benchmarks. 
+
+• Cost measures each method’s estimated total monetary cost in US dollars across all benchmarks, using the listed provider prices. 
+
+4.1.3. Implementation Details 
+
+We use the EasyHard-24k dataset [PyroMind Dynamics, 2026b], which contains 24,061 examples, in Stages 1– 2. In Stage 3, we use DAPO-Math released with DAPO [Yu et al., 2025]. Training is implemented with TRL [von Werra et al., 2020] and conducted using 4 NVIDIA H100 GPUs on the PyroMind platform [PyroMind Dynamics, 2026a]. For Stages 1–2, we train LoRA adapters with rank 𝑟 =8 and scaling factor 𝛼 =16 for 4 epochs at a learning rate of 1×10 −5. For Stage 3, we use LoRA with 𝑟 =16 and 𝛼 =32 for 1 epoch at a learning rate of 
+
+5×10 −6. Each prompt produces 𝐺 =8 rollouts, which are then used to compute the group-relative advantage                                                                                                   
+
+> Work in Progress 10 PyroDash: Cost-Efficient Token-Level Small-Large Model Collaborative Inference
+> Table 1 |Performance on five mathematical reasoning benchmarks. The comparison includes the Qwen3.5-4B base model, the SFT cold start, RouteLLM, GlimpRouter, and PyroDash at two values of 𝜆 , with GLM-5.2-FP8 as the LLM-only reference. AIME results use avg@32; all other results use pass@1 under greedy decoding. LLM Token Ratio is defined by Equation (10). The highest benchmark accuracies and the lowest LLM-usage values among collaborative methods are shown in bold. Method Minerva Acc. (%) GSM8K Acc. (%) Olympiad Acc. (%) AIME25 Acc. (%) AIME24 Acc. (%) Avg. Acc. (%) LLM Token Ratio (%) Avg. LLM Calls Qwen3.5-4B 25.00 77.56 25.78 8.75 4.69 28.36 ––Qwen3.5-4B+SFT 43.75 89.69 47.70 21.88 28.23 46.25 ––RouteLLM ( ∼75% GLM-5.2-FP8) 38.97 87.26 57.04 37.71 42.71 52.74 77.37 0.808 GlimpRouter 45.59 93.63 51.56 35.10 45.10 54.20 75.11 1.20 PyroDash ( 𝜆 =0.05 )46.69 96.13 64.89 48.75 63.75 64.04 95.34 0.975 PyroDash ( 𝜆 =0.6)44.85 90.90 60.44 34.17 42.40 54.55 1.90 0.012
+> GLM-5.2-FP8 43.75 96.44 61.04 40.62 46.56 57.68 100.00 1.000 Table 2 |Averaged accuracy, LLM token ratio, average number of LLM calls, and cost across the five benchmarks. Method Avg. Acc. (%) LLM Token Ratio (%) Avg. LLM Calls Cost ($) Qwen3.5-4B 28.36 0.00 0.000 2.26 Qwen3.5-4B(+SFT) 46.25 0.00 0.000 1.32 RouteLLM ( ∼75% GLM-5.2-FP8) 52.74 77.37 0.808 44.62 GlimpRouter ( 𝜏 =0.9)54.20 75.11 1.20 31.61 PyroDash ( 𝜆 =0.1)55.29 8.19 0.058 4.71 PyroDash ( 𝜆 =0.6)54.55 1.90 0.012 1.78
+> PyroDash ( 𝜆 =0.05 )64.04 95.34 0.975 39.29 GLM-5.2-FP8 57.68 100.00 1.000 49.36
+
+in GRPO. Before GRPO begins, we execute every training prompt with 𝑀 𝑙 alone in order to obtain Cost base (𝑞 ),which is used as the baseline. We host GLM-5.2-FP8 on 8 NVIDIA B200 GPUs and Qwen3.5-4B on 4 NVIDIA H100 GPUs, respectively, us-ing vLLM [Kwon et al., 2023] on the PyroMind platform. Thinking mode is enabled in both models with a per-model limit of max_tokens =8192 . For each model, we keep the decoding configuration fixed across in-vocations. The control token 𝜏 off is registered as a stopping sequence for SLM sampling. Once it appears, the CE packages C𝑠 and performs the single handoff. 
+
+4.2. Main Results 
+
+We answer Q1 by comparing PyroDash with standalone inference and two routing baselines in Table 1 and Figure 3. We report a quality-oriented policy at 𝜆 =0.05 and a cost-oriented policy at 𝜆 =0.6; the complete sweep is presented as the ablation study in Section 4.4. At 𝜆 =0.05 , PyroDash reaches 64.04% average accuracy, 6.36 percentage points above the accuracy of GLM-5.2-FP8, and obtains the highest reported accuracy on Minerva, Olympiad-Bench, AIME-2025, and AIME-2024. At 𝜆 =0.6, PyroDash attains 54.55% average accuracy with an LLM token ratio of 1.90%, 0.012 LLM calls per example, and a total cost of $1.78 as depicted in Table 2. RouteLLM reaches 52.74% at $44.62, while GlimpRouter reaches 54.20% at $31.61; both allocate more than 75% of decoded tokens to the LLM. We conclude that PyroDash improves the balance between accuracy and cost: its quality-oriented policy out-performs the LLM-only baseline, while its cost-oriented policy matches or exceeds the routing baselines with substantially lower LLM usage and cost. We answer Q2 by comparing the SLM+SFT cold start with the fully trained PyroDash policy at 𝜆 =0.05 in Table 1. SFT raises the standalone SLM average from 28.36% to 46.25%, whereas PyroDash at 𝜆 =0.05 reaches 64.04%, including an increase from 28.23% to 63.75% on AIME-2024. We conclude that the cost-aware policy alignment with GRPO in Stage 3 provides gains beyond the supervised cold start. Figure 3 and Table 2 summarize the results for three representative values of 𝜆 . The intermediate 𝜆 =0.1 policy reaches 55.29% average accuracy at $4.71, exceeding both routing baselines in accuracy at substantially lower cost. Together, the policies trained with 𝜆 =0.05 , 𝜆 =0.1, and 𝜆 =0.6 show that PyroDash supports distinct trade-offs between accuracy and cost.  
+
+> Work in Progress 11
+
+PyroDash: Cost-Efficient Token-Level Small-Large Model Collaborative Inference 0 10 20 30 40 50     
+
+> Total Cost ($)
+> 25
+> 30
+> 35
+> 40
+> 45
+> 50
+> 55
+> 60
+> 65
+> Avg. Accuracy (%)
+> Qwen3.5-4B
+> Qwen3.5-4B(+SFT)
+> GLM-5.2-FP8
+> RouteLLM 50%
+> RouteLLM 80%
+> GlimpRouter
+> PyroDash λ=0.05
+> λ=0.1
+> λ=0.6
+> SLM →LLM line
+> Standalone / SFT
+> RouteLLM (MF)
+> GlimpRouter
+> PyroDash ( λ=0.05)
+> PyroDash (other λ)
+
+Figure 3 | Total cost and average accuracy across five mathematical reasoning benchmarks. PyroDash with 𝜆 =0.05 
+
+reaches 64.04% average accuracy, exceeding GLM-5.2-FP8’s accuracy of 57.68%, while PyroDash with 𝜆 =0.6 reduces total cost from $49.36 to $1.78, a reduction of 96.4% relative to LLM-only inference. 
+
+4.3. Qualitative Case Study 
+
+A short GSM8K example makes the one-shot execution path concrete. The query asks when a lemon tree with a $90 planting cost begins earning money if it produces 7 lemons per year, each sold for $1.50, and incurs $3 in annual maintenance. The recorded PyroDash trajectory is: 
+
+GSM8K #12: from annual net income to first profit 
+
+SLM PREFIX 
+
+The SLM reduces the problem to an annual net-income calculation: 
+
+7 × $1 .50 − $3 .00 = $7 .50 .
+
+It then emits the learned control token. 𝜏 off 
+
+LLM CONTINUATION 
+
+After 𝑛 years, positive profit requires 
+
+$7 .50 𝑛 > $90 ,
+
+so 𝑛 > 12 . Year 12 only recovers the planting cost, whereas year 13 is the first year with positive profit. 
+
+After detecting 𝜏 off , the CE removes it, sends the query and SLM prefix to the LLM for one continuation, and concatenates both segments. This illustrates the inference flow only; four more cases, including an SLM-only completion, appear in Appendix A. 
+
+4.4. Ablation and Analysis Sensitivity to the Efficiency Penalty 𝜆 . We answer Q3 by evaluating the 𝜆 values reported in Table 3 and Figure 3. The sweep measures whether the efficiency penalty controls LLM dependence while preserving accuracy. 
+
+Work in Progress 12 PyroDash: Cost-Efficient Token-Level Small-Large Model Collaborative Inference                            
+
+> Table 3 |Sensitivity to the efficiency penalty coefficient 𝜆 .Configuration Avg. Acc. (%) LLM Token Ratio (%) Avg. LLM Calls Cost ($)
+> 𝜆 =0.05 64.04 95.34 0.975 39.29
+> 𝜆 =0.155.29 8.19 0.058 4.71
+> 𝜆 =0.254.91 3.18 0.026 2.55
+> 𝜆 =0.354.20 2.54 0.025 2.16
+> 𝜆 =0.654.55 1.90 0.012 1.78
+
+From 𝜆 =0.05 to 0.1, the LLM token ratio falls from 95.34% to 8.19%, average calls fall from 0.975 to 0.058, and cost falls from $39.29 to $4.71, while accuracy decreases from 64.04% to 55.29%. For 𝜆 ≥ 0.1, accuracy remains in the range of 54.20–55.29% as the LLM token ratio decreases to 1.90% and cost to $1.78. These results show that 𝜆 provides useful control over dependence on the LLM, with the largest reduction in LLM usage observed when 𝜆 increases from 0.05 to 0.1.
+
+Token Usage and Cost Decomposition. We answer Q4 by tracing total cost to measured SLM and LLM input and output tokens in Table 4. We convert the four token components into dollar cost as 
+
+𝐶 = 𝑛 slm in 𝑝 slm in + 𝑛 slm out 𝑝 slm out + 𝑛 llm in 𝑝 llm in + 𝑛 llm out 𝑝 llm out , (11) where 𝑛 denotes the relevant token count and 𝑝 its unit price (in US dollars per million tokens). We use 
+
+𝑝 slm in = $0 .05 /M and 𝑝 slm out = $0 .08 /M for Qwen3.5-4B, and 𝑝 llm in = $0 .90 /M and 𝑝 llm out = $2 .86 /M for GLM-5.2-FP8.                                                                                                                   
+
+> Table 4 |Token usage and cost of each benchmark. Input and output token counts are reported in millions and rounded to two decimal places before cost calculation. Note that discrepancies may arise from rounding. Benchmark Qwen3.5-4B Qwen3.5-4B(+PyroDash, 𝜆 =0.6)GLM-5.2-FP8 SLM LLM SLM LLM SLM LLM In Out In Out $In Out In Out $In Out In Out $Minerva 0.05 2.07 0.00 0.00 0.17 0.05 0.22 0.00 0.00 0.02 0.00 0.00 0.04 0.67 1.95 GSM8K 0.13 5.20 0.00 0.00 0.42 0.17 0.32 0.00 0.00 0.03 0.00 0.00 0.12 0.92 2.74 Olympiad 0.09 5.12 0.00 0.00 0.41 0.11 2.10 0.01 0.02 0.24 0.00 0.00 0.09 2.98 8.60 AIME25 0.19 7.67 0.00 0.00 0.62 0.22 4.77 0.05 0.06 0.61 0.00 0.00 0.18 6.35 18.32 AIME24 0.14 7.81 0.00 0.00 0.63 0.16 4.66 0.07 0.15 0.87 0.00 0.00 0.13 6.16 17.73
+> Total 0.60 27.86 0.00 0.00 2.26 0.71 12.07 0.13 0.23 1.78 0.00 0.00 0.57 17.08 49.36
+
+At 𝜆 =0.6, PyroDash reduces LLM output tokens from 17.08M to 0.23M and total cost from $49.36 to $1.78 relative to LLM-only inference. It produces 12.07M SLM output tokens, compared with 27.86M for standalone SLM inference. We conclude that the reported savings are due to the reduced LLM decoding, while fewer total output tokens also contribute. 
+
+# 5. Conclusion 
+
+We propose PyroDash, a novel cost-aware, token-level paradigm for collaborative inference between an SLM and an LLM. During autoregressive generation, the SLM emits the control token 𝜏 off when it requests stronger assistance. The Collaborate Engine then packages the partial reasoning trace as C𝑠 and initiates a single handoff to a frozen LLM. This design requires neither LLM retraining nor a separate learned router. The three-stage pipeline—control-token embedding learning, offloading-oriented supervised fine-tuning for behavioral cold start, and cost-aware GRPO alignment—trains 𝑀 𝑠 under different values of 𝜆 to support different trade-offs between accuracy and cost. Unlike request-level routing, which assigns the entire query to either the SLM or the LLM before generation, PyroDash begins with the SLM and decides during generation whether to hand off the partial reasoning trace to the LLM. The CE implements the handoff by sending the user query and the SLM’s partial reasoning trace to the LLM as a new prompt, without requiring access to the LLM’s hidden states or token probabilities. Across five mathematical reasoning benchmarks, PyroDash with 𝜆 =0.05 achieves 64.04% average accuracy, exceeding GLM-5.2-FP8’s accuracy of 57.68% while reducing total cost by 20.4%. The cost-oriented policy with 𝜆 =0.6 achieves 54.55% average accuracy with an LLM token ratio of 1.90% and 0.012 LLM calls per  
+
+> Work in Progress 13 PyroDash: Cost-Efficient Token-Level Small-Large Model Collaborative Inference
+
+example. Under the evaluated pricing model, it reduces total cost from $49.36 to $1.78, a reduction of 96.4%. RouteLLM and GlimpRouter allocate 77.37% and 75.11% of decoded tokens to the LLM, respectively. PyroDash at 𝜆 =0.6 reduces this ratio to 1.90%—about a 97.5% relative reduction, or roughly one-fortieth of either baseline—while achieving higher average accuracy (54.55% versus 52.74% and 54.20%). The ablation study on 𝜆 shows that a larger efficiency penalty leads to fewer LLM-generated tokens and lower inference cost. Thus, PyroDash can be trained for either higher accuracy with greater LLM use or lower cost with less LLM use. PyroDash shifts part of the scaling problem from enlarging a single model toward coordinating heterogeneous model services. In this setting, an SLM handles the default queries, while a responsive LLM completes selected responses after the SLM initiates a handoff when the SLM detects the need for stronger assistance. This collaborative inference paradigm allows PyroDash to balance reasoning accuracy against inference cost while remaining compatible with proprietary LLM APIs. It also suggests a broader collaborative-scaling direction in which compute and intelligence can be collectively allocated across a mesh of model services rather than remaining tied to one set of weights. 
+
+# 6. Limitations and Future Work 
+
+The current evaluation reports accuracy and LLM usage but does not examine the rationality of individual offloading decisions. It therefore remains unclear whether the SLM hands off precisely when its reasoning be-comes unreliable. Future work should analyze trigger positions and relate them to specific reasoning failures. Stage 3 penalizes inference cost relative to the cost of LLM-only inference. Because we do not compare this nor-malized penalty with a direct token-cost penalty, the experiments do not isolate the benefit of normalization. A controlled ablation of the two reward designs is therefore needed. The present findings are limited to mathematical reasoning benchmarks, the EasyHard-24k data-curation procedure, and the Qwen3.5-4B and GLM-5.2-FP8 SLM-LLM model pair. The performance of PyroDash in other application domains, such as code generation, tool use, and multimodal reasoning, as well as with other SLM–LLM combinations, remains to be explored. Evaluating these settings will clarify how model capability and task structure affect learned offloading behavior. The reported monetary costs are calculated from listed token prices rather than actual provider bills. PyroDash allows only one handoff from the SLM to the LLM for each query without returning to the SLM after the handoff. The experiments therefore do not show whether one handoff per turn would improve accuracy in multi-turn interactions. Future work should compare the estimated costs with actual provider bills and evaluate a version of PyroDash that allows more than one handoff in multi-turn scenarios. 
+
+# References 
+
+Josh Achiam, Steven Adler, Sandhini Agarwal, et al. Gpt-4 technical report. arXiv preprint arXiv:2303.08774 ,2023. Rishabh Agarwal, Nino Vieillard, Yongchao Zhou, Piotr Stanczyk, Sabela Ramos Garea, Matthieu Geist, and Olivier Bachem. On-policy distillation of language models: Learning from self-generated mistakes. In 
+
+International Conference on Learning Representations , 2024. arXiv:2306.13649. Tianle Cai, Yuhong Li, Zhengyang Geng, Hongwu Peng, Jason D. Lee, Deming Chen, and Tri Dao. Medusa: Simple LLM inference acceleration framework with multiple decoding heads. In Proceedings of the 41st International Conference on Machine Learning , volume 235 of Proceedings of Machine Learning Research ,pages 5209–5235, 2024. URL https://proceedings.mlr.press/v235/cai24b.html .Charlie Chen, Sebastian Borgeaud, Geoffrey Irving, et al. Accelerating large language model decoding with speculative sampling. arXiv preprint arXiv:2302.01318 , 2023. Lingjiao Chen, Matei Zaharia, and James Zou. FrugalGPT: How to use large language models while reducing cost and improving performance. Transactions on Machine Learning Research , 2024. arXiv:2305.05176. Zhixiong Chen, Bingjie Zhu, Jiangzhou Wang, Hyundong Shin, Arumugam Nallanathan, and Dusit Niyato. Network edge inference for large language models: Principles, techniques, and opportunities. ACM Com-puting Surveys , 58(12), 2026. doi: 10.1145/3809166. arXiv:2604.22906. Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, et al. Training verifiers to solve math word problems. 
+
+arXiv preprint arXiv:2110.14168 , 2021.  
+
+> Work in Progress 14 PyroDash: Cost-Efficient Token-Level Small-Large Model Collaborative Inference
+
+Dujian Ding, Ankur Mallick, Chi Wang, Robert Sim, Subhabrata Mukherjee, Victor Rühle, Laks V. S. Laksh-manan, and Ahmed Hassan Awadallah. Hybrid LLM: Cost-efficient and quality-aware query routing. In 
+
+International Conference on Learning Representations , 2024. arXiv:2404.14618. Elias Frantar, Saleh Ashkboos, Torsten Hoefler, and Dan Alistarh. GPTQ: Accurate post-training quantiza-tion for generative pre-trained transformers. In International Conference on Learning Representations , 2023. arXiv:2210.17323. Gemma Team. Gemma 4 technical report. arXiv preprint arXiv:2607.02770 , 2026. Yuxian Gu, Li Dong, Furu Wei, and Minlie Huang. MiniLLM: Knowledge distillation of large language models. In International Conference on Learning Representations , 2024. arXiv:2306.08543. Chaoqun He, Renjie Luo, Yuzhuo Bai, Shengding Hu, Zhen Thai, Junhao Shen, Jinyi Hu, Xu Han, Yujie Huang, Yuxiang Zhang, Jie Liu, Lei Qi, Zhiyuan Liu, and Maosong Sun. OlympiadBench: A challenging benchmark for promoting AGI with olympiad-level bilingual multimodal scientific problems. In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 3828–3850, Bangkok, Thailand, 2024. Association for Computational Linguistics. doi: 10.18653/v1/2024.acl-long.211. URL https://aclanthology.org/2024.acl-long.211/ .Chengsong Huang, Tong Zheng, Langlin Huang, Jinyuan Li, Haolin Liu, and Jiaxin Huang. RelayLLM: Efficient reasoning via collaborative decoding. arXiv preprint arXiv:2601.05167 , 2026. Hugging Face H4. AIME 2024 dataset. https://huggingface.co/datasets/HuggingFaceH4/aime_2024 ,2024. Woosuk Kwon, Zhuohan Li, Siyuan Zhuang, Ying Sheng, Lianmin Zheng, Cody Hao Yu, Joseph E. Gonza-lez, Hao Zhang, and Ion Stoica. Efficient memory management for large language model serving with PagedAttention. In Proceedings of the 29th Symposium on Operating Systems Principles . ACM, 2023. doi: 10.1145/3600006.3613165. arXiv:2309.06180. Yaniv Leviathan, Matan Kalman, and Yossi Matias. Fast inference from transformers via speculative decod-ing. In Proceedings of the 40th International Conference on Machine Learning , volume 202 of Proceedings of Machine Learning Research , pages 19274–19286. PMLR, 2023. arXiv:2211.17192. Aitor Lewkowycz, Anders Andreassen, David Dohan, Ethan Dyer, Henryk Michalewski, Vinay Ramasesh, Ambrose Slone, Cem Anil, Imanol Schlag, Theo Gutman-Solo, Yuhuai Wu, Behnam Neyshabur, Guy Gur-Ari, and Vedant Misra. Solving quantitative reasoning problems with language mod-els. In Advances in Neural Information Processing Systems , volume 35, pages 3843–3857. Cur-ran Associates, Inc., 2022. URL https://proceedings.neurips.cc/paper_files/paper/2022/file/ 18abbeef8cfe9203fdf9053c9c4fe191-Paper-Conference.pdf .Senyao Li, Haozhao Wang, Wenchao Xu, Rui Zhang, Song Guo, Jingling Yuan, Xian Zhong, Tianwei Zhang, and Ruixuan Li. Collaborative inference and learning between edge SLMs and cloud LLMs: A survey of algorithms, execution, and open challenges. arXiv preprint arXiv:2507.16731 , 2025. Yang Li. LLM bandit: Cost-efficient LLM generation via preference-conditioned dynamic routing. arXiv preprint arXiv:2502.02743 , 2025. Yen-Ting Lin. AIME 2025 dataset. https://huggingface.co/datasets/yentinglin/aime_2025 , 2025. Xupeng Miao, Gabriele Oliaro, Zhihao Zhang, Xinhao Cheng, Zeyu Wang, Zhengxin Zhang, Rae Ying Yee Wong, Alan Zhu, Lijie Yang, Xiaoxiang Shi, Chunan Shi, Zhuoming Chen, Daiyaan Arfeen, Reyna Ab-hyankar, and Zhihao Jia. SpecInfer: Accelerating large language model serving with tree-based spec-ulative inference and verification. In Proceedings of the 29th ACM International Conference on Architec-tural Support for Programming Languages and Operating Systems, Volume 3 , pages 932–949, 2024. doi: 10.1145/3620666.3651335. Isaac Ong, Amjad Almahairi, Vincent Wu, Wei-Lin Chiang, Tianhao Wu, Joseph E. Gonzalez, M. Waleed Kadous, and Ion Stoica. RouteLLM: Learning to route LLMs with preference data. In International Con-ference on Learning Representations , 2025. arXiv:2406.18665. PyroMind Dynamics. PyroMind console. https://pyromind.ai/ , 2026a. PyroMind Dynamics. EasyHard-24K v0.02. https://huggingface.co/datasets/pyromind/easyhard-24k ,2026b. Qwen Team. Qwen3.5: Towards native multimodal agents. https://qwen.ai/blog?id=qwen3.5 , February 2026.  
+
+> Work in Progress 15 PyroDash: Cost-Efficient Token-Level Small-Large Model Collaborative Inference
+
+Ranajoy Sadhukhan, Jian Chen, Zhuoming Chen, Vashisth Tiwari, Ruihang Lai, Jinyuan Shi, Ian Yen, Avner May, Tianqi Chen, and Beidi Chen. MagicDec: Breaking the latency–throughput trade-off for long context generation with speculative decoding. In International Conference on Learn-ing Representations , 2025. URL https://proceedings.iclr.cc/paper_files/paper/2025/hash/ 13f972adf12bdf886583d48cd528002f-Abstract-Conference.html .Zhihong Shao, Peiyi Wang, Qihao Zhu, et al. Deepseekmath: Pushing the limits of mathematical reasoning in open language models. arXiv preprint arXiv:2402.03300 , 2024. Shannon Zejiang Shen, Hunter Lang, Bailin Wang, Yoon Kim, and David Sontag. Learning to decode col-laboratively with multiple language models. In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 12974–12990. Association for Computational Linguistics, 2024. doi: 10.18653/v1/2024.acl-long.701. arXiv:2403.03870. Hugo Touvron, Louis Martin, Kevin Stone, et al. Llama 2: Open foundation and fine-tuned chat models. arXiv preprint arXiv:2307.09288 , 2023. Leandro von Werra, Younes Belkada, Lewis Tunstall, Edward Beeching, Tristan Thrush, Nathan Lambert, Shengyi Huang, Kashif Rasul, and Quentin Gallouédec. TRL: Transformers Reinforcement Learning. https: //github.com/huggingface/trl , 2020. Apache-2.0 licensed software. Xinyuan Wang, Yanchi Liu, Wei Cheng, Xujiang Zhao, Zhengzhang Chen, Wenchao Yu, Yanjie Fu, and Haifeng Chen. MixLLM: Dynamic routing in mixed large language models. In Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers) , pages 10912–10922, 2025. arXiv:2502.18482. Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Brian Ichter, Fei Xia, Ed H. Chi, Quoc V. Le, and Denny Zhou. Chain-of-thought prompting elicits reasoning in large lan-guage models. In Advances in Neural Information Processing Systems , volume 35, pages 24824–24837, 2022. URL https://proceedings.neurips.cc/paper_files/paper/2022/hash/ 9d5609613524ecf4f15af0f7b31abca4-Abstract-Conference.html .Heming Xia, Zhe Yang, Qingxiu Dong, Peiyi Wang, Yongqi Li, Tao Ge, Tianyu Liu, Wenjie Li, and Zhifang Sui. Unlocking efficiency in large language model inference: A comprehensive survey of speculative decoding. In Findings of the Association for Computational Linguistics: ACL 2024 , pages 7655–7671. Association for Computational Linguistics, 2024. doi: 10.18653/v1/2024.findings-acl.456. arXiv:2401.07851. An Yang, Baosong Yang, Binyuan Hui, et al. Qwen2 technical report. arXiv preprint arXiv:2407.10671 , 2024. Qiying Yu, Zheng Zhang, Ruofei Zhu, Yufeng Yuan, Xiaochen Zuo, et al. DAPO: An open-source LLM rein-forcement learning system at scale. arXiv preprint arXiv:2503.14476 , 2025. Z.ai. GLM-5.2-FP8. https://huggingface.co/zai-org/GLM-5.2-FP8 , 2026. Wenhao Zeng, Xuteng Zhang, Yuling Shi, Chao Hu, Yuting Chen, Beijun Shen, and Xiaodong Gu. GlimpRouter: Efficient collaborative inference by glimpsing one token of thoughts. In Findings of the Association for Compu-tational Linguistics: ACL 2026 , pages 17850–17864, San Diego, California, United States, 2026. Association for Computational Linguistics. doi: 10.18653/v1/2026.findings-acl.885. arXiv:2601.05110. Wenhao Zheng, Yixiao Chen, Weitong Zhang, Souvik Kundu, Yun Li, Zhengzhong Liu, Eric P. Xing, Hongyi Wang, and Huaxiu Yao. CITER: Collaborative inference for efficient large language model decoding with token-level routing. In Conference on Language Modeling , 2025. arXiv:2502.01976.  
+
+> Work in Progress 16 PyroDash: Cost-Efficient Token-Level Small-Large Model Collaborative Inference
+
+# A. Qualitative Case Studies of the PyroDash Inference Flow 
+
+This appendix complements the aggregate results in Section 4 with five illustrative cases drawn from the active PyroDash case set. Four cases show how an SLM prefix is preserved across a one-shot handoff in algebra, materials science, arithmetic, and combinatorial reasoning, while one case shows how a tractable request remains entirely on the SLM. The cases clarify the inference flow rather than provide an additional estimate of benchmark-level performance. 
+
+A.1. Single-Handoff Completion after a Useful Partial Reduction AIME-2024 #744: solving a logarithmic system. 
+
+User prompt 
+
+Let 𝑥, 𝑦, and 𝑧 be positive real numbers satisfying 
+
+log 2
+
+ 𝑥 𝑦𝑧 
+
+
+
+= 12 , log 2
+
+ 𝑦 𝑥𝑧 
+
+
+
+= 13 , log 2
+
+ 𝑧 𝑥 𝑦 
+
+
+
+= 14 .
+
+If log 2 (𝑥 4 𝑦 3 𝑧 2) = 𝑚 𝑛 for relatively prime positive integers 𝑚 and 𝑛 , find 𝑚 + 𝑛 .
+
+The SLM first reduces the problem instead of handing it off immediately. It then emits 𝜏 off , and the CE forwards the user prompt together with the partial trajectory to the LLM. 
+
+One-shot handoff trace 
+
+SLM PREFIX 
+
+Let 𝑎 = log 2 𝑥 , 𝑏 = log 2 𝑦 , and 𝑐 = log 2 𝑧 . The constraints become  
+
+> 𝑎
+
+− 𝑏 − 𝑐 = 12 , 𝑏 − 𝑎 − 𝑐 = 13 , 𝑐 − 𝑎 − 𝑏 = 14 ,
+
+and the target is |4𝑎 + 3𝑏 + 2𝑐 |. 𝜏 off 
+
+LLM CONTINUATION 
+
+Adding the three equations gives 𝑎 + 𝑏 + 𝑐 = − 13 12 . Solving the system yields  
+
+> 𝑎
+
+= − 724 , 𝑏 = − 38 , 𝑐 = − 512 .
+
+Therefore, |4𝑎 + 3𝑏 + 2𝑐 | = 25 8 and 𝑚 + 𝑛 = 33 .
+
+Takeaway. The joint answer is correct, and the trace shows that the handoff preserves useful SLM work: the LLM continues from a reduced algebraic system rather than restarting from the natural-language question alone.  
+
+> Work in Progress 17 PyroDash: Cost-Efficient Token-Level Small-Large Model Collaborative Inference
+
+A.2. Formula Selection before Numerical Completion Minerva #196: recovering atomic weight from a BCC unit cell. 
+
+User prompt 
+
+A metal has a body-centered cubic (BCC) structure, a lattice constant of 3.31 Å, and a density of 16 .6 g cm −3. De-termine its atomic weight in grams per mole, rounded to one decimal place. 
+
+The SLM identifies the governing crystallographic relation, then hands off before performing the unit conver-sion and numerical calculation. 
+
+One-shot handoff trace 
+
+SLM PREFIX 
+
+For a crystal with 𝑛 atoms per unit cell, atomic weight 𝐴 , unit-cell volume 𝑉 𝑐 , and Avogadro constant 𝑁 𝐴 , 
+
+> 𝜌
+
+= 𝑛𝐴 𝑉 𝑐 𝑁 𝐴 
+
+> .
+
+The requested atomic weight can be obtained by rearranging this relation. 𝜏 off 
+
+LLM CONTINUATION 
+
+For BCC, 𝑛 = 2, and  
+
+> 𝑎
+
+= 3.31 × 10 −8 cm , 𝑉 𝑐 = 𝑎 3 = 36 .264691 × 10 −24 cm 3.
+
+Therefore,  
+
+> 𝐴
+
+= 𝜌𝑎 3 𝑁 𝐴  
+
+> 𝑛
+
+= (16 .6)( 36 .264691 × 10 −24 )( 6.022 × 10 23 )
+
+2 ≈ 181 .3 g mol −1.
+
+Takeaway. The trace separates model roles cleanly: the SLM supplies the governing equation, while the LLM completes the BCC-specific substitution, unit conversion, and rounding. 
+
+A.3. Handoff after Reducing a Word Problem to an Inequality GSM8K #12: distinguishing break-even from positive profit. 
+
+User prompt 
+
+Carlos pays $90 to plant a lemon tree. Each year it produces 7 lemons that he can sell for $1.50 each, while watering and feeding cost $3 per year. After how many years will he start earning money from the tree? 
+
+The SLM converts the verbal description into an annual net-income calculation before requesting the LLM continuation. 
+
+One-shot handoff trace 
+
+SLM PREFIX 
+
+Annual revenue is 7 × $1 .50 = $10 .50 , and annual maintenance costs $3. The annual net income is therefore 
+
+$10 .50 − $3 .00 = $7 .50 .𝜏 off 
+
+LLM CONTINUATION 
+
+After 𝑛 years, cumulative net income is $7 .50 𝑛 . Positive profit requires 
+
+7.50 𝑛 > 90 ,
+
+so 𝑛 > 12 . The tree breaks even at year 12 and first earns money in year 13 .
+
+Takeaway. The SLM prefix preserves the useful arithmetic reduction, and the continuation resolves the strict inequality that distinguishes merely recovering the initial cost from earning a profit.  
+
+> Work in Progress 18 PyroDash: Cost-Efficient Token-Level Small-Large Model Collaborative Inference
+
+A.4. Handoff after Establishing Combinatorial Constraints AIME-2024 #142: reconstructing a list from its sum, mode, and median. 
+
+User prompt 
+
+A list of positive integers satisfies three conditions: 
+
+• the sum of its entries is 30 ;
+
+• its unique mode is 9; and 
+
+• its median is a positive integer that does not appear in the list. Find the sum of the squares of all entries in the list. 
+
+The SLM identifies the structural consequence of the median constraint and corrects an initial false start before handing off the remaining case analysis. 
+
+One-shot handoff trace 
+
+SLM PREFIX 
+
+The list must have even length; otherwise, its median would be an entry of the list. For middle entries 𝑎 < 𝑏 , the median is  
+
+> 𝑚
+
+= 𝑎 + 𝑏 
+
+2 ,
+
+which must be an integer absent from the list. The prefix briefly considers equal middle entries, rejects the resulting contradiction, and retains the distinct-middle-entry condition. 𝜏 off 
+
+LLM CONTINUATION 
+
+The unique mode condition requires at least two copies of 9. With four entries and exactly two 9s, the other two entries must be distinct and sum to 12 . Among the possible pairs, only (5, 7) gives an integer median absent from the list: 
+
+{5, 7, 9, 9}, median = 8.
+
+The remaining feasible lengths fail the median or unique-mode condition. Thus, 
+
+52 + 72 + 92 + 92 = 236 .
+
+Takeaway. The handoff occurs after the SLM isolates the list-length and middle-entry constraints but before exhaustive enumeration; the LLM completes the finite search and verifies the resulting list. 
+
+A.5. SLM-Only Completion without an LLM Call GSM8K #217: retaining an easy request on the SLM. 
+
+User prompt 
+
+There are 4 roses in a vase and 7 more dahlias than roses. How many flowers are in the vase in total? 
+
+SLM-only inference trace 
+
+SLM COMPLETION 
+
+The number of dahlias is 4 + 7 = 11 . The total number of flowers is therefore 
+
+4 + 11 = 15 .
+
+No handoff token is emitted, so the CE streams 𝑂 𝑠 directly to the user and never invokes 𝑀 𝑙 .
+
+Takeaway. The CE follows Lines 9–11 of Algorithm 1 and returns the SLM output directly. Across the above cases, the trained SLM with GRPO either completes the request locally or marks a token-level boundary that triggers one context-preserving LLM continuation.

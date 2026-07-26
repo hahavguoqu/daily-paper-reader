@@ -1,0 +1,94 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-07-26T20:33:56.926718+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 1,
+    "deep_cap": 6,
+    "deep_selected": 1,
+    "quick_candidates": 1,
+    "quick_skim_target": 11,
+    "quick_selected": 1
+  },
+  "deep_dive": [
+    {
+      "id": "2607.21412v1",
+      "source": "arxiv",
+      "title": "Euclid-MCP: A Model Context Protocol Server for Deterministic Logical Reasoning via Prolog",
+      "abstract": "Large Language Models (LLMs) excel at natural language understanding and generation but remain unreliable for multi-step logical reasoning, especially in safety-critical or compliance-sensitive domains. Recent neuro-symbolic approaches address this gap by coupling neural models with external symbolic engines, yet most integrations are bespoke and lack a standardized interface for tool-augmented agents. This paper presents Euclid-MCP, an open-source MCP server that provides deterministic logical reasoning via SWI-Prolog. Euclid-MCP introduces Euclid-IR, an engine-agnostic intermediate representation for Horn-clause logic that is human-readable, easy for LLMs to generate, and straightforward to compile into Prolog or alternative backends. The server exposes a compact tool interface that supports a translate-run-inspect-repair loop, enabling LLM clients to delegate inference while retaining full access to proof traces and derivation logs. We evaluate Euclid-MCP on a realistic IT security and compliance use case. Results show that while LLMs alone are sufficient on small knowledge bases, they hallucinate systematically on larger problems, whereas Euclid-MCP delivers exact answers with lower latency and more compact outputs. We argue that semantic RAG is fundamentally unsuited for rule enforcement, and that Euclid-MCP can serve as a stable, shared reasoning substrate for both RAG-based assistants and agentic systems.",
+      "authors": [
+        "Bartolomeo Bogliolo"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.CL",
+        "cs.SE"
+      ],
+      "published": "2026-07-23T15:15:37+00:00",
+      "link": "https://arxiv.org/pdf/2607.21412v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "deterministic logical reasoning via Prolog, directly supports multi-step reasoning in LLMs",
+      "llm_evidence_cn": "通过Prolog提供确定性逻辑推理，直接支持大模型多步推理",
+      "llm_evidence": "通过Prolog提供确定性逻辑推理，直接支持大模型多步推理",
+      "canonical_evidence": "通过Prolog提供确定性逻辑推理，直接支持大模型多步推理",
+      "llm_tldr_en": "Euclid-MCP is an open-source Model Context Protocol server that provides deterministic logical reasoning via SWI-Prolog, offering a standardized interface for LLMs to perform reliable multi-step reasoning in safety-critical domains.",
+      "llm_tldr_cn": "针对大语言模型在多步逻辑推理中不可靠的问题，本文提出Euclid-MCP，一个基于模型上下文协议的开源服务器，通过SWI-Prolog提供确定性推理。它引入中间表示Euclid-IR，使LLM易于生成长链推理，并编译为Prolog执行。该方案为神经符号推理提供标准化接口，可广泛应用于合规、安全等关键领域，显著提升LLM推理的可靠性。",
+      "llm_tldr": "针对大语言模型在多步逻辑推理中不可靠的问题，本文提出Euclid-MCP，一个基于模型上下文协议的开源服务器，通过SWI-Prolog提供确定性推理。它引入中间表示Euclid-IR，使LLM易于生成长链推理，并编译为Prolog执行。该方案为神经符号推理提供标准化接口，可广泛应用于合规、安全等关键领域，显著提升LLM推理的可靠性。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2607.20327v1",
+      "source": "arxiv",
+      "title": "PyroDash: Cost-Efficient Token-Level Small-Large Language Model Collaborative Inference",
+      "abstract": "Large language models (LLMs) provide strong reasoning capabilities but are expensive to serve at scale, whereas small language models (SLMs) are cheaper but less reliable on difficult problems. We introduce PyroDash, a cost-aware framework for token-level SLM-LLM collaborative inference. During generation, the SLM decides whether to request assistance by emitting a control token. A Collaborate Engine then sends the query and partial reasoning trace to a frozen LLM for completion through a single handoff. The policy is internalized in the SLM, requiring neither a separate router, LLM retraining, nor access to LLM logits. PyroDash trains the SLM in three stages: control-token embedding learning, offloading-oriented supervised fine-tuning, and cost-aware alignment with Group Relative Policy Optimization. Its reward balances answer accuracy against inference cost normalized by LLM-only inference. Across five mathematical reasoning benchmarks, PyroDash supports different accuracy-cost operating points. With $λ=0.05$, it achieves 64.04 percent average accuracy, 6.36 percentage points above the LLM-only baseline, while reducing cost by 20.4 percent. With $λ=0.6$, it achieves 54.55 percent accuracy with a 1.90 percent LLM token ratio and 0.012 LLM calls per example, reducing total cost from USD 49.36 to USD 1.78. These results show that learned token-level handoffs can reduce LLM use while preserving strong reasoning performance.",
+      "authors": [
+        "Niqi Lyu",
+        "Pengtao Shi",
+        "Wei Qiu",
+        "Jianlin Zhong",
+        "Sicong Xia",
+        "Jianyao Ma",
+        "Yicheng Ding"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-07-22T16:14:26+00:00",
+      "link": "https://arxiv.org/pdf/2607.20327v1",
+      "tags": [
+        "keyword:vlm-cot",
+        "query:vlm-cot"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "token-level collaborative inference with reasoning trace, relevant to chain-of-thought",
+      "llm_evidence_cn": "词元级协作推理使用推理轨迹，与思维链相关",
+      "llm_evidence": "词元级协作推理使用推理轨迹，与思维链相关",
+      "canonical_evidence": "词元级协作推理使用推理轨迹，与思维链相关",
+      "llm_tldr_en": "PyroDash enables cost-efficient token-level collaboration between small and large language models, where the small model decides to offload reasoning to a frozen large model via a control token, internalizing the policy without external router.",
+      "llm_tldr_cn": "针对大模型推理成本高、小模型可靠性不足的问题，本文提出PyroDash框架，通过词元级协作实现小模型与大模型的低成本推理。小模型在生成过程中通过控制令牌决定是否请求大模型辅助，仅需一次交互。该策略内化于小模型，无需独立路由或重训大模型。实验证明PyroDash在保持推理质量的同时显著降低部署成本。",
+      "llm_tldr": "针对大模型推理成本高、小模型可靠性不足的问题，本文提出PyroDash框架，通过词元级协作实现小模型与大模型的低成本推理。小模型在生成过程中通过控制令牌决定是否请求大模型辅助，仅需一次交互。该策略内化于小模型，无需独立路由或重训大模型。实验证明PyroDash在保持推理质量的同时显著降低部署成本。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "label": "2026-07-26",
+  "date": "2026-07-26",
+  "generated_at": "2026-07-26T20:36:41",
+  "count": 2,
+  "papers": [
+    {
+      "paper_id": "202607/26/2607.21412v1-euclid-mcp-a-model-context-protocol-server-for-deterministic-logical-reasoning-via-prolog",
+      "section": "deep",
+      "title_en": "Euclid-MCP: A Model Context Protocol Server for Deterministic Logical Reasoning via Prolog",
+      "authors": "Bartolomeo Bogliolo",
+      "date": "2026-07-23",
+      "pdf": "https://arxiv.org/pdf/2607.21412v1",
+      "score": "8.0",
+      "evidence": "通过Prolog提供确定性逻辑推理，直接支持大模型多步推理",
+      "tldr": "大型语言模型在多步逻辑推理中容易产生幻觉，而现有神经符号系统集成方式各异且缺乏标准化接口。Euclid-MCP是一个基于SWI-Prolog的开源MCP服务器，通过引入引擎无关的中间表示Euclid-IR，将Horn子句逻辑编译为Prolog，并支持翻译-运行-检查-修复的循环，使LLM客户端能委托确定性推理。在IT安全合规任务上，Euclid-MCP在大知识库上给出精确答案，延迟更低且输出更紧凑，而纯LLM出现系统性幻觉。该工作论证了语义RAG不适合规则执行，Euclid-MCP可作为RAG助手和智能体系统的稳定共享推理基础。",
+      "tags": "query:vlm-cot",
+      "abstract_en": "Large Language Models (LLMs) excel at natural language understanding and generation but remain unreliable for multi-step logical reasoning, especially in safety-critical or compliance-sensitive domains. Recent neuro-symbolic approaches address this gap by coupling neural models with external symbolic engines, yet most integrations are bespoke and lack a standardized interface for tool-augmented agents. This paper presents Euclid-MCP, an open-source MCP server that provides deterministic logical reasoning via SWI-Prolog. Euclid-MCP introduces Euclid-IR, an engine-agnostic intermediate representation for Horn-clause logic that is human-readable, easy for LLMs to generate, and straightforward to compile into Prolog or alternative backends. The server exposes a compact tool interface that supports a translate-run-inspect-repair loop, enabling LLM clients to delegate inference while retaining full access to proof traces and derivation logs. We evaluate Euclid-MCP on a realistic IT security and compliance use case. Results show that while LLMs alone are sufficient on small knowledge bases, they hallucinate systematically on larger problems, whereas Euclid-MCP delivers exact answers with lower latency and more compact outputs. We argue that semantic RAG is fundamentally unsuited for rule enforcement, and that Euclid-MCP can serve as a stable, shared reasoning substrate for both RAG-based assistants and agentic systems.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "paper_id": "202607/26/2607.20327v1-pyrodash-cost-efficient-token-level-small-large-language-model-collaborative-inference",
+      "section": "quick",
+      "title_en": "PyroDash: Cost-Efficient Token-Level Small-Large Language Model Collaborative Inference",
+      "authors": "Niqi Lyu, Pengtao Shi, Wei Qiu, Jianlin Zhong, Sicong Xia, Jianyao Ma, Yicheng Ding",
+      "date": "2026-07-22",
+      "pdf": "https://arxiv.org/pdf/2607.20327v1",
+      "score": "6.0",
+      "evidence": "词元级协作推理使用推理轨迹，与思维链相关",
+      "tldr": "大型语言模型(LLM)推理成本高，而小模型(SLM)在困难问题上可靠性不足。PyroDash框架让SLM在生成时通过控制令牌决定是否向冻结LLM请求一次协助，通过三阶段训练内化策略。在数学推理基准上，λ=0.05时准确率64.04%，高于纯LLM基线6.36个百分点，成本降低20.4%；λ=0.6时成本从49.36美元降至1.78美元，LLM令牌占比仅1.90%。结果表明学习令牌级切换能大幅减少LLM调用并保持强推理性能。",
+      "tags": "query:vlm-cot",
+      "abstract_en": "Large language models (LLMs) provide strong reasoning capabilities but are expensive to serve at scale, whereas small language models (SLMs) are cheaper but less reliable on difficult problems. We introduce PyroDash, a cost-aware framework for token-level SLM-LLM collaborative inference. During generation, the SLM decides whether to request assistance by emitting a control token. A Collaborate Engine then sends the query and partial reasoning trace to a frozen LLM for completion through a single handoff. The policy is internalized in the SLM, requiring neither a separate router, LLM retraining, nor access to LLM logits. PyroDash trains the SLM in three stages: control-token embedding learning, offloading-oriented supervised fine-tuning, and cost-aware alignment with Group Relative Policy Optimization. Its reward balances answer accuracy against inference cost normalized by LLM-only inference. Across five mathematical reasoning benchmarks, PyroDash supports different accuracy-cost operating points. With $λ=0.05$, it achieves 64.04 percent average accuracy, 6.36 percentage points above the LLM-only baseline, while reducing cost by 20.4 percent. With $λ=0.6$, it achieves 54.55 percent accuracy with a 1.90 percent LLM token ratio and 0.012 LLM calls per example, reducing total cost from USD 49.36 to USD 1.78. These results show that learned token-level handoffs can reduce LLM use while preserving strong reasoning performance.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "errors": []
+}
