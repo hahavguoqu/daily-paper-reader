@@ -1,0 +1,637 @@
+Title: Be Consistent! Enhancing Robust Visual Reasoning in LVLMs with Consistency Constraints
+
+URL Source: https://arxiv.org/pdf/2607.21722v1
+
+Published Time: Mon, 27 Jul 2026 00:08:43 GMT
+
+Number of Pages: 24
+
+Markdown Content:
+# Be Consistent! Enhancing Robust Visual Reasoning in LVLMs with Consistency Constraints 
+
+Liqiang Jing 1, Xiong Zhou 2, Siddharth Varia 2, Neha Anna John 2, Xinya Du 1, Vassilis N. Ioannidis 21University of Texas at Dallas, 2Amazon Web Services jingliqiang6@gmail.com 
+
+Abstract 
+
+While Large Vision-Language Models (LVLMs) exhibit strong perceptual capabilities, they remain vulnerable in visual reasoning tasks. Existing benchmarks largely focus on symbolic mathematical or scientific problems and simple vision-centric tasks, offering lim-ited assessment of complex visual reasoning and logical consistency, a critical requirement for reliable reasoning systems. We introduce ConVBench, a complex vision-centric reason-ing benchmark where each image is paired with two logically equivalent questions across six categories: action and state, complex counting, spatial reasoning, causal and intent understanding, commonsense reasoning, and temporal perception. To complement this benchmark, we define two evaluation metrics, logical consistency and robust accuracy, that jointly assess both correctness and consistency of model responses. We further present ConVLM, which improves LVLM reasoning through Group Relative Policy Optimization (GRPO)-based reinforcement learning with novel consistency reward. This method leverages automatically generated logically equivalent question–answer pairs and a dual reward design combining accuracy-and consistency-based signals, encouraging agreement between paired responses. The framework functions effectively with or without strict answer supervision. We will release our code at https://github. com/LiqiangJing/ConVLM .
+
+1 Introduction 
+
+Although Large Vision-Language Models (LVLMs) (Liu et al., 2023) now achieve robust performance on visual perception tasks such as image captioning (Lin et al., 2015), their capacity for reliable visual reasoning remains far from resolved. Consequently, motivated by the rapid advances of Large Language Models (LLMs) on reasoning tasks, the multimodal community has increasingly turned to developing reasoning-centric LVLMs capable of complex inference grounded in visual evidence. In parallel, inspired by the success of Reinforcement Learning (RL) in enhancing reasoning for text-only models, many LVLM studies have adopted RL-based training. Notable examples include LLaVA-RLHF (Sun et al., 2023), which applies Reinforcement Learning with Human Feedback (RLHF) to vision–language alignment via factually augmented rewards, and FGAIF (Jing and Du, 2024), which trains fine-grained reward models from AI feedback and optimizes LVLMs through fine-grained feedback. To evaluate the reasoning capabilities of LVLMs, the research community has introduced numer-ous mathematics- and science-oriented benchmarks (e.g., MMBench (Liu et al., 2024b) and MathVista (Lu et al., 2024b)). However, these datasets typ-ically involve limited visual reasoning; models often succeed by exploiting symbolic reasoning capabilities or domain-specific textual knowledge rather than faithfully interpreting visual evidence (Fu et al., 2024; Tong et al., 2024). To assess gen-uine visual competence, an alternative research di-rection proposes vision-centric benchmarks such as BLINK (Fu et al., 2024). Nevertheless, the vi-sual problems in these benchmarks are typically superficial, often solvable “in the blink of an eye”, thereby failing to evaluate complex reasoning pro-cesses. Furthermore, models frequently generate inconsistent rationales or answers for semantically equivalent queries, as illustrated in Figure 1, sug-gesting they exploit spurious correlations rather than demonstrating genuine understanding. De-spite this critical limitation, the robustness of visual reasoning remains largely unexamined in current benchmarks. To address these gaps, we introduce ConVBench, a complex vision-centric reasoning benchmark de-signed to evaluate both complex and consistent vi-sual reasoning. Each image is paired with two logi-arXiv:2607.21722v1 [cs.CV] 23 Jul 2026 Has the batter hit the ball? 
+
+> Is the ball flying towards or away from the batter? OptionA: towards OptionB: away
+> Yes
+> Option A
+> Inconsistent
+> Reasoning Figure 1: For the same image, an LVLM answers “Has the batter hit the ball?” with “Yes”, but then predicts “towards” for “Is the ball flying towards or away from the batter?” If the batter has hit the ball, it should be moving
+> away , so the two outputs are contradictory.
+
+cally equivalent questions whose answers should align (Figure 1). The benchmark spans six cate-gories: action and state, complex counting, spatial relations, causal and intent understanding, com-monsense reasoning, and temporal perception (Fig-ure 3). To construct ConVBench at scale while ensuring quality, we adopt a two-stage pipeline: an LVLM first generates logically equivalent ques-tion–answer pairs, which are then validated by hu-man annotators—accepted if correct, minimally edited if needed, or discarded otherwise. This pro-cedure guarantees reliability without exhaustive manual authoring. Finally, to measure consistent reasoning, we propose two complementary metrics: logical consistency (whether paired answers agree) and robust accuracy (whether both are correct). Despite recent progress in visual reasoning ca-pabilities of LVLMs (Bai et al., 2025; Chen et al., 2024), our experiments reveal two critical limita-tions: models often generate inconsistent answers to semantically equivalent queries, and they still struggle with complex, vision-centric reasoning. Our goal is thus to develop a robust and consistent visual–reasoning model. Achieving this is non-trivial: deep models require substantial training data, and genuinely challenging visual reasoning supervision demands large quantities of carefully curated, high-quality annotations. A straightfor-ward solution is to manually construct logically coherent question–answer pairs, but such labeling is costly and labor-intensive, making it infeasible to reach the scale and diversity needed for effective generalization. To overcome this bottleneck, we introduce Con-VLM, which combines automatically generated 
+
+training pairs with a GRPO-based reinforcement learning objective (Shao et al., 2024). In particular, a proposer LVLM generates logically equivalent question pairs for each image and produces pseudo-answers. Our preliminary experiments show that while the generated questions are generally logi-cally consistent, the pseudo-label answers are often noisy and frequently incorrect across both logically consistent questions. To mitigate this issue, we design a dual reward mechanism: alongside an ac-curacy reward, we introduce a consistency-based reward that does not rely on strict correctness but instead encourages agreement between answers to logically equivalent questions. This framework yields new state-of-the-art results among open-source models on ConVBench, surpassing even strong closed-source baselines such as Claude-3.7-Sonnet (Anthropic, 2025). Further evaluations on additional datasets demonstrate that ConVLM im-proves generalization rather than overfitting to our benchmark. Notably, even when trained solely with the consistency-based reward— i.e., enforcing logi-cal agreement without accuracy reward—ConVLM achieves substantial gains in both consistency and accuracy. Our contributions are threefold: (i) We introduce ConVBench, the first benchmark that jointly evalu-ates complex vision-centric reasoning and logical consistency. (ii) We propose a weakly supervised consistency reinforcement framework, in which a proposer generates visual reasoning questions and the model is optimized with both consistency-and accuracy-based rewards. (iii) Extensive exper-iments show that ConVLM achieves open-source state-of-the-art performance on ConVBench and exhibits strong cross-benchmark generalization. 2 ConVBench 
+
+We introduce ConVBench, a vision-centric bench-mark specifically designed to rigorously evaluate LVLMs on complex reasoning. It spans six key cat-egories: Action and State (AS), Complex Counting 
+
+(CC), Spatial Reasoning (SR), Causal and Intent 
+
+(CI), Commonsense Reasoning (CR), and Temporal Perception (TP), as shown in Figure 3. Each image is paired with two logically equivalent questions whose answers should align, enabling a direct as-sessment of reasoning consistency across models. We also compare our benchmark with the existing multimodal benchmarks in Appendix A. 
+
+2.1 Categories Action and State This category centers on iden-tifying the stage of an ongoing action, thereby as-sessing the model’s ability to understand dynamic processes. To collect relevant images for annota-tion, we filtered candidates based on their captions, selecting those that contained action- or motion-related keywords. The complete keyword list is provided in Appendix K. To reduce human an-notation costs, we employ large vision-language models to automatically generate logically equiv-alent question–answer pairs. These are created from prompts that incorporate the image, caption, bounding boxes, and task-specific instructions, as detailed in Appendix J. A similar automatic gener-ation strategy is applied to the Complex Counting, Spatial Reasoning, Causal and Intent Reasoning, and Temporal Perception categories, with prompts tailored to the specific requirements of each task. 
+
+Complex Counting This category addresses counting tasks under conditions of ambiguity, such as occlusion, mirrors, or reflections. It is intended to assess the model’s capacity for disambiguation and accurate enumeration. For instance, when a person is standing in front of a mirror, the model should correctly infer that the reflection does not constitute an additional individual. To gather chal-lenging images for this category, we filter the dataset based on image captions, selecting those containing keywords indicative of complex count-ing scenarios ( e.g., mirror). Comprehensive de-tails and the full keyword list are provided in Ap-pendix K. 
+
+Spatial Reasoning This category aims to evalu-ate the model’s ability to interpret relative positions and spatial arrangements of objects, thereby testing its spatial comprehension. To ensure the examples are sufficiently challenging, we filter images by object count, retaining only those that contain at least m objects (see Appendix C). 
+
+Causal and Intent Reasoning This category evaluates the model’s ability to infer causes, inten-tions, and outcomes of actions, thereby assessing its capacity to reason about motivations and causal relationships. To identify images that are likely to involve causal reasoning, we filter the dataset using relevant keywords ( e.g., because). The com-plete keyword list used for filtering is provided in Appendix K. 
+
+Commonsense Reasoning This category eval-uates the model’s ability to perform visual com-monsense reasoning, requiring it to infer logically plausible situations and outcomes from visual con-tent. To leverage existing resources, we build upon established datasets such as VCR (Zellers et al., 2019) by extracting examples from its test split. For each selected example, we use the original question–answer pair as a reference and prompt a large vision–language model to generate a logi-cally consistent complementary question–answer pair (see Appendix J for details). In this way, we construct our commonsense reasoning subset. 
+
+Temporal Perception This category assesses the model’s ability to understand and interpret tempo-ral information from static visual inputs, with a focus on tasks such as reading clock faces and rec-ognizing time-related contextual cues. For instance, when presented with an image of a clock, the model may be asked, “What time is shown?”, which re-quires accurate perception of the clock hands as well as contextual signals indicating the time of day (e.g., daytime versus nighttime). To construct this category, we filter images whose captions contain time-related keywords ( e.g., clock). The complete keyword list is provided in Appendix K. 
+
+2.2 Human Check 
+
+Because automatically generated question–answer pairs may contain factual inaccuracies, we con-ducted a comprehensive manual validation of ev-ery instance. Human annotators examined each question–answer pair against the corresponding vi-sual input, applying the following criteria: pairs deemed correct and logically equivalent were re-tained; those with minor issues were corrected when feasible; and irreparable cases were dis-carded. This manual review served to validate the automatically generated annotations and enhance the overall reliability of the dataset. After this rig-orous validation process, the final category-wise distribution of the curated dataset is shown in Fig-ure 3. 
+
+3 Method 
+
+3.1 Problem Formulation 
+
+Let I be a set of images, and let a vision–language policy model πθ(o | I, q ) generate a textual solution 
+
+o for an image–query pair (I, q ). For robust visual reasoning, we require not only answer accuracy for each query, but also logical consistency across logi-cally equivalent queries about the same image. For-mally, for each I we consider a set of queries Q(I)
+
+together with an equivalence relation ∼; denote by 
+
+G(I) ⊂ Q (I) × Q (I) the set of equivalent pairs 
+
+(q1, q 2) with q1 ∼ q2. Let racc (I, q, o ) ∈ [0 , 1] be a verifiable accuracy reward for answering (I, q ),and let rcon (o1, o 2) ∈ { 0, 1} be a binary consis-tency indicator between two solutions. Our learning objective is to maximize expected accuracy while enforcing cross–query consistency: 
+
+max  
+
+> θ
+
+EI∼p(I), q ∼p(Q| I), o ∼πθ (·| I,q )
+
+ racc (I, q, o ) 
+
+(1) s.t. EI E(q1,q 2)∼G (I)Eo1∼πθ (·| I,q 1) 
+
+> o2∼πθ(·| I,q 2)
+
+ rcon (o1, o 2)  ≥ τ, 
+
+(2) where τ ∈ [0 , 1] specifies the desired level of agree-ment across logically equivalent prompts. In practice, we optimize the Lagrangian relax-ation of Eqs. (1)–(2): 
+
+max  
+
+> θ
+
+EI,q,o [racc (I, q, o )] + γ EI, (q1,q 2),o1,o 2
+
+[rcon (o1, o 2)] . (3) where γ > 0 trades off accuracy and consistency. For more details, please see the next section. Our scope is vision-centric (natural-image) reasoning and studying agreement across logically equivalent questions conditioned on the same image. 
+
+3.2 ConVLM 
+
+We propose ConVLM (the Con sistency 
+
+Vision– Language Model), a weakly super-vised framework that reinforces consistency in visual reasoning. ConVLM employs a proposer module to automatically generate visual reasoning questions and optimizes vision–language models using a combination of consistency-based and accuracy-based rewards, thereby eliminating the need for human annotation. An overview of the method is presented in Figure 2, which com-prises two main stages: (i) Logically Equivalent Questions Generation and (ii) Consistency-based Reinforcement Learning. 
+
+Logically Equivalent Questions Generation. Astraightforward way to enhance a model’s ability in consistent visual reasoning is to annotate logi-cally equivalent question–answer pairs and train the model on them. However, manual annotation is costly and time-intensive. To overcome this limita-tion, we introduce a proposer model that automati-cally generates logically equivalent questions con-ditioned on the image, along with pseudo-answers that serve as supervision signals. The proposer is model-agnostic and can be replaced by cheap/open LVLMs. Specifically, we employ GPT-4.1 (Ope-nAI, 2025) to generate paired logically equivalent questions and their corresponding answers based on the image, its caption, and object-level informa-tion: 
+
+{(q1, a 1), (q2, a 2)} = P(P (I, C, O )) , (4) where I, C, and O denote the image, caption, and object information (including bounding boxes and categories), respectively, and P (·) is the prompt template defined in Appendix J. The out-put (q1, a 1), (q2, a 2) represents the generated ques-tion–answer pairs, where q1 and q2 are logically equivalent. In other words, the answer to one can be inferred from the other, together with the visual context. Formally, this relationship is expressed as a1 ← f (I, q 2, a 2, q 1) or a2 ← f (I, q 1, a 1, q 2),where f (·) denotes the logical inference function. 
+
+Consistency-based Reinforcement Learning 
+
+Recent advances increasingly adopt reinforcement learning to enhance reasoning capabilities in large models (Su et al., 2025; Zheng et al., 2023). Fol-lowing this trend, we employ Group Relative Pol-icy Optimization (GRPO) (Shao et al., 2024) to improve the complex visual reasoning ability of LVLMs. Originally introduced for mathematical reasoning in LLMs, GRPO can be effectively ex-tended to visual reasoning tasks. Given a training input (I, q), where I denotes an image and q its as-sociated query, GRPO optimizes the policy model Figure 2: Pipeline of ConVLM. 
+
+using a reward function r(I, q, o ). For each input, the old policy πθold samples n candidate responses, producing a reward set {ri}ni=1 . A baseline (mean reward) is computed, and the advantage of each sample is normalized as: 
+
+ˆAi = ri − mean (r)
+
+std (r) . (5) The GRPO objective adapts PPO (Schulman et al., 2017), constraining policy updates while maximiz-ing the advantage-weighted clipped surrogate re-ward: 
+
+JGRPO (θ) = E (I, q)∼pD 
+
+> o∼πθold (·| I, q)
+
+"
+
+1
+
+n
+
+> n
+
+X
+
+> i=1
+
+min 
+
+
+
+ri(θ) ˆAi,
+
+clip  ri(θ), 1 − ϵ, 1 + ϵ ˆAi
+
+
+
+− βD KL 
+
+ πθ∥πref 
+
+#
+
+.
+
+(6) where ri(θ) = πθ(oi | I, q)
+
+πθold (oi | I, q) . πθ is the current policy, ϵ > 0 sets the clipping threshold, and β is a hyperparameter controlling the KL penalty. A standard reward instantiation is a binary ac-curacy reward, which assigns 1 if the generated output contains the correct answer, and 0 otherwise (Shao et al., 2024): 
+
+racc =
+
+(
+
+1 if the solution is the correct answer ,
+
+0 otherwise .
+
+(7) While straightforward, this reward relies on strict verifiability and can be brittle when reference an-swers are imperfect. Moreover, proposer-generated pseudo-answers may introduce noise. To ad-dress these issues, we introduce an additional consistency-based reward, which encourages agree-ment across logically equivalent queries. Although this signal does not guarantee correctness, it pro-vides a complementary and noise-tolerant learning signal that drives the model toward logically con-sistent outputs, while the accuracy reward anchors correctness. Specifically, we design two types of consistency-based rewards: a sample-wise reward and a group-wise reward, as illustrated in Figure 5. Let 
+
+{o11, · · · , o 1 
+
+> i
+
+, · · · , o 1
+
+> G
+
+} and {o21, · · · , o 2 
+
+> i
+
+, · · · , o 2
+
+> G
+
+}
+
+denote the model-generated answers corresponding to the queries q1 and q2, respectively. Here, o1 
+
+> i
+
+and 
+
+o2 
+
+> i
+
+represent the i-th generated solutions for q1 and 
+
+q2. 1) For the sample-wise reward, which compares paired outputs directly, we take o1 
+
+> i
+
+as an example and define the reward based on its consistency with 
+
+o2 
+
+> i
+
+, as formulated below, 
+
+rcon = c(o1 
+
+> i
+
+, o 2 
+
+> i
+
+), (8) where c(·) denotes the consistency function be-tween o1 
+
+> i
+
+and o2 
+
+> i
+
+. It returns 1 if the two outputs are logically consistent, and 0 otherwise. 2) For the group-wise reward, it compares one output against a group of responses from its equivalent query, as shown below, 
+
+rcon =
+
+> G
+
+X
+
+> j=1
+
+c(o1 
+
+> i
+
+, o 2 
+
+> j
+
+)/G, (9) where G is the number of solutions in the sam-pled group. Finally, we obtain our overall re-ward by summing the traditional reward and ours consistency-based reward as r = racc + γr con ,where γ is the hyperparameter that balances the accuracy reward and consistency-based reward. 
+
+Discussion on Reward Hierarchy. The reward for each solution o, i.e., the combination of the accuracy reward racc and the consistency-based re-ward rcon , leads to a natural stratification of the overall reward. Specifically, the highest reward is obtained when the generated outputs are both cor-rect and consistent. In contrast, the lowest reward arises when the outputs are incorrect and inconsis-tent, i.e., when the answer contradicts that to its logically equivalent question. Between these two extremes, there exist two intermediate situations: (i) correct but inconsistent, and (ii) incorrect but consistent. The relative contribution of these inter-mediate cases is governed by the hyperparameter 
+
+γ, which adjusts the trade-off between correctness and consistency. Such a design yields a more di-verse and discriminative reward signal, ensuring that the model is simultaneously encouraged to pursue correctness and maintain logical stability across equivalent queries. 
+
+4 Experiment 
+
+4.1 Experimental Details Setups We trained ConVLM on 8 × A100(40G) GPUs, using OpenRLHF (Hu et al., 2024) frame-work for reinforcement learning. For the RL train-ing, we use a batch of 256. For the optimizer, we use the AdamW (Loshchilov and Hutter, 2019) op-timizer and the learning rate is set to 10 e-7. For each query, we sample 8 responses for GRPO ( i.e., 
+
+G=8). β is set to 0.0 to omit the KL divergence constraint following recent practices in (Liu et al., 2025). γ is 0.5.
+
+Dataset For the training stage, we randomly sampled 5,000 images from the training set of MSCOCO (Lin et al., 2015). For evaluation, we as-sess the model on ConVBench. For our benchmark, we define two kinds of new metrics to evaluate the performance of LVLMs, i.e., consistency and ro-bust accuracy. Specifically, consistency aims to evaluate the logical consistency (Cons.) between the generated answers to logically equivalent ques-tions. We define the consistency indicator CI as 1 if both questions are answered either correctly or incorrectly, and 0 otherwise. Meanwhile, robust accuracy (Acc.) is designed to evaluate a model’s strict correctness in answering logically equivalent questions. It requires the model to answer both questions correctly. The metric is formally defined as follows: AI = 1 if both questions are answered correctly; otherwise, AI = 0 .In addition, we include more visual reasoning benchmarks to test our model’s generalization abil-ity, including V*Bench (Wu and Xie, 2024) and InfoVQA-test (Mathew et al., 2022). The metrics of V*Bench and InfoVQA-test are accuracy and ANLS (Mathew et al., 2022), respectively. Details about baselines are shown in Appendix B. 
+
+4.2 Main Results 
+
+We evaluate ConVLM on ConVBench and report both Consistency and Robust Accuracy across six task families in Table 1. Our model establishes new state-of-the-art performance on both metrics. The 7B variant achieves 73.36% average Consis-tency and 66.83% Accuracy, while the more effi-cient 3B model attains 69.34% and 64.44%, respec-tively. Compared to the strong closed-source model Claude-3.5-Sonnet-V2, our 7B model demonstrates substantial improvements of 11.12% in Consis-tency and 20.94% in Accuracy. Both model vari-ants significantly outperform all open-source base-lines of comparable or larger scale, including InternVL3-14B and Qwen2.5-VL-7B. ConVLM-7B leads on core reasoning tasks: 
+
+Causal&Intent , Time Perceptron , and Action State .It also tops Commonsense with 65.34%/60.39% and delivers the strongest results on the difficult 
+
+Complex Counting task. Interestingly, in Spatial 
+
+reasoning, the 3B model attains the highest Consis-tency while 7B keeps a strong Accuracy of 60.19%, suggesting limited gains from scale on this subtask. Unlike several baselines that display relatively high Consistency but near–zero Accuracy on some tasks, ConVLM maintains both metrics at high levels, suggesting robust reasoning. Table 1: The performance comparison between different baselines and our ConVBench across six sub-tasks of our ConVBench.                                                                                                                                                                                                                                                                                                                           
+
+> Model Causal & Intent Temporal Spatial Action State Commonsense Complex Counting Average
+> Con. Acc. Con. Acc. Con. Acc. Con. Acc. Con. Acc. Con. Acc. Con. Acc.
+> Close Source
+> Claude-3-5-sonnet-V2 61.93 48.30 65.05 46.60 67.96 55.33 66.02 53.39 48.51 27.72 64.00 44.00 62.24 45.89 Claude-3-7-sonnet 75.00 64.77 74.76 60.19 65.05 63.11 72.82 63.11 58.42 41.58 81.00 62.00 71.17 59.13 GPT-4.1 84.09 78.41 79.61 77.67 80.58 73.79 71.84 69.90 59.41 54.46 85.00 72.00 76.76 71.04 Gemini-2.5-Pro 78.41 75.57 83.50 80.58 73.79 67.96 67.96 63.11 72.28 66.34 74.00 71.00 74.99 70.76
+> Open Source
+> LLaVA-1.5-7B 20.45 5.11 17.48 6.80 38.83 25.24 23.30 6.80 35.64 25.74 34.00 12.00 28.28 13.61 LLaVA-1.5-13B 34.09 23.30 42.72 33.98 31.07 18.45 46.60 38.83 16.83 6.93 35.00 21.00 34.38 23.74 LLaVA-1.6-7B 32.95 0.00 29.13 0.00 38.83 18.45 19.42 0.00 21.78 2.97 22.00 1.00 27.35 3.73 LLaVA-1.6-13B 41.48 0.57 30.10 4.85 33.01 7.77 23.30 0.97 24.75 2.97 23.00 4.00 29.27 3.52 InternVL3-1B 38.64 7.95 29.13 5.83 42.72 13.59 45.63 14.56 49.50 36.63 48.00 10.00 42.26 14.76 InternVL3-2B 43.75 19.32 45.63 27.18 54.37 23.30 39.81 10.68 59.41 44.55 56.00 28.00 49.82 25.50 InternVL3-8B 40.91 19.89 49.51 29.13 49.51 25.24 47.57 22.33 50.50 41.58 52.00 23.00 48.33 26.86 InternVL3-9B 53.98 41.48 57.28 45.63 47.57 27.18 62.14 44.66 58.42 46.53 51.00 35.00 55.06 40.08 InternVL3-14B 55.11 32.39 52.43 30.10 56.31 36.89 51.46 27.18 62.38 52.48 59.00 28.00 56.11 34.50 DeepSeek-VL-1.3b 46.59 28.97 40.77 21.35 42.71 32.03 36.89 16.50 45.54 23.76 39.00 24.00 41.92 24.44 DeepSeek-VL-7b 51.70 33.52 57.28 49.51 49.51 39.80 44.66 37.86 59.40 38.61 46.00 37.00 51.42 39.38 DeepSeek-VL2-tiny 63.63 0.56 59.22 0.00 71.84 0.97 52.42 0.00 59.40 24.75 66.00 0.00 62.08 4.38 DeepSeek-VL2-small 63.63 11.36 65.04 6.79 58.25 10.67 64.07 4.85 44.55 20.79 56.00 4.00 58.59 9.74 Qwen2.5-VL-3B 44.32 27.27 40.78 30.10 47.57 32.04 39.81 31.07 47.52 40.59 46.66 38.33 41.89 33.23 Qwen2.5-VL-7B 55.11 38.64 60.19 41.75 41.75 11.65 50.49 38.83 56.44 36.63 56.00 28.99 53.32 32.75 ConVLM-3B 66.48 62.50 74.76 70.87 72.82 62.14 77.67 74.76 63.37 61.39 61.00 55.00 69.34 64.44 ConVLM-7B 75.56 69.88 77.66 72.81 66.01 60.19 80.58 75.72 65.34 60.39 75.00 62.00 73.36 66.83
+
+4.3 Ablation 
+
+We perform ablation studies on ConVLM-3B to validate our design choices, evaluating three vari-ants: w/o-Acc (accuracy reward removed), w/o-Con (consistency reward reduced via γ=0.3), and w/o-Data (training data replaced with 5,000 ran-dom examples from the training set in (Su et al., 2025).). Results in Table 2 reveal distinct contri-butions from each component. The accuracy re-ward contributes 2.22%/2.70% on our benchmark and 4.70% on V*Bench, confirming its importance for general reasoning accuracy. The consistency reward provides 1.93%/4.18% improvements on our benchmark and 3.96% on V*Bench, with the notable finding that consistency training enhances both consistency and accuracy metrics. Our gener-ated data yields the largest gains (19.45%/22.75% on our benchmark, 4.82% on V*Bench), indicating strong generalization beyond benchmark-specific optimization. The complete ConVLM framework achieves superior performance by combining all components. 
+
+4.4 Analysis Generalization to Other Benchmarks Table 4 shows strong generalization of our models to external visual reasoning benchmarks. On V*Bench, ConVLM-7B achieves 84.90% accu-racy, exceeding all baselines including Gemini-2.5-Pro (+5.70%) and Qwen2.5-VL-7B (+14.50%). 
+
+Table 2: Ablation study. 
+
+Model ConVBench V*Bench 
+
+Con. Acc. Accuracy ConVLM 69.34 64.44 80.21 w/o-Acc 67.12 61.74 75.51 w/o-Con 67.41 60.26 76.25 w/o-Data 49.89 41.69 75.39 Base 41.89 33.23 64.39 
+
+ConVLM-3B reaches 80.21%, outperforming LongLLaVA, Qwen2.5-VL-3B, and GPT-4o. On InfoVQA-test, ConVLM-7B attains competitive performance relative to closed models while sur-passing open-source alternatives. ConVLM-3B similarly outperforms comparable baselines at 69.75%. These results show that our improve-ments generalize beyond benchmark-specific gains to broader visual reasoning tasks. 
+
+Group-wise Consistency vs. Sample-wise Con-sistency We compare two approaches for imple-menting the consistency reward in our GRPO train-ing, as described in the Method section. Sample-wise consistency (SampleCon) matches rollouts index-by-index across pairs of logically equivalent prompts, while group-wise consistency (Group-Con) computes average agreement against the coun-terpart set. Table 3 demonstrates that both variants substantially outperform the baseline (Qwen2.5-VL-3B: 41.89%/33.23% on our benchmark and 64.39% on V*Bench). The GroupCon variant Table 3: Comparison across different consistency re-ward settings.              
+
+> Model ConVBench V*Bench
+> Con. Acc. Accuracy Qwen2.5-VL-3B 41.89 33.23 64.39 w/-GroupCon 66.83 59.19 72.77 w/-SampleCon 67.12 61.74 75.51
+
+Table 4: Results across different visual reasoning bench-marks.                        
+
+> Model V*Bench InfoVQA-test
+> Accuracy ANLS
+> Closed Source
+> Gemini-2.0-Flash 73.20 86.50 Gemini-2.5-Pro 79.20 84.00 GPT-4o 62.80 80.70
+> Open Source
+> Video-R1 51.20 67.90 LongLLaVA 68.50 65.40 Gemma3 62.30 59.40 Qwen2.5-VL-3B 64.39 64.26 Qwen2.5-VL-7B 70.40 80.70 ConVLM-3B 80.21 69.75 ConVLM-7B 84.90 81.90
+
+achieves 66.83% Consistency and 59.19% Ac-curacy on our benchmark (+24.94%/+25.96%) while improving V*Bench performance to 72.77% (+8.38%). The SampleCon variant yields slightly stronger gains, reaching 67.12%/61.74% on our benchmark (+25.23%/+28.51% percentage points) and 75.51% on V*Bench (+11.12%). Both formu-lations prove effective, with sample-wise consis-tency providing a marginally stronger learning sig-nal while group-wise consistency remains highly competitive. Based on these results, we adopt the sample-wise consistency reward for our final model. In addition, we compare different training strate-gies (SFT vs. GRPO) and analyze the impact of data scale on performance in Appendix D. 
+
+5 Related Work 
+
+Large Vision-Language Models With the suc-cess of large-scale pre-training in language models such as LLaMA (Touvron et al., 2023) and vision foundation models (Dosovitskiy et al., 2021), re-searchers have linked pretrained image encoders with powerful LLM backbones to create Large Vi-sion–Language Models (LVLMs) capable of under-standing real-world images (Awadalla et al., 2023; Li et al., 2023a). Despite these advances, models trained purely with supervised fine-tuning (SFT) remain brittle, often failing on complex visual rea-soning (Su et al., 2025). Motivated by the suc-cess of reinforcement learning (RL) in aligning textual LLMs with human preferences (Ouyang et al., 2022), recent work, e.g., VReST (Zhang et al., 2025), MindOmni (Xiao et al., 2025), and TACO (Zheng et al., 2023), introduces verifiable reward or self-reward RL objectives to strengthen LVLM reasoning. Distinct from these single-question reward strategies, our approach proposes a 
+
+dual-question consistency reward that jointly eval-uates two logically linked queries about the same image, providing low-cost supervisory signals and yielding more robust visual reasoning. 
+
+Evaluation in Large Vision-Language Models 
+
+A surge of specialised benchmarks now probes LVLMs) from low-level perception to high-level reasoning. Early “all-around” suites such as MME (Fu et al., 2023) and MMBench (Liu et al., 2024b) cover 14-plus vision–language subtasks and remain the de-facto yardsticks for holistic capabil-ity assessment, while LVLM-eHub (Xu et al., 2025) aggregates public datasets into a unified leader-board for rapid model comparison. More recent efforts emphasize fine-grained diagnosis: SEED-Bench (Li et al., 2023b) introduces 19K multiple-choice queries spanning 12 evaluation dimensions, and MM-Vet (Chen et al., 2023) designs complex cross-modal “multimodal veterinarian” tests that re-quire integrated perception, recognition and reason-ing. Task- or domain-centric benchmarks have also emerged. For example, LAMM (Yin et al., 2023) evaluates 2D/3D visual grounding, MathVista (Lu et al., 2024b) and M3Exam (Zhang et al., 2023) tar-get mathematical or exam-style challenges in visual contexts. Despite this diversity, nearly all bench-marks judge LVLMs on single image–question pairs, offering no direct evaluation about logical 
+
+consistency across queries. By contrast, we con-struct a consistent, complex, vision-centric reason-ing benchmark with paired logically equivalent questions. 
+
+6 Conclusion 
+
+In this paper, we introduced ConVBench, a vision-centric benchmark designed to jointly evaluate complexity and consistency in visual reasoning, and ConVLM, a vision-language model trained with a reinforcement learning approach that lever-ages automatically generated, logically equivalent question-answer pairs with a consistency reward. Across six reasoning categories, ConVLM es-tablishes new state-of-the-art results among open-source models on ConVBench and demonstrates strong generalization to external visual reasoning benchmarks. Our analysis reveals three key in-sights: (1 consistency represents a meaningful di-mension of robustness, (2 a straightforward consis-tency reward yields substantial performance gains without requiring strict ground-truth matching, and (3 GRPO-based training effectively complements supervised learning objectives. 
+
+Limitations 
+
+This work makes the initial step to explore con-sistency reward and robustness in visual reason-ing tasks, leaving many promising directions to future work. 1) As an initial work, our formulation targets pairwise answer consistency for logically equivalent questions conditioned on a single im-age. We do not model cross-image consistency, 
+
+i.e., image pairs that depict the same visual seman-tics. 2) Moreover, we have not explored applying the proposed consistency reward to other modali-ties; extending it to text-based reasoning and video-based reasoning . 3) Furthermore, exploring im-proved consistency rewards, e.g., task-specific vari-ants or soft graded reward score (not just 0 or 1), is a promising avenue that could yield additional gains. 
+
+References 
+
+Anthropic. 2024. Claude 3.5 sonnet. Anthropic. 2025. Claude 3.7 sonnet and claude code. Anas Awadalla, Irena Gao, Josh Gardner, Jack Hes-sel, Yusuf Hanafy, Wanrong Zhu, Kalyani Marathe, Yonatan Bitton, Samir Yitzhak Gadre, Shiori Sagawa, Jenia Jitsev, Simon Kornblith, Pang Wei Koh, Gabriel Ilharco, Mitchell Wortsman, and Ludwig Schmidt. 2023. Openflamingo: An open-source framework for training large autoregressive vision-language models. 
+
+CoRR , abs/2308.01390. Shuai Bai, Keqin Chen, Xuejing Liu, Jialin Wang, Wen-bin Ge, Sibo Song, Kai Dang, Peng Wang, Shi-jie Wang, Jun Tang, Humen Zhong, Yuanzhi Zhu, Mingkun Yang, Zhaohai Li, Jianqiang Wan, Pengfei Wang, Wei Ding, Zheren Fu, Yiheng Xu, and 8 others. 2025. Qwen2.5-vl technical report. arXiv preprint arXiv:2502.13923 .Tom B Brown. 2020. Language models are few-shot learners. arXiv preprint arXiv:2005.14165 .Zhe Chen, Weiyun Wang, Yue Cao, Yangzhou Liu, Zhangwei Gao, Erfei Cui, Jinguo Zhu, Shenglong Ye, Hao Tian, Zhaoyang Liu, et al. 2024. Expanding performance boundaries of open-source multimodal models with model, data, and test-time scaling. arXiv preprint arXiv:2412.05271 .Zhou Chen, Jinxi Xiang, Pierre-Olivier Bagnaninchi, and Yunjie Yang. 2023. Mmv-net: A multiple mea-surement vector network for multifrequency elec-trical impedance tomography. IEEE Trans. Neural Networks Learn. Syst. , 34(11):8938–8949. Gheorghe Comanici, Eric Bieber, Mike Schaekermann, Ice Pasupat, Noveen Sachdeva, Inderjit Dhillon, Mar-cel Blistein, Ori Ram, Dan Zhang, Evan Rosen, et al. 2025. Gemini 2.5: Pushing the frontier with ad-vanced reasoning, multimodality, long context, and next generation agentic capabilities. arXiv preprint arXiv:2507.06261 .Alexey Dosovitskiy, Lucas Beyer, Alexander Kolesnikov, Dirk Weissenborn, Xiaohua Zhai, Thomas Unterthiner, Mostafa Dehghani, Matthias Minderer, Georg Heigold, Sylvain Gelly, Jakob Uszkoreit, and Neil Houlsby. 2021. An image is worth 16x16 words: Transformers for image recognition at scale. In ICLR . OpenReview.net. Chaoyou Fu, Peixian Chen, Yunhang Shen, Yulei Qin, Mengdan Zhang, Xu Lin, Zhenyu Qiu, Wei Lin, Jin-rui Yang, Xiawu Zheng, Ke Li, Xing Sun, and Ron-grong Ji. 2023. MME: A comprehensive evaluation benchmark for multimodal large language models. 
+
+CoRR , abs/2306.13394. Xingyu Fu, Yushi Hu, Bangzheng Li, Yu Feng, Haoyu Wang, Xudong Lin, Dan Roth, Noah A. Smith, Wei-Chiu Ma, and Ranjay Krishna. 2024. BLINK: multi-modal large language models can see but not per-ceive. In Computer Vision - ECCV 2024 - 18th European Conference, Milan, Italy, September 29-October 4, 2024, Proceedings, Part XXIII , volume 15081 of Lecture Notes in Computer Science , pages 148–166. Springer. Jian Hu, Xibin Wu, Zilin Zhu, Weixun Wang, Dehao Zhang, Yu Cao, et al. 2024. Openrlhf: An easy-to-use, scalable and high-performance rlhf framework. 
+
+arXiv preprint arXiv:2405.11143 .Chenchen Jing, Yunde Jia, Yuwei Wu, Xinyu Liu, and Qi Wu. 2022. Maintaining reasoning consistency in compositional visual question answering. In Pro-ceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , pages 5099–5108. Liqiang Jing and Xinya Du. 2024. Fgaif: Aligning large vision-language models with fine-grained ai feedback. arXiv preprint arXiv:2404.05046 .Bo Li, Yuanhan Zhang, Liangyu Chen, Jinghao Wang, Jingkang Yang, and Ziwei Liu. 2023a. Otter: A multi-modal model with in-context instruction tuning. 
+
+CoRR , abs/2305.03726. Bohao Li, Rui Wang, Guangzhi Wang, Yuying Ge, Yix-iao Ge, and Ying Shan. 2023b. Seed-bench: Bench-marking multimodal llms with generative compre-hension. CoRR , abs/2307.16125. Tsung-Yi Lin, Michael Maire, Serge Belongie, Lubomir Bourdev, Ross Girshick, James Hays, Pietro Perona, Deva Ramanan, C. Lawrence Zitnick, and Piotr Dol-lár. 2015. Microsoft coco: Common objects in con-text. Preprint , arXiv:1405.0312. Haotian Liu, Chunyuan Li, Yuheng Li, and Yong Jae Lee. 2024a. Improved baselines with visual instruc-tion tuning. In IEEE/CVF Conference on Computer Vision and Pattern Recognition, CVPR 2024, Seat-tle, WA, USA, June 16-22, 2024 , pages 26286–26296. IEEE. Haotian Liu, Chunyuan Li, Qingyang Wu, and Yong Jae Lee. 2023. Visual instruction tuning. CoRR ,abs/2304.08485. Yuan Liu, Haodong Duan, Yuanhan Zhang, Bo Li, Songyang Zhang, Wangbo Zhao, Yike Yuan, Ji-aqi Wang, Conghui He, Ziwei Liu, Kai Chen, and Dahua Lin. 2024b. Mmbench: Is your multi-modal model an all-around player? In Computer Vision - ECCV 2024 - 18th European Conference, Milan, Italy, September 29-October 4, 2024, Proceedings, Part VI , volume 15064 of Lecture Notes in Computer Science , pages 216–233. Springer. Yuliang Liu, Zhang Li, Mingxin Huang, Biao Yang, Wenwen Yu, Chunyuan Li, Xu-Cheng Yin, Cheng-Lin Liu, Lianwen Jin, and Xiang Bai. 2024c. Ocr-bench: on the hidden mystery of OCR in large multi-modal models. Sci. China Inf. Sci. , 67(12). Zichen Liu, Changyu Chen, Wenjun Li, Penghui Qi, Tianyu Pang, Chao Du, Wee Sun Lee, and Min Lin. 2025. Understanding r1-zero-like training: A critical perspective. CoRR , abs/2503.20783. Ilya Loshchilov and Frank Hutter. 2019. Decoupled weight decay regularization. In 7th International Conference on Learning Representations, ICLR 2019, New Orleans, LA, USA, May 6-9, 2019 . OpenRe-view.net. Haoyu Lu, Wen Liu, Bo Zhang, Bingxuan Wang, Kai Dong, Bo Liu, Jingxiang Sun, Tongzheng Ren, Zhu-oshu Li, Hao Yang, Yaofeng Sun, Chengqi Deng, Hanwei Xu, Zhenda Xie, and Chong Ruan. 2024a. Deepseek-vl: Towards real-world vision-language understanding. CoRR , abs/2403.05525. Pan Lu, Hritik Bansal, Tony Xia, Jiacheng Liu, Chun-yuan Li, Hannaneh Hajishirzi, Hao Cheng, Kai-Wei Chang, Michel Galley, and Jianfeng Gao. 2024b. Mathvista: Evaluating mathematical reasoning of foundation models in visual contexts. In The Twelfth International Conference on Learning Representa-tions, ICLR 2024, Vienna, Austria, May 7-11, 2024 .OpenReview.net. Ahmed Masry, Do Xuan Long, Jia Qing Tan, Shafiq R. Joty, and Enamul Hoque. 2022. Chartqa: A bench-mark for question answering about charts with visual and logical reasoning. In Findings of the Association for Computational Linguistics: ACL 2022, Dublin, Ireland, May 22-27, 2022 , pages 2263–2279. Associ-ation for Computational Linguistics. Minesh Mathew, Viraj Bagal, Rubèn Tito, Dimosthe-nis Karatzas, Ernest Valveny, and CV Jawahar. 2022. Infographicvqa. In Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vi-sion , pages 1697–1706. Minesh Mathew, Dimosthenis Karatzas, and C. V. Jawa-har. 2021. Docvqa: A dataset for VQA on document images. In IEEE Winter Conference on Applications of Computer Vision, WACV 2021, Waikoloa, HI, USA, January 3-8, 2021 , pages 2199–2208. IEEE. OpenAI. 2025. Introducing gpt-4.1 in the api. Long Ouyang, Jeffrey Wu, Xu Jiang, Diogo Almeida, Carroll L. Wainwright, Pamela Mishkin, Chong Zhang, Sandhini Agarwal, Katarina Slama, Alex Ray, John Schulman, Jacob Hilton, Fraser Kelton, Luke Miller, Maddie Simens, Amanda Askell, Peter Welin-der, Paul F. Christiano, Jan Leike, and Ryan Lowe. 2022. Training language models to follow instruc-tions with human feedback. In Advances in Neural Information Processing Systems 35: Annual Confer-ence on Neural Information Processing Systems 2022, NeurIPS 2022, New Orleans, LA, USA, November 28 - December 9, 2022 .John Schulman, Filip Wolski, Prafulla Dhariwal, Alec Radford, and Oleg Klimov. 2017. Proximal policy optimization algorithms. CoRR , abs/1707.06347. Zhihong Shao, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song, Mingchuan Zhang, Y. K. Li, Y. Wu, and Daya Guo. 2024. Deepseekmath: Pushing the limits of mathematical reasoning in open language models. CoRR , abs/2402.03300. Amanpreet Singh, Vivek Natarajan, Meet Shah, Yu Jiang, Xinlei Chen, Dhruv Batra, Devi Parikh, and Marcus Rohrbach. 2019. Towards VQA models that can read. In IEEE Conference on Computer Vision and Pattern Recognition, CVPR 2019, Long Beach, CA, USA, June 16-20, 2019 , pages 8317–8326. Com-puter Vision Foundation / IEEE. Alex Su, Haozhe Wang, Weiming Ren, Fangzhen Lin, and Wenhu Chen. 2025. Pixel reasoner: Incentiviz-ing pixel-space reasoning with curiosity-driven rein-forcement learning. CoRR , abs/2505.15966. Zhiqing Sun, Sheng Shen, Shengcao Cao, Haotian Liu, Chunyuan Li, Yikang Shen, Chuang Gan, Liang-Yan Gui, Yu-Xiong Wang, Yiming Yang, et al. 2023. Aligning large multimodal models with factually aug-mented rlhf. arXiv preprint arXiv:2309.14525 .Peter Tong, Ellis Brown, Penghao Wu, Sanghyun Woo, Adithya Iyer, Sai Charitha Akula, Shusheng Yang, Jihan Yang, Manoj Middepogu, Ziteng Wang, Xi-chen Pan, Rob Fergus, Yann LeCun, and Saining Xie. 2024. Cambrian-1: A fully open, vision-centric ex-ploration of multimodal llms. In Advances in Neural Information Processing Systems 38: Annual Confer-ence on Neural Information Processing Systems 2024, NeurIPS 2024, Vancouver, BC, Canada, December 10 - 15, 2024 .Hugo Touvron, Thibaut Lavril, Gautier Izacard, Xavier Martinet, Marie-Anne Lachaux, Timothée Lacroix, Baptiste Rozière, Naman Goyal, Eric Hambro, Faisal Azhar, Aurélien Rodriguez, Armand Joulin, Edouard Grave, and Guillaume Lample. 2023. Llama: Open and efficient foundation language models. CoRR ,abs/2302.13971. Xuezhi Wang, Jason Wei, Dale Schuurmans, Quoc Le, Ed Chi, Sharan Narang, Aakanksha Chowdhery, and Denny Zhou. 2022. Self-consistency improves chain of thought reasoning in language models. arXiv preprint arXiv:2203.11171 .Penghao Wu and Saining Xie. 2024. V?: Guided visual search as a core mechanism in multimodal llms. In 
+
+Proceedings of the IEEE/CVF Conference on Com-puter Vision and Pattern Recognition , pages 13084– 13094. Zhiyu Wu, Xiaokang Chen, Zizheng Pan, Xingchao Liu, Wen Liu, Damai Dai, Huazuo Gao, Yiyang Ma, Chengyue Wu, Bingxuan Wang, Zhenda Xie, Yu Wu, Kai Hu, Jiawei Wang, Yaofeng Sun, Yukun Li, Yishi Piao, Kang Guan, Aixin Liu, and 8 oth-ers. 2024. Deepseek-vl2: Mixture-of-experts vision-language models for advanced multimodal under-standing. CoRR , abs/2412.10302. Yicheng Xiao, Lin Song, Yukang Chen, Yingmin Luo, Yuxin Chen, Yukang Gan, Wei Huang, Xiu Li, Xiao-juan Qi, and Ying Shan. 2025. Mindomni: Unleash-ing reasoning generation in vision language models with RGPO. CoRR , abs/2505.13031. Peng Xu, Wenqi Shao, Kaipeng Zhang, Peng Gao, Shuo Liu, Meng Lei, Fanqing Meng, Siyuan Huang, Yu Qiao, and Ping Luo. 2025. Lvlm-ehub: A com-prehensive evaluation benchmark for large vision-language models. IEEE Trans. Pattern Anal. Mach. Intell. , 47(3):1877–1893. Zhenfei Yin, Jiong Wang, Jianjian Cao, Zhelun Shi, Dingning Liu, Mukai Li, Xiaoshui Huang, Zhiyong Wang, Lu Sheng, Lei Bai, Jing Shao, and Wanli Ouyang. 2023. LAMM: language-assisted multi-modal instruction-tuning dataset, framework, and benchmark. In Advances in Neural Information Pro-cessing Systems 36: Annual Conference on Neural Information Processing Systems 2023, NeurIPS 2023, New Orleans, LA, USA, December 10 - 16, 2023 .Weihao Yu, Zhengyuan Yang, Linjie Li, Jianfeng Wang, Kevin Lin, Zicheng Liu, Xinchao Wang, and Lijuan Wang. 2024. Mm-vet: Evaluating large multimodal models for integrated capabilities. In Forty-first In-ternational Conference on Machine Learning, ICML 2024, Vienna, Austria, July 21-27, 2024 . OpenRe-view.net. Xiang Yue, Yuansheng Ni, Tianyu Zheng, Kai Zhang, Ruoqi Liu, Ge Zhang, Samuel Stevens, Dongfu Jiang, Weiming Ren, Yuxuan Sun, Cong Wei, Botao Yu, Ruibin Yuan, Renliang Sun, Ming Yin, Boyuan Zheng, Zhenzhu Yang, Yibo Liu, Wenhao Huang, and 3 others. 2024. MMMU: A massive multi-discipline multimodal understanding and reasoning benchmark for expert AGI. In IEEE/CVF Conference on Com-puter Vision and Pattern Recognition, CVPR 2024, Seattle, WA, USA, June 16-22, 2024 , pages 9556– 9567. IEEE. Rowan Zellers, Yonatan Bisk, Ali Farhadi, and Yejin Choi. 2019. From recognition to cognition: Visual commonsense reasoning. In IEEE Conference on Computer Vision and Pattern Recognition, CVPR 2019, Long Beach, CA, USA, June 16-20, 2019 , pages 6720–6731. Computer Vision Foundation / IEEE. Congzhi Zhang, Jiawei Peng, Zhenglin Wang, Yilong Lai, Haowen Sun, Heng Chang, Fei Ma, and Weijiang Yu. 2025. Vrest: Enhancing reasoning in large vision-language models through tree search and self-reward mechanism. In Proceedings of the 63rd Annual Meet-ing of the Association for Computational Linguistics (Volume 1: Long Papers), ACL 2025, Vienna, Austria, July 27 - August 1, 2025 , pages 3922–3941. Associa-tion for Computational Linguistics. Mingyu Zhang, Jiting Cai, Mingyu Liu, Yue Xu, Cewu Lu, and Yong-Lu Li. 2024. Take a step back: Re-thinking the two stages in visual reasoning. In Eu-ropean Conference on Computer Vision , pages 124– 141. Springer. Wenxuan Zhang, Mahani Aljunied, Chang Gao, Yew Ken Chia, and Lidong Bing. 2023. M3exam: A multilingual, multimodal, multilevel benchmark for examining large language models. In Advances in Neural Information Processing Systems 36: Annual Conference on Neural Information Processing Sys-tems 2023, NeurIPS 2023, New Orleans, LA, USA, December 10 - 16, 2023 .Ruijie Zheng, Xiyao Wang, Yanchao Sun, Shuang Ma, Jieyu Zhao, Huazhe Xu, Hal Daumé III, and Furong Huang. 2023. TACO: temporal latent action-driven contrastive loss for visual reinforcement learning. In 
+
+Advances in Neural Information Processing Systems 36: Annual Conference on Neural Information Pro-cessing Systems 2023, NeurIPS 2023, New Orleans, LA, USA, December 10 - 16, 2023 .Jinguo Zhu, Weiyun Wang, Zhe Chen, Zhaoyang Liu, Shenglong Ye, Lixin Gu, Hao Tian, Yuchen Duan, Weijie Su, Jie Shao, Zhangwei Gao, Erfei Cui, Xue-hui Wang, Yue Cao, Yangzhou Liu, Xingguang Wei, Hongjie Zhang, Haomin Wang, Weiye Xu, and 32 others. 2025. Internvl3: Exploring advanced train-ing and test-time recipes for open-source multimodal models. CoRR , abs/2504.10479. A Benchmark Comparison 
+
+We present a comparison between our proposed benchmark and existing multimodal benchmarks in Table 5. The complex reasoning in our vision-centric benchmark targets reasoning that requires integrating multiple visual cues in real-world scenes and can’t be resolved with a blink. CI (176) 25.7% 
+
+> TP (103)
+> 15.0%
+> SR (103)
+> 15.0%
+> AS (103)
+> 15.0%
+> CR (101)
+> 14.7%
+> CC (100)
+> 14.6%
+> Figure 3: Question types in our ConVBench. Each slice represents a distinct category of vision-centric reason-ing, including Causal and Intent, Time Perception, Spa-tial, Action State, Commonsense, and Complex Count-ing.
+
+B Baselines. 
+
+To verify the effectiveness of our ConVLM, we compare it with several baselines. We select open-source models LLaVA-1.5-7B (Liu et al., 2024a), LLaVA-1.5-13B, LLaVA-1.6-7B, LLaVA-1.6-13B, InternVL3-1B (Zhu et al., 2025), InternVL3-2B, InternVL3-8B, InternVL3-9B, InternVL3-14B, DeepSeek-VL-1.3B (Lu et al., 2024a), DeepSeek-VL-7B, DeepSeek-VL2-tiny (Wu et al., 2024), DeepSeek-VL2-small, Qwen2.5-VL-3B (Bai et al., 2025), and Qwen2.5-VL-7B. We also in-clude closed-source LVLMs, including Claude-3.5-sonnet-V2 (Anthropic, 2024), Claude-3.7-sonnet (Anthropic, 2025), GPT-4.1 (Brown, 2020), and Gemini-2.5-pro (Comanici et al., 2025). 
+
+C Data Construction Details 
+
+The data source (including images, captions, and object information) are from MSCOCO (Lin et al., 2015) except the commonsense category. m is set to 5. 
+
+D More Analysis 
+
+Comparison between SFT and GRPO To com-pare training strategies and verify the effective-ness of our RL-based training method, we run three regimes under matched conditions: RL Us-ing the same backbone (Qwen2.5-VL-3B) and training set, we (i) perform SFT to establish a strong supervised fine-tuning baseline, (ii) apply 
+
+RL (GRPO) to test whether RL optimization im-proves robustness and generalization, and (iii) com-bine them in a two-stage SFT+RL pipeline to examine complementarity. We report results on ConVBench (in-distribution setting) and V*Bench (out-of-distribution setting) to isolate how each strategy affects accuracy and consistency in- and out-of-distribution. SFT alone boosts ConVBench from 41.89/33.23 to 72.55/67.04 (Consistency/Ac-curacy; +30.66/+33.81), but reduces V*Bench to 57.72 ( −6.67 vs. base), suggesting overfitting to our benchmark. In contrast, our GRPO-based RL 
+
+policy achieves 69.34/64.44 on ConVBench within 3 points of SFT, while boosting V*Bench to 80.21 (+22.49 over SFT; +15.82 over base), evidencing the effectiveness of reward–driven exploration for out-of-distribution generalization. Combining the two, SFT+RL reaches the best ConVBench scores 73.78/67.94 (+1.23/+0.90 over SFT) and a strong V*Bench 76.04, trading a small margin to RL (–4.17) for higher stability on ConVBench. To iso-late the contribution of our reward design from any SFT-induced effects and to promote better general-ization, our primary models are trained exclusively 
+
+with GRPO-based reinforcement learning. 
+
+Performance with Various Data Size . To as-sess the impact of image data volume, we examined model performance across different dataset sizes. Specifically, we compared results for 1000, 2000, 3000, 4000, and 5000 training images, along with the untrained Qwen2.5-VL model, as shown in Fig-ure 4. Both consistency and accuracy improve as the number of training images increases, with the most notable gains occurring between 0 and 2000 images. After 3000 images, performance growth slows, indicating diminishing returns from addi-tional data. This suggests that while more image data generally benefits the model, there is a point beyond which further gains become marginal. 
+
+E Training Procedure 
+
+For the consistency function ( c(·)), we implement it based on string matching. If both generated an-Table 5: Comparison with existing multimodal benchmarks. 
+
+Benchmark Images Vision-Centric Complex Reasoning Logically Equivalent QA Pairs Questions 
+
+BLINK (Fu et al., 2024) 7,300 ✓ × × 3,800 V* (Wu and Xie, 2024) 191 ✓ × × 191 CV-Bench (Tong et al., 2024) - ✓ × × 2638 MME (Fu et al., 2023) 897 × × × 1,277 MMBench (Liu et al., 2024b) - × ✓ × 3,217 InfoVQA (Mathew et al., 2022) 5,485 × ✓ × 30,035 MathVista (Lu et al., 2024b) 5,487 × ✓ × 6,141 M3Exam (Zhang et al., 2023) - × ✓ × 12,317 DocVQA (Mathew et al., 2021) 12,767 × × × 50,000 MM-Vet (Yu et al., 2024) 200 × × × 218 Seed-Bench (Li et al., 2023b) - × × × 19,000 MMMU (Yue et al., 2024) - × ✓ × 11,500 ChartQA (Masry et al., 2022) 4,800 × ✓ × 9,600 TextVQA (Singh et al., 2019) 28,408 × × × 45,336 OCRBench (Liu et al., 2024c) 1,000 × × × 1,000 ConVBench 686 ✓ ✓ ✓ 1,372 
+
+Table 6: Performance comparison across combinations of training strategies. 
+
+Model ConVBench V*Bench 
+
+Consistency Accuracy Accuracy Qwen2.5-VL-3B 41.89 33.23 64.39 SFT 72.55 67.04 57.72 RL 69.34 64.44 80.21 SFT + RL 73.78 67.94 76.04 0 1000 2000 3000 4000 5000 
+
+> Number of Training Images
+> 35
+> 40
+> 45
+> 50
+> 55
+> 60
+> 65
+> 70
+> Percentage (%)
+> Con.
+> Acc.
+
+Figure 4: Model performance across different data sizes. 
+
+swers are correct or incorrectly, it is 1; otherwise, it is 0. To better illustrate the workflow of our method, we provided a simplified overview in Algorithm 1. 
+
+Algorithm 1 Consistency-based Reinforcement Learning 
+
+Input: Initial policy model πθinit ; total training steps M ; image set I; hyperparameters γ, β
+
+Output: Updated policy model 
+
+πθ.Initialize policy model πθ ← πθinit 
+
+for step = 1 , . . . , M do 
+
+Sample a batch Ib from I
+
+for each image I ∈ I b do 
+
+Generate logically equivalent question pair {(q1, a 1), (q2, a 2)} for the image by Eqn.(4) Sample solutions {o11, · · · , o 1
+
+> G
+
+} ∼ πθ(· | 
+
+I, q 1) and {o21, · · · , o 2
+
+> G
+
+} ∼ πθ(· | I, q 2)
+
+Compute rewards for all sampled solu-tions Compute advantages by Eqn.( eq:advantages) 
+
+end for 
+
+Update policy model by GRPO objective function in Eqn.(6) 
+
+end for LVLM 
+
+> ...
+> ...
+
+# LVLM   
+
+> ...
+> ...
+> Consistent
+> ...
+> ...
+> ...
+> ...
+> Consistent Consistent ... ...
+> Consistent
+
+Sample-wise Consistency 
+
+Group-wise Consistency Figure 5: Visualization of sample-wise consistency reward and group-wise consistency reward. 
+
+F Use of Large Language Models 
+
+We used a large language model for copyediting. Specifically, we utilized OpenAI ChatGPT to sug-gest grammatical fixes, enhance wording and flow, and standardize terminology. 
+
+G Ethics statement 
+
+Our work builds upon publicly available datasets and does not involve the collection of sensitive or private information. All human annotations were conducted with informed consent and fair compen-sation. Potential risks mainly relate to the misuse of improved reasoning capabilities in harmful applica-tions; however, we emphasize that our benchmark and training framework are intended solely for re-search advancement 
+
+H Reproducibility statement 
+
+To ensure the reproducibility of our work, we will release our datasets, source code, and the pretrained models. Detailed instructions and scripts will also be provided to facilitate replication of experiments and results reported in this paper. 
+
+I Case Study 
+
+We show a qualitative comparison of several cases in Figure 6. In the first example (top row), two logically equivalent queries are posed about the same scene: “Are there more people on the side-walk than cars on the road?” (GT: No) and “Is the number of people greater or less than the number of cars?” (GT: less). ConVLM-3B answers “No” and “less” consistently, whereas Qwen2.5-VL-3B answers “No” to the first but “greater (option A)” to the second, revealing reasoning inconsistency despite identical visual evidence. Similar observa-tions can be observed in the remaining cases. Cases 2–5 collectively reveal several recurring inconsistency patterns across different reasoning categories. Case 2 shows that intent and action understanding is fragile: small paraphrases around a player’s pose (e.g., “signaling” vs. “ready to catch”) can flip the prediction, indicating unsta-ble grounding from fine-grained body posture to high-level intent. Case 3 highlights similar insta-bility for dynamic outcomes, where a transitional frame (e.g., approaching a base or being tagged) causes the model to disagree on whether a goal state has been reached, even under logically equivalent descriptions. Case 4 exposes temporal reasoning issues: when asked about time-related properties (such as reading a clock or inferring “before/after” relations), the model can produce conflicting an-swers across equivalent formulations, suggesting it does not maintain a consistent internal representa-tion of temporal state. Case 5 illustrates failures in causal and social reasoning, where different fram-ings of the same situation lead to divergent expla-nations about motivations or consequences, despite the underlying visual evidence being unchanged. Together, these cases indicate that inconsistencies are most likely to occur when reasoning depends on subtle, multi-cue interpretations of actions, out-comes, time, and social context, underscoring the need for explicit consistency-oriented training. 
+
+J Prompts 
+
+J.1 Prompts for Data Construction 
+
+Prompt for Causal and Intent 
+
+Image: ${image}$ 
+
+Prompt: You are a visual reasoning ques-tion generator. Given: captions: a list of strings describing the same image bboxes: a list of object entries in the form “ ⟨category ⟩ : [x, y, w, h]” image: the input image contains object bounding boxes Generate exactly one JSON object with four fields: { "direct_question": string, // a yes/no or simple fact question about an causal or intent reasoning in the image "di-rect_answer": string, // “Yes” or “No” (or a short fact) answering the direct ques-tion "direct_explanation": string, // Ex-plain how can you get answer for the direct question, "indirect_question": string, // a multiple-choice question (two options) that is logically implied by the direct question but phrased differently "indirect_answer": string // “optionA” or “optionB”, "indi-rect_explanation": string, // Explain how can you get answer for the indirect question }Requirements: 1. Both questions must re-quire reasoning about motion, sequence, posture or relative movement of objects/peo-ple. 2. The indirect question’s correct choice must follow from the direct answer, but the wording/semantic focus should dif-fer (e.g. “Did the batter hit the ball?” → “Is the ball moving toward or away from the batter? optionA: toward optionB: away”). 3. Use the bounding-boxes only to anchor 
+
+who/what is acting—focus on actions, not static attributes. 4. Do not invent objects or actions not supported by the captions + bboxes. 5. The object in explanations should appear with its coordinates if it ap-pears in the image. 6. The explanation is used to train model. And note that the model will not be provided with captions and the bounding boxes. So please don’t generate content like “the captions indicate xxx”. 7. Direct questions are yes-or-no questions. Direct questions are asked in a direct way. Indirect questions are asked in-directly, from another angle. The answer to the indirect question can be inferred by com-bining the answer of direct question with the image. It is difficult to infer the answer to the indirect question only based on the answer to the direct question alone. Focus on questions that involve causal rea-soning (why something happened) or intent reasoning (what someone is trying to do). Input Example captions: - "A young boy hits a baseball while another boy with an umbrella looks on." - "A little league player is swinging at a ball, and a boy under an um-brella is watching on the sideline." bboxes: - sports ball: [78.26, 108.53, 26.41, 26.97] -person: [63.74, 84.13, 104.0, 321.12] - base-ball bat: [562.69, 203.18, 77.31, 22.34] -umbrella: [0.0, 8.33, 223.38, 96.05] - sports ball: [78.26, 108.53, 26.41, 26.97] . . . Expected Output Example “‘json { "di-rect_question": "Has the batter already hit the ball?", "direct_answer": "Yes", "di-rect_explanation": "The batter’s posture [63.74, 84.13, 104.0, 321.12] indicates a completed swing: the arms are fully ex-tended, the bat [562.69, 203.18, 77.31, 22.34] has already passed through the hit-ting zone, and the ball [78.26, 108.53, 26.41, 26.97] is seen traveling away from the bat-ter. These cues suggest the ball [78.26, 108.53, 26.41, 26.97] was just hit.", "indi-rect_question": "Is the ball flying toward or away from the batter? optionA: to-ward optionB: away", "indirect_answer": "optionB", "indirect_explanation": "The ball [78.26, 108.53, 26.41, 26.97] is flying away from the batter [63.74, 84.13, 104.0, 321.12], as the arms are fully extended, the bat [562.69, 203.18, 77.31, 22.34] has al-ready passed through the hitting zone.", } Please give me the output for the data. Captions: ${caption}$ Bounding Boxes: ${boudingbox}$ Output: 
+
+Prompt for Complex Counting 
+
+Image: ${image}$ 
+
+Prompt : You are a visual reasoning ques-tion generator. Given: captions: a list of strings describing the same image bboxes: a list of object entries in the form “ ⟨category ⟩: [x, y, w, h]” im-age: the input image contains object bound-ing boxes Generate exactly one JSON object with four fields: { "direct_question": string, // a yes/no or simple fact question about counting in the image "direct_answer": string, // “Yes” or “No” (or a short fact) answering the direct question "direct_explanation": string, // Ex-plain how can you get answer for the direct question, "indirect_question": string, // a multiple-choice question (two options) that is logically implied by the direct question but phrased differently "indirect_answer": string // “optionA” or “optionB”, "indi-rect_explanation": string, // Explain how can you get answer for the indirect question }Requirements: 1. The indirect question’s correct choice must follow from the direct answer, but the wording/semantic focus should differ. 2. Use the bounding-boxes to anchor content in the explanaiton. 3. Do not invent ob-jects or actions not supported by the cap-tions + bboxes. 4. The object in explana-tions should apear with its coordinates if it appears in the image. 5. The explanation is used to train model. And note that the model will not be provided with captions and the bounding boxes. So please don’t generate content like “the captions indicate xxx”. 6. Direct questions are yes-or-no questions. Direct questions are asked in a 
+
+direct way. Indirect questions are asked in-directly, from another angle. The answer to the indirect question can be inferred by com-bining the answer of direct question with the image. It is difficult to infer the answer to the indirect question only based on the answer to the direct question alone. Please generate complex counting ques-tions that require reasoning, not just per-ception. Include situations like: - Count-ing objects with partial occlusion - Ignoring mirrored/reflected duplicates - Estimating counts in dense clusters Input Example captions: - "A young boy hits a baseball while another boy with an umbrella looks on." - "A little league player is swinging at a ball, and a boy under an um-brella is watching on the sideline." bboxes: - sports ball: [78.26, 108.53, 26.41, 26.97] -person: [63.74, 84.13, 104.0, 321.12] - base-ball bat: [562.69, 203.18, 77.31, 22.34] -umbrella: [0.0, 8.33, 223.38, 96.05] - sports ball: [78.26, 108.53, 26.41, 26.97] . . . Expected Output Example “‘json { "di-rect_question": "Has the batter already hit the ball?", "direct_answer": "Yes", "di-rect_explanation": "The batter’s posture [63.74, 84.13, 104.0, 321.12] indicates a completed swing: the arms are fully ex-tended, the bat [562.69, 203.18, 77.31, 22.34] has already passed through the hit-ting zone, and the ball [78.26, 108.53, 26.41, 26.97] is seen traveling away from the bat-ter. These cues suggest the ball [78.26, 108.53, 26.41, 26.97] was just hit.", "indi-rect_question": "Is the ball flying toward or away from the batter? optionA: to-ward optionB: away", "indirect_answer": "optionB", "indirect_explanation": "The ball [78.26, 108.53, 26.41, 26.97] is flying away from the batter [63.74, 84.13, 104.0, 321.12], as the arms are fully extended, the bat [562.69, 203.18, 77.31, 22.34] has al-ready passed through the hitting zone.", } Please give me the output for the data. Captions: ${caption}$ Bounding Boxes: ${boudingbox}$ Output: Prompt for Action State 
+
+Image: ${image}$ 
+
+Prompt: You are a visual reasoning ques-tion generator. Given: captions: a list of strings describing the same image bboxes: a list of object entries in the form “ ⟨category ⟩ : [x, y, w, h]” im-age: the input image contains object bound-ing boxes Generate exactly one JSON object with four fields: { "direct_question": string, // a yes/no or simple fact question about an action or temporal relation in the image "di-rect_answer": string, // “Yes” or “No” (or a short fact) answering the direct ques-tion "direct_explanation": string, // Ex-plain how can you get answer for the direct question, "indirect_question": string, // a multiple-choice question (two options) that is logically implied by the direct question but phrased differently "indirect_answer": string // “optionA” or “optionB”, "indi-rect_explanation": string, // Explain how can you get answer for the indirect question }Requirements: 1. Both questions must re-quire reasoning about motion, sequence, posture or relative movement of objects/peo-ple. 2. The indirect question’s correct choice must follow from the direct answer, but the wording/semantic focus should dif-fer (e.g. “Did the batter hit the ball?” → “Is the ball moving toward or away from the batter? optionA: toward optionB: away”). 3. Use the bounding-boxes only to anchor who/what is acting—focus on actions, not static attributes. 4. Do not invent objects or actions not supported by the captions + bboxes. 5. The object in explanations should apear with its coordinates if it ap-pears in the image. 6. The explanation is used to train model. And note that the model will not be provided with captions and the bounding boxes. So please don’t generate content like “the captions indicate xxx”. 7. Direct questions are yes-or-no questions. Direct questions are asked in a direct way. Indirect questions are asked in-
+
+directly, from another angle. The answer to the indirect question can be inferred by com-bining the answer of direct question with the image. It is difficult to infer the answer to the indirect question only based on the answer to the direct question alone. Input Example captions: - "A young boy hits a baseball while another boy with an umbrella looks on." - "A little league player is swinging at a ball, and a boy under an um-brella is watching on the sideline." bboxes: - sports ball: [78.26, 108.53, 26.41, 26.97] -person: [63.74, 84.13, 104.0, 321.12] - base-ball bat: [562.69, 203.18, 77.31, 22.34] -umbrella: [0.0, 8.33, 223.38, 96.05] - sports ball: [78.26, 108.53, 26.41, 26.97] . . . Expected Output Example “‘json { "di-rect_question": "Has the batter already hit the ball?", "direct_answer": "Yes", "di-rect_explanation": "The batter’s posture [63.74, 84.13, 104.0, 321.12] indicates a completed swing: the arms are fully ex-tended, the bat [562.69, 203.18, 77.31, 22.34] has already passed through the hit-ting zone, and the ball [78.26, 108.53, 26.41, 26.97] is seen traveling away from the bat-ter. These cues suggest the ball [78.26, 108.53, 26.41, 26.97] was just hit.", "indi-rect_question": "Is the ball flying toward or away from the batter? optionA: to-ward optionB: away", "indirect_answer": "optionB", "indirect_explanation": "The ball [78.26, 108.53, 26.41, 26.97] is flying away from the batter [63.74, 84.13, 104.0, 321.12], as the arms are fully extended, the bat [562.69, 203.18, 77.31, 22.34] has already passed through the hitting zone.", } Please give me the output for the data. Captions: ${caption}$ Bounding Boxes: ${boudingbox}$ Output: 
+
+Prompt for Time Perceptron 
+
+Image: ${image}$ 
+
+Prompt: You are a visual reasoning ques-tion generator. Given: captions: a list of strings describing the same image bboxes: a list of object entries in the form “ ⟨category ⟩: [x, y, w, h]” im-age: the input image contains object bound-ing boxes Generate exactly one JSON object with four fields: { "direct_question": string, // a yes/no or simple fact question about an tem-poral relation or time in the image "di-rect_answer": string, // “Yes” or “No” (or a short fact) answering the direct ques-tion "direct_explanation": string, // Ex-plain how can you get answer for the direct question, "indirect_question": string, // a multiple-choice question (two options) that is logically implied by the direct question but phrased differently "indirect_answer": string // “optionA” or “optionB”, "indi-rect_explanation": string, // Explain how can you get answer for the indirect question }Requirements: 1. The indirect question’s correct choice must follow from the di-rect answer, but the wording/semantic focus should differ. 2. Use the bounding-boxes to anchor content in the explanaiton. 3. Do not invent objects or actions not supported by the captions + bboxes. 4. The object in explanations should apear with its coor-dinates if it appears in the image. 5. The explanation is used to train model. And note that the model will not be provided with captions and the bounding boxes. So please don’t generate content like “the cap-tions indicate xxx”. 6. Direct questions are yes-or-no questions. Direct questions are asked in a direct way. Indirect questions are asked indirectly, from another angle. The answer to the indirect question can be in-ferred by combining the answer of direct question with the image. It is difficult to in-fer the answer to the indirect question only based on the answer to the direct question alone. These questions should focus on: - Under-standing time from visual clues (e.g., clocks, lighting) - Reasoning about before/after events or what happens next Input Example captions: - "A young boy hits a baseball while another boy with an umbrella looks on." - "A little league player is swinging at a ball, and a boy under an um-
+
+brella is watching on the sideline." bboxes: - sports ball: [78.26, 108.53, 26.41, 26.97] -person: [63.74, 84.13, 104.0, 321.12] - base-ball bat: [562.69, 203.18, 77.31, 22.34] -umbrella: [0.0, 8.33, 223.38, 96.05] - sports ball: [78.26, 108.53, 26.41, 26.97] . . . Expected Output Example “‘json { "di-rect_question": "Has the batter already hit the ball?", "direct_answer": "Yes", "di-rect_explanation": "The batter’s posture [63.74, 84.13, 104.0, 321.12] indicates a completed swing: the arms are fully ex-tended, the bat [562.69, 203.18, 77.31, 22.34] has already passed through the hit-ting zone, and the ball [78.26, 108.53, 26.41, 26.97] is seen traveling away from the bat-ter. These cues suggest the ball [78.26, 108.53, 26.41, 26.97] was just hit.", "indi-rect_question": "Is the ball flying toward or away from the batter? optionA: to-ward optionB: away", "indirect_answer": "optionB", "indirect_explanation": "The ball [78.26, 108.53, 26.41, 26.97] is flying away from the batter [63.74, 84.13, 104.0, 321.12], as the arms are fully extended, the bat [562.69, 203.18, 77.31, 22.34] has al-ready passed through the hitting zone.", } Please give me the output for the data. Captions: ${caption}$ Bounding Boxes: ${boudingbox}$ Output: 
+
+Prompt for Spatial Reasoning 
+
+Image: ${image}$ 
+
+Prompt: You are a spatial reasoning ques-tion generator. Given: captions: a list of strings describing the same image bboxes: a list of object entries in the form “ ⟨category ⟩: [x, y, w, h]” im-age: the input image contains object bound-ing boxes Judge relative positions and spa-tial layouts of objects Generate exactly one JSON object with four fields: { "direct_question": string, // a yes/no ques-tion about spatial relation in the image "direct_answer": string, // “Yes” or “No” (or a short fact) answering the direct ques-tion "direct_explanation": string, // Explain how can you get answer for the direct question, "indirect_question": string, // a multiple-choice question (two options) that is logically implied by the direct question but phrased differently "indirect_answer": string // “optionA” or “optionB”, "indi-rect_explanation": string, // Explain how can you get answer for the indirect question }Requirements: 1. The indirect question’s correct choice must follow from the di-rect answer, but the wording/semantic focus should differ. 2. Use the bounding-boxes to anchor content in the explanaiton. 3. Do not invent objects or actions not supported by the captions + bboxes. 4. The object in explanations should apear with its coor-dinates if it appears in the image. 5. The explanation is used to train model. And note that the model will not be provided with captions and the bounding boxes. So please don’t generate content like “the cap-tions indicate xxx”. 6. Direct questions are yes-or-no questions. Direct questions are asked in a direct way. Indirect questions are asked indirectly, from another angle. The answer to the indirect question can be in-ferred by combining the answer of direct question with the image. It is difficult to in-fer the answer to the indirect question only based on the answer to the direct question alone. The questions should not be simple pair-wise spatial relations. Instead, include more complex spatial reasoning types, such as: • multi-object reasoning (relations involving 3 or more objects) • indirect spatial rela-tions (e.g., object A is to the left of object B, which is behind object C) • comparative spa-tial reasoning (e.g., which object is closer to X, or which is furthest from Y) • nested referential relations (e.g., object A is inside object B, which is next to object C) • am-biguous relations that require resolving oc-clusions, perspectives, or relative distances • vague spatial terms (e.g., near, far, adja-cent to, close to) • ordering tasks (e.g., sort objects from left to right, or from nearest to furthest) 
+
+Avoid generating questions that are too triv-ial or directly answerable by simple object detection. Make sure the question requires actual spatial reasoning based on the scene context and multiple object relations. Input Example captions: - "A young boy hits a baseball while another boy with an umbrella looks on." - "A little league player is swinging at a ball, and a boy under an um-brella is watching on the sideline." bboxes: - sports ball: [78.26, 108.53, 26.41, 26.97] -person: [63.74, 84.13, 104.0, 321.12] - base-ball bat: [562.69, 203.18, 77.31, 22.34] -umbrella: [0.0, 8.33, 223.38, 96.05] - sports ball: [78.26, 108.53, 26.41, 26.97] . . . Expected Output Example “‘json { "di-rect_question": "Has the batter already hit the ball?", "direct_answer": "Yes", "di-rect_explanation": "The batter’s posture [63.74, 84.13, 104.0, 321.12] indicates a completed swing: the arms are fully ex-tended, the bat [562.69, 203.18, 77.31, 22.34] has already passed through the hit-ting zone, and the ball [78.26, 108.53, 26.41, 26.97] is seen traveling away from the bat-ter. These cues suggest the ball [78.26, 108.53, 26.41, 26.97] was just hit.", "indi-rect_question": "Is the ball flying toward or away from the batter? optionA: to-ward optionB: away", "indirect_answer": "optionB", "indirect_explanation": "The ball [78.26, 108.53, 26.41, 26.97] is flying away from the batter [63.74, 84.13, 104.0, 321.12], as the arms are fully extended, the bat [562.69, 203.18, 77.31, 22.34] has al-ready passed through the hitting zone.", } Please give me the output for the data. Captions: ${caption}$ Bounding Boxes: ${boudingbox}$ Output: 
+
+Prompt for Commonsense 
+
+Image: ${image}$ 
+
+Prompt: You are a visual reasoning ques-tion generator. Given: Indirect Question: A commonsence reseaning indirect questino for the image indirect_answer: the ansser for the indirect quesiont Image: the image indirect_explanation: explanation for why the answer can answer the question Please generate a Yes-or-No direct-question, answer, explannaiton for the in-direct ques-tion, answer, and explanation. Generate exactly one JSON object with four fields: { "direct_question": string, // a yes/no or simple question about an commonsence rea-soning in the image "direct_answer": string, // “Yes” or “No” answering the direct ques-tion "direct_explanation": string, // Explain how can you get answer for the direct ques-tion, } Direct questions are yes-or-no questions. Direct questions are asked in a direct way. Indirect questions are asked indirectly, from another angle. The answer to the indirect question can be inferred by combining the answer of direct question with the image. It is difficult to infer the answer to the indirect question only based on the answer to the direct question alone. The explanation is used to train model. Use the bounding-boxes [x, y, w, h] only to anchor the object in the explanation if it is provided in the given information. We give a expample in the following example. Expected Output Example “‘json { "di-rect_question": "Has the batter already hit the ball?", "direct_answer": "Yes", "di-rect_explanation": "The batter’s posture [63.74, 84.13, 104.0, 321.12] indicates a completed swing: the arms are fully ex-tended, the bat [562.69, 203.18, 77.31, 22.34] has already passed through the hit-ting zone, and the ball [78.26, 108.53, 26.41, 26.97] is seen traveling away from the batter. These cues suggest the ball [78.26, 108.53, 26.41, 26.97] was just hit." } Please give me the output for the data. Captions: ${caption}$ Bounding Boxes: ${boudingbox}$ Output: 
+
+J.2 Prompts for Model Training 
+
+Prompt for RL Training 
+
+Image: ${image}$ 
+
+Prompt: Please reason step by step, and put your final answer within \boxed{}. 
+
+Prompt for Training Data Generation 
+
+Image: ${image}$ 
+
+Prompt: You are a visual reasoning ques-tion generator. Given: captions: a list of strings describing the same image bboxes: a list of object entries in the form “<category>: [x, y, w, h]” image: the input image contains object bounding boxes Generate exactly one JSON object with four fields: "direct_question": string, // a yes/no or simple fact question about visual reason-ing in the image "direct_answer": string, // “Yes” or “No” (or a short fact) answer-ing the direct question "direct_explanation": string, // Explain how can you get answer for the direct question, "indirect_question": string, // a multiple-choice question (two options) that is logically implied by the di-rect question but phrased differently "indi-rect_answer": string // “optionA” or “op-tionB”, "indirect_explanation": string, // Explain how can you get answer for the indirect question Requirements: 1. Both questions must re-quire reasoning about content in the image. 2. The indirect question’s correct choice must follow from the direct answer, but the wording/semantic focus should differ (e.g. “Did the batter hit the ball?” → “Is the ball moving toward or away from the batter? optionA: toward optionB: away”). 3. Use the bounding-boxes only to anchor objects in the explanation. 4. Do not invent ob-jects or things not supported by the captions + bboxes. 5. The object in explanations should apear with its coordinates if it ap-pears in the image. 6. The explanation is used to train model. And note that the model will not be provided with captions and the bounding boxes. So please don’t generate content like “the captions indicate xxx” or “the bounding boxes xx indicate xxx”. 7. Direct questions are yes-or-no questions. Direct questions are asked in a direct way. Indirect questions are asked in-directly, from another angle. The answer to the indirect question can be inferred by com-bining the answer of direct question with the image. It is difficult to infer the answer to the indirect question only based on the answer to the direct question alone. If the image is very simple and it is not easy to get a reasoning question. Just output None. Examples: Captions: - "A young boy hits a baseball while another boy with an umbrella looks on." - "A little league player is swinging at a ball, and a boy under an umbrella is watching on the sideline." Bounding Bboxes: - sports ball: [78.26, 108.53, 26.41, 26.97] - person: [63.74, 84.13, 104.0, 321.12] - baseball bat: [562.69, 203.18, 77.31, 22.34] - umbrella: [0.0, 8.33, 223.38, 96.05] - sports ball: [78.26, 108.53, 26.41, 26.97] Output: “‘json { "direct_question": "Has the batter already hit the ball?", "di-rect_answer": "Yes", "direct_explanation": "The batter’s posture [63.74, 84.13, 104.0, 321.12] indicates a completed swing: the arms are fully extended, the bat [562.69, 203.18, 77.31, 22.34] has already passed through the hitting zone, and the ball [78.26, 108.53, 26.41, 26.97] is seen traveling away from the batter. These cues suggest the ball [78.26, 108.53, 26.41, 26.97] was just hit.", "indirect_question": "Is the ball flying to-ward or away from the batter? optionA: toward optionB: away", "indirect_answer": "optionB", "indirect_explanation": "The ball [78.26, 108.53, 26.41, 26.97] is flying away from the batter [63.74, 84.13, 104.0, 321.12], as the arms are fully extended, the bat [562.69, 203.18, 77.31, 22.34] has al-ready passed through the hitting zone.", } Captions: - A 70th white birthday cake with flower decorations on top of a table. - A 70th birthday cake sitting on a wooden bench. - A cake is shown on top of a pic-nic table. - A picnic tables holds a birthday cake while a little girl stands beside. - A picture of a cake on a table. Bounding Bboxes: - bottle: [194.79, 2.16, 29.74, 76.76] - bottle: [394.79, 2.3, 29.45, 78.22] - bench: [491.29, 114.19, 148.71, 308.01] - bench: [0.0, 118.82, 163.12, 
+
+301.3] - knife: [142.13, 112.33, 34.86, 15.82] - cake: [169.84, 166.0, 297.46, 139.14] - person: [0.0, 0.0, 165.26, 318.19] -dining table: [22.12, 32.22, 524.13, 390.45] - book: [240.6, 36.11, 63.43, 13.05] - book: [233.44, 28.77, 66.43, 11.52] Output: “‘json { "direct_question": "Is the number 70 on the cake?", "direct_answer": "Yes", "direct_explanation": "The cake [169.84, 166.0, 297.46, 139.14] show there is a number 70.", "indirect_question": "Is cake for the girl or other one? optionA: the little girl optionB: someone which is not vis-ible in the image", "indirect_answer": "op-tionB", "indirect_explanation": "The cake [169.84, 166.0, 297.46, 139.14] show there is a number 70. But the little girl [0.0, 0.0, 165.26, 318.19] is very young. Therefore, the cake is for smeoneelse which donesn’t appear in the image.", } Captions: - A 70th white birthday cake with flower decorations on top of a table. - A 70th birthday cake sitting on a wooden bench. - A cake is shown on top of a pic-nic table. - A picnic tables holds a birthday cake while a little girl stands beside. - A picture of a cake on a table. Bounding Bboxes: - bottle: [194.79, 2.16, 29.74, 76.76] - bottle: [394.79, 2.3, 29.45, 78.22] - bench: [491.29, 114.19, 148.71, 308.01] - bench: [0.0, 118.82, 163.12, 301.3] - knife: [142.13, 112.33, 34.86, 15.82] - cake: [169.84, 166.0, 297.46, 139.14] - person: [0.0, 0.0, 165.26, 318.19] -dining table: [22.12, 32.22, 524.13, 390.45] - book: [240.6, 36.11, 63.43, 13.05] - book: [233.44, 28.77, 66.43, 11.52] Output: None Captions: - "A young boy hits a baseball while another boy with an umbrella looks on." - "A little league player is swinging at a ball, and a boy under an umbrella is watching on the sideline." Bounding Bboxes: - sports ball: [78.26, 108.53, 26.41, 26.97] - person: [63.74, 84.13, 104.0, 321.12] - baseball bat: [562.69, 203.18, 77.31, 22.34] - umbrella: [0.0, 8.33, 223.38, 96.05] - sports ball: [78.26, 108.53, 26.41, 26.97] Output: “‘json "direct_question": "Has the batter already hit the ball?", "di-rect_answer": "Yes", "direct_explanation": "The batter’s posture [63.74, 84.13, 104.0, 321.12] indicates a completed swing: the arms are fully extended, the bat [562.69, 203.18, 77.31, 22.34] has already passed through the hitting zone, and the ball [78.26, 108.53, 26.41, 26.97] is seen traveling away from the batter. These cues suggest the ball [78.26, 108.53, 26.41, 26.97] was just hit.", "indirect_question": "Is the ball flying to-ward or away from the batter? optionA: toward optionB: away", "indirect_answer": "optionB", "indirect_explanation": "The ball [78.26, 108.53, 26.41, 26.97] is flying away from the batter [63.74, 84.13, 104.0, 321.12], as the arms are fully extended, the bat [562.69, 203.18, 77.31, 22.34] has already passed through the hitting zone.", Please give me the output for the data. Captions: ${caption}$ Bounding Boxes: ${boudingbox}$ Output: 
+
+K Keywords for Image Selection 
+
+We list our keywords for image selection as fol-lows.                                                                    
+
+> keywords_for_causal_and_intent =
+> ,→[`` reaching'', `` grabbing'',
+> ,→`` opening'',
+> ,→`` holding'', `` looking at'',
+> ,→`` entering'', `` because'',
+> ,→`` after'', `` fell'', `` spilled'',
+> ,→`` dropped''] keywords_for_complex_counting =
+> ,→[`` mirror'', `` reflected'',
+> ,→`` reflection'', `` glass'', `` see
+> ,→himself'', `` in front of a
+> ,→mirror''] keywords_for_time_perceptron_reasoning
+> ,→=[`` clock'', `` watch'',
+> ,→`` time'', `` morning'',
+> ,→`` sunset'', `` sunrise'',
+> ,→`` night'', `` evening''] keywords_for _action_and_state =
+> ,→[`` sport'', `` game'', `` match'',
+> ,→`` competition'', `` athlete'',
+> ,→`` player'', `` team'',
+> ,→`` stadium'', `` field'',
+> ,→`` court'', `` race'',
+> ,→`` tournament'', `` ball'',
+> ,→`` soccer'', `` football'',
+> ,→`` basketball'', `` baseball'',
+> ,→`` volleyball'',
+> ,→`` tennis'', `` golf'', `` hockey'',
+> ,→`` cricket'', `` running'',
+> ,→`` jumping'', `` swimming'',
+> ,→`` skiing'', `` skating'',
+> ,→`` surfing'', `` cycling'',
+> ,→`` riding'', `` throwing'',
+> ,→`` hitting'', `` kicking'',
+> ,→`` diving'', `` moving'']
+
+L Clarification on the Difference Between ConVBench and Training Data 
+
+To avoid potential misunderstanding, we explic-itly clarify the distinction between the construc-tion of ConVBench and the training data used for ConVLM. The training data are entirely auto-generated by the proposer model: given an image, the proposer produces logically related question-answer pairs, and these pseudo-labels are directly used for weakly supervised RL without any hu-man intervention or manual correction. In contrast, ConVBench is a curated evaluation benchmark .This dataset undergoes human verification to en-sure that each pair of questions is logically valid and that their answers are correct and mutually con-sistent. No human validation is used for training data, and no ConVBench samples are used during training. Thus, the two pipelines serve different purposes—automatic weak supervision for training versus high-quality, human-validated assessment. 
+
+M Benchmark Characteristics Analysis 
+
+The performance difference between V*Bench and InfoVQA can be explained by their distinct task emphases. V*Bench primarily evaluates visual reasoning in natural images—covering spatial rela-tions, causal and temporal inference, and multi-step logic—which closely matches the reasoning types emphasized during our consistency-based RL train-ing. In contrast, InfoVQA focuses heavily on OCR, fine-grained text recognition, and structured infor-mation extraction, which our training pipeline does not target. Therefore, the discrepancy reflects a task distribution mismatch: ConVLM is optimized for image-grounded reasoning rather than text-centric perception. 
+
+N Comparison with Prior Consistency-Based Reasoning Methods 
+
+For completeness, we clarify the conceptual differ-ences between our framework and prior work on consistency in visual or language reasoning. Ex-isting visual reasoning studies (Jing et al., 2022) focus on compositional VQA consistency, such as part–whole or attribute–object relations, and typi-cally implement consistency as deterministic loss constraints. These methods do not consider con-sistency across distinct but semantically equivalent queries conditioned on the same image. (Zhang et al., 2024) introduce another notion of consis-tency, defined as the agreement between two differ-ent answer formats for the same question (“What is the answer?” vs. “Is option X correct?”). This type of reasoning consistency evaluates answer-format invariance using an F1 score, and does not involve generating new queries or reasoning over semantic equivalence across questions. In contrast, language-only self-consistency approaches (Wang et al., 2022) operate exclusively during inference via sampling, and do not provide training-based methods. In contrast, our work introduces a different con-sistency formulation: pairwise logical equivalence under the same image . This setting requires the model to produce coherent answers across logi-cally linked queries conditioned on identical visual evidence, a problem not addressed in previous vi-sual reasoning literature. Moreover, we provide a scalable, fully automatic pipeline for generating large sets of logically equivalent question pairs, enabling reinforcement learning at scale. Finally, consistency is incorporated as an explicit reward 
+
+within the GRPO framework, providing sample-and group-level credit assignment that differs fun-damentally from deterministic loss regularization or inference-time sampling heuristics. 
+
+O Human Verification of ConVBench 
+
+To ensure the validity of the logically equivalent QA pairs in ConVBench, we manually verified all pairs generated by the proposer model (GPT-4.1). In total, the benchmark contains 686 final QA pairs, each derived from independent human inspection. During verification, candidate pairs were catego-rized as accepted, corrected, or discarded. Among all generated candidates, 389 pairs (57%) were accepted without modification, 150 pairs (22%) required minor corrections, and 147 pairs (21%) were removed due to incorrect or ambiguous logi-cal equivalence. Q: Are there more people walking on the sidewalk than cars visible on the road? 
+
+GoundTruth: No ConVLM-3B: No  Qwen2.5-VL-3B: No 
+
+Q: Is the number of people walking on the sidewalk greater than or less than the 
+
+number  of cars visible in the scene? optionA: greater optionB: less 
+
+GoundTruth:  optionB  ConVLM-3B:  optionB  Qwen2.5-VL-3B : optionA 
+
+Q:  Is the baseball player signaling with a raised arm? 
+
+GoundTruth: Yes ConVLM-3B: Yes  Qwen2.5-VL-3B: Yes 
+
+Q:  Is the player in a ready stance to catch a ball or communicating with teammates? optionA: ready stance to catch optionB: communicating with teammates 
+
+GoundTruth:  optionB  ConVLM-3B:  optionB  Qwen2.5-VL-3B : optionA 
+
+Q:  Is the player in green (running) attempting to reach a base before being tagged out? 
+
+GoundTruth: Yes ConVLM-3B: Yes  Qwen2.5-VL-3B:  No 
+
+Q:  s the intent of the player in green to advance a base or to remain at his current base? optionA: advance optionB: remain 
+
+GoundTruth:  optionA  ConVLM-3B:  optionA  Qwen2.5-VL-3B : optionB 
+
+Q:  Is it afternoon according to the clock? 
+
+GoundTruth: Yes ConVLM-3B: Yes  Qwen2.5-VL-3B:  No 
+
+Q:  Is the time shown on the clock closer to lunchtime or midnight? optionA: lunchtime optionB: midnight 
+
+GoundTruth:  optionA  ConVLM-3B:  optionA  Qwen2.5-VL-3B : optionA 
+
+Q:  Is the person on the left covering his face while smiling or laughing ?
+
+GoundTruth: Yes ConVLM-3B: Yes  Qwen2.5-VL-3B:  No 
+
+Q:  Why is person 1 covering his face?  OptionA:  person 1 is taking cover from  an 
+
+explosion.  OptionB: Because person 1 is laughing uncontrollably. 
+
+OptionC: Because  person  1 is shocked about what has happened to person 0 . 
+
+OptionD: person 1 finds this process embarrassing . 
+
+GoundTruth:  optionB  ConVLM-3B:  optionB  Qwen2.5-VL-3B : optionB  
+
+> Person1 Person 0
+
+Figure 6: Case study. The red fonts are the incorrect answer generated by models.

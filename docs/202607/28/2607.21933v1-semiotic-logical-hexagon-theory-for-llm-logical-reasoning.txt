@@ -1,0 +1,1054 @@
+Title: Semiotic logical hexagon theory for LLM logical reasoning
+
+URL Source: https://arxiv.org/pdf/2607.21933v1
+
+Published Time: Mon, 27 Jul 2026 00:26:01 GMT
+
+Number of Pages: 19
+
+Markdown Content:
+# Semiotic logical hexagon theory for LLM logical reasoning ⋆
+
+## Yunyao Zhang a,1 , Xinglang Zhang a,1 , Zeliang Chen a, Junqing Yu a and Zikai Song a,∗
+
+> a
+
+Huazhong University of Science and Technology, , Wuhan, 430074, Hubei, China 
+
+A R T I C L E I N F O 
+
+Keywords :Large language models Logical reasoning Neuro-symbolic reasoning Logical hexagon theory 
+
+A B S T R A C T 
+
+Large language models (LLMs) have become powerful tools for language understanding and logical reasoning. However, they still make mistakes when a problem requires both understand-ing meaning and following logic. A key reason is that natural-language statements often carry implicit semantic relations before any formal reasoning begins. If these hidden meanings are not properly organized, the model may reach incorrect conclusions even when the subsequent reason-ing process appears logically valid. Existing methods improve reasoning through decomposition, symbolic translation, external solvers, or self-verification, but pay comparatively less attention to the semantic structure on which reasoning depends. In this paper, we further investigate how semantic organization influences logical reasoning in LLMs. To this end, we propose Hex-LogicAgent , a framework that first organizes the meaning of natural-language statements and then guides logical reasoning through structured verification. In our investigation, we also make two observations. First, incomplete semantic representations, rather than deductive inference itself, are a major source of logical reasoning failures in LLMs. Second, explicitly modeling the complete structure of semantic opposition substantially delays the degradation of reasoning performance as logical complexity increases. Experiments on challenging logical reasoning benchmarks demonstrate that HexLogicAgent consistently improves reasoning reliability across multiple LLMs. The core idea is supported by a logical hexagon theory , which explains why a complete structure of opposing meanings is necessary for reliable reasoning. 
+
+## 1. Introduction 
+
+The rapid development of Large Language Models (LLMs), including DeepSeek [1], ChatGPT [2], and Qwen [3], has brought substantial progress to natural-language understanding and reasoning. These models can help users read complex texts [4], connect scattered information [5], generate explanations [6], and solve problems across a wide range of domains [7]. By doing so, they improve the efficiency of knowledge work and support tasks that require careful thinking, such as commonsense reasoning [8], mathematical problem solving [9, 10], philosophical thinking [11], and social analysis [12–15]. Moreover, LLMs are increasingly used as reasoning assistants in domains where conclusions must be drawn from natural-language statements, contextual premises, and incomplete evidence. While LLMs offer significant benefits for reasoning, they also raise important reliability concerns [16]. A reasoning problem in natural language is not only a chain of logical steps [17], but also a set of statements whose meanings must be properly understood before deduction begins [18]. This challenge comes from two coupled sources: (1) semantic complexity , where statements may be abstract, context-dependent, only partly specified, or organized by different forms of opposition; and (2) logical complexity , where conclusions must be derived from contextual premises through valid reasoning steps. When these meanings are not handled carefully, an LLM may treat different kinds of opposition as the same kind of conflict, or may turn a conditional statement into an unconditional rule. As a result, the final answer may look logically well formed while still being semantically wrong [19]. Therefore, our research aims to improve LLM reasoning by organizing the meaning of propositions before applying logical deduction. Therefore, connecting semantic interpretation with logical deduction is crucial for reliable LLM reasoning. This requires a structured account of how propositions relate to one another before deduction begins. Without such semantic organization, later reasoning steps may be built on an incomplete or mistaken interpretation of the original problem. This study focuses on a typical LLM reasoning setting, where a model receives natural-language premises and a question, and produces a conclusion with or without external reasoning tools [20]. Existing methods can be grouped  
+
+> ⋆
+
+This paper is a substantially revised and extended version of a paper which first appeared at the 2026 Annual Meeting of the Association for Computational Linguistics (ACL 2026 Oral), under the title Semantic-Aware Logical Reasoning via a Semiotic Framework .
+
+> ∗
+
+Corresponding author 
+
+ikostar@hust.edu.cn (Y. Zhang); normanspark@hust.edu.cn (X. Zhang); skyesong@hust.edu.cn (Z. Song) 
+
+> ORCID
+
+(s): 0009-0001-3412-9262 (Y. Zhang); 0009-0006-6651-2027 (Z. Song) 
+
+> 1
+
+Yunyao Zhang and Xinglang Zhang contributed equally to this work. 
+
+Zhang et al.: Preprint submitted to Elsevier Page 1 of 19 arXiv:2607.21933v1 [cs.AI] 24 Jul 2026 Hexagonal Semantic Reasoning for LLMs (1) Linear Reasoning      
+
+> (LR)
+> (2) Aggregative Reasoning
+> (AR)
+> (3) Symbolic Reasoning
+> (SR)
+> (4) Semiotic Reasoning
+> (SeR )
+> Input
+> (Premise, Question)
+> Step 1 / Thought
+> Step 2 / Thought
+> Step n / Thought
+
+# ·· · 
+
+> Output
+> (Answers)
+> Output
+> (Answers)
+> Output
+> (Answers)
+> Output
+> (Answers)
+> Input
+> (Premise, Question)
+> Input
+> (Premise, Question)
+> Input
+> (Premise, Question)
+> Path 1
+> Thought
+> Path 2
+> Thought
+> Path n
+> Thought
+
+# ·· ·
+
+# ·· · ·· · ·· ·               
+
+> Aggregation/Voting/Selection
+> Step -by -step Multi -path aggregation Neuro -symbolic integration Semantic organization
+> LLM  + FOL
+> Step 1/
+> Translation
+> Step 2 /
+> Deduction
+> Step 3 /
+> Verification
+> O
+> U
+> Y
+> AE
+> I
+> Step 1 / Semantic organization
+> Step 2 / Logical Deduction
+> Step 3 / Consistency Verification
+
+Figure 1: Comparison of representative LLM reasoning paradigms. (1) Linear Reasoning (LR) follows a single reasoning chain, (2) Aggregative Reasoning (AR) aggregates multiple paths, and (3) Symbolic Reasoning (SR) couples LLMs with symbolic modules. (4) Semiotic Reasoning (SeR) , instantiated by HexLogicAgent , organizes proposition meanings through semiotic structures before deduction and verification. 
+
+into three categories: (1) Linear Reasoning (LR) methods, such as Naive Prompting and Chain-of-Thought (CoT) prompting [21], which elicit step-by-step reasoning; (2) Aggregative Reasoning (AR) approaches [22–26], which combine multiple reasoning paths; and (3) Symbolic Reasoning (SR) frameworks [27–31], which couple LLMs with formal translation, symbolic deduction, or verification. Although effective, these methods mainly improve the reasoning process after propositions have been interpreted. They give limited attention to how proposition meanings should be organized before deduction, often assuming clean predicates, stable meanings, and unambiguous contexts. As a result, abstraction, conflicting stances, existential commitments, and partial compatibility remain underrepresented. This gap motivates our central question: is there a complete semantic structure that can organize proposition meanings before deduction and support more reliable LLM reasoning? To answer this question, we build on the study of semantic opposition in semiotics and logic. Greimas’ semiotic square [32, 33] offers a classical starting point by organizing meaning through structured oppositions. Our previous LogicAgent framework [34] follows this idea and uses the semiotic square to guide multi-perspective reasoning. However, its four-part structure still leaves some proposition relations underrepresented. In this work, our answer is given in Proposition 2, which shows that the logical hexagon [35, 36] provides a more complete structure for semantic-aware logical reasoning [37]. Our main contributions are as follows: 
+
+• We generalize LogicAgent from the semiotic square to the logical hexagon, enabling complete semantic organization before logical deduction. This extension improves semantic interpretation from 13% to 100% on representative semantic understanding cases and translates into consistent gains of +2 .66 , +2 .74 , and +2 .41 
+
+average accuracy points across three frontier LLM backbones. 
+
+• We formalize the logical hexagon in the context of semantic-aware LLM reasoning through formal definitions of semantic relations, semantic completeness, and reasoning reliability. Our theoretical and empirical analyses further reveal that incomplete semantic representations, rather than deductive inference itself, are a major source of logical reasoning failures in LLMs, while explicitly modeling complete semantic opposition substantially delays reasoning degradation under increasing logical complexity. This work is an extended version of our ACL 2026 main conference paper, selected for an oral presentation [34]. Compared with the conference version, this article provides a formalization of the logical hexagon, formal analysis, full implementation details, and additional experiments. The rest of the paper is organized as follows. Section 2 introduces 
+
+Zhang et al.: Preprint submitted to Elsevier Page 2 of 19 Hexagonal Semantic Reasoning for LLMs 
+
+the preliminaries and problem formulation. Section 3 presents the methodology, including the logical hexagon and HexLogicAgent. Section 4 presents the experiments and analysis. Section 5 reviews related work. Finally, Section 6 concludes the paper and outlines future research directions. 
+
+## 2. Preliminaries 
+
+We formalize semiotic reasoning in first-order logic (FOL) (§ 2.1), instantiate Greimas’ semiotic square under FOL semantics (§ 2.2), and show that the four-position structure underrepresents existential and compatibility relations (Prop. 1). This motivates the logical hexagon (§ 2.3) as a more complete structure for organizing proposition meanings. 
+
+2.1. First-Order Logic 
+
+We use FOL to represent the logical form of natural-language (NL) propositions. Let 𝑥 denote an individual variable, 𝑀 (𝑥 ) a subject predicate, and 𝑊 (𝑥 ) a property predicate. Universal and existential propositions are written as 
+
+∀𝑥 (𝑀 (𝑥 ) → 𝑊 (𝑥 )), ∃𝑥 (𝑀 (𝑥 ) ∧ 𝑊 (𝑥 )). (1) The first formula states that every object satisfying 𝑀 also satisfies 𝑊 , while the second states that at least one object satisfies both 𝑀 and 𝑊 . Since universal implications may become vacuously true when the subject class is empty, we explicitly assume existential import, i.e., ∃𝑥 𝑀 (𝑥 ), whenever opposition relations are analyzed. S1 
+
+¬S2 ¬S1 
+
+S2 
+
+Greimas ’ Semiotic Square 
+
+> Contradictory
+> Contrary
+> Implication
+
+S1 
+
+¬S2 ¬S1 
+
+S2 
+
+格雷马斯语义方阵  
+
+> 矛盾
+> 对立
+> 蕴含
+> O
+> U
+> Y
+> AE
+> I
+
+Greimas ’ Semiotic Square  
+
+> A
+> IO
+> E
+> Contradictory
+> Contrary
+> Subaltern
+> Subcontrary
+
+Logical Hexagon Extended to                 
+
+> 𝐼 =¬𝐸 ,𝑂 =¬𝐴
+> 𝑈 =𝐴 ∨𝐸 ,𝑌 =𝐼 ∧𝑂
+> Figure 2: Comparison between the semiotic square and the logical hexagon. The semiotic square captures contrary, contradictory, and subaltern relations, while the logical hexagon extends it with existential and mixed-state positions. This enables HexLogicAgent to model subcontrary relations, distinguish local counterexamples from global negation, and represent partial proposition satisfaction.
+
+2.2. Greimas’ Semiotic Square and Its Limitation 
+
+Natural-language reasoning often involves more than binary truth evaluation. A proposition may have a direct denial, a contrary stance, and weaker or stronger variants. Greimas’ semiotic square [32, 33] provides a classical way to organize such semantic relations. Starting from a pair of contrary terms, the square introduces the negation of each term and forms a four-position structure. This structure organizes proposition meanings through three basic relations: (1) contrariety , where two terms cannot both hold but may both fail to hold; (2) contradiction , where one term directly negates the other; and (3) implication or complementarity , where one position is semantically connected to another through a dependency relation. To connect this structure with FOL, consider the following four propositions: 
+
+𝐴 ∶= ∀ 𝑥 (𝑀 (𝑥 ) → 𝑊 (𝑥 )), 𝑂 ≡ ¬𝐴 ∶= ∃ 𝑥 (𝑀 (𝑥 ) ∧ ¬ 𝑊 (𝑥 )), (2) 
+
+𝐸 ∶= ∀ 𝑥 (𝑀 (𝑥 ) → ¬𝑊 (𝑥 )), 𝐼 ≡ ¬𝐸 ∶= ∃ 𝑥 (𝑀 (𝑥 ) ∧ 𝑊 (𝑥 )). (3) In this instantiation, 𝐴 and 𝐸 serve as the initial contrary terms: 𝐴 states that all 𝑀 -objects satisfy 𝑊 , whereas 𝐸 
+
+states that all 𝑀 -objects satisfy ¬𝑊 . The other two positions are generated by negating these contrary terms: 𝑂 is   
+
+> Zhang et al.: Preprint submitted to Elsevier Page 3 of 19 Hexagonal Semantic Reasoning for LLMs
+
+the contradiction of 𝐴 , and 𝐼 is the contradiction of 𝐸 . Contrariety holds between 𝐴 and 𝐸 when the subject class is non-empty, i.e., when ∃𝑥 𝑀 (𝑥 ) holds, since the two universal claims cannot both be true in that case but can both be false. The implication or complementarity relation is existentially conditioned: with existential import, 𝐴 supports 𝐼 ,and 𝐸 supports 𝑂 .This FOL instantiation shows both the usefulness and the limitation of the four-position square. It organizes universal contraries and their contradictory negations, but it does not make existential commitment itself an explicit semantic position. Nor does it represent composite meanings such as the coexistence of 𝐼 and 𝑂 , which is needed to distinguish universal uniformity from partial compatibility. 
+
+Proposition 1 (Existential Limitation and Incompleteness of Greimas’ Square under FOL Semantics). Let a square-based structure be instantiated by the four propositions 𝐴, 𝐸, 𝐼, 𝑂 defined above. Then: 1. the existential propositions 𝐼 and 𝑂 do not form a contrary pair under ordinary FOL semantics; they can be jointly true, and they can be jointly false only when the subject class is empty; 2. the four-position structure is incomplete for semiotic reasoning, because it does not represent the composite meanings 𝐴 ∨ 𝐸 and 𝐼 ∧ 𝑂 as explicit semantic positions. 
+
+PROOF . Claim 1. 𝐼 and 𝑂 are not contraries because they can be jointly true. For instance, in a model with two objects 
+
+𝑎, 𝑏 such that 𝑀 (𝑎 ) ∧ 𝑊 (𝑎 ) and 𝑀 (𝑏 ) ∧ ¬ 𝑊 (𝑏 ), both 𝐼 = ∃ 𝑥 (𝑀 (𝑥 ) ∧ 𝑊 (𝑥 )) and 𝑂 = ∃ 𝑥 (𝑀 (𝑥 ) ∧ ¬ 𝑊 (𝑥 )) hold. Since contraries cannot both be true, 𝐼 and 𝑂 do not form a contrary pair. Their joint falsity arises only from an empty subject class: 
+
+¬𝐼 ∧ ¬ 𝑂 ≡ ∀𝑥 (𝑀 (𝑥 ) → ¬𝑊 (𝑥 )) ∧ ∀ 𝑥 (𝑀 (𝑥 ) → 𝑊 (𝑥 )) 
+
+≡ ∀𝑥 ¬𝑀 (𝑥 ). (4) Thus, making 𝐼 and 𝑂 both false depends on the absence of 𝑀 -objects, not on a genuine contrary relation between the two existential propositions. 
+
+Claim 2. The composite meanings 𝐼 ∧ 𝑂 and 𝐴 ∨ 𝐸 are not reducible to any single node in 𝐴, 𝐸, 𝐼, 𝑂 . The formula 
+
+𝐼 ∧ 𝑂 ≡ ∃𝑥 (𝑀 (𝑥 ) ∧ 𝑊 (𝑥 )) ∧ ∃ 𝑦 (𝑀 (𝑦 ) ∧ ¬ 𝑊 (𝑦 )) 
+
+expresses a mixed subject class. It is stronger than either 𝐼 or 𝑂 alone and is incompatible with both 𝐴 and 𝐸 .Conversely, 
+
+𝐴 ∨ 𝐸 ≡ ∀𝑥 (𝑀 (𝑥 ) → 𝑊 (𝑥 )) ∨ ∀ 𝑥 (𝑀 (𝑥 ) → ¬𝑊 (𝑥 )) 
+
+expresses a uniform subject class. It is weaker than either 𝐴 or 𝐸 alone, but it excludes mixed cases where both 𝐼 
+
+and 𝑂 hold. Hence neither 𝐼 ∧ 𝑂 nor 𝐴 ∨ 𝐸 is equivalent to any single proposition among 𝐴, 𝐸, 𝐼, 𝑂 . Therefore, the four-position square does not encode these composite meanings as explicit semantic positions. 
+
+2.3. Logical Hexagon Theory 
+
+The logical hexagon extends the four square positions 𝐴, 𝐸, 𝐼, 𝑂 by adding two composite positions: 
+
+𝑌 ∶= 𝐼 ∧ 𝑂 ≡ ∃𝑥 (𝑀 (𝑥 ) ∧ 𝑊 (𝑥 )) ∧ ∃ 𝑦 (𝑀 (𝑦 ) ∧ ¬ 𝑊 (𝑦 )), (5) 
+
+𝑈 ∶= 𝐴 ∨ 𝐸 ≡ ∀𝑥 (𝑀 (𝑥 ) → 𝑊 (𝑥 )) ∨ ∀ 𝑥 (𝑀 (𝑥 ) → ¬𝑊 (𝑥 )). (6) Here, 𝑌 represents a mixed subject class, where both existential alternatives are realized, while 𝑈 represents a uniform subject class, where one of the two universal alternatives holds. Under the normalized subject–property tuple ⟨𝑥, 𝑀, 𝑊 ⟩, the six positions 𝐴, 𝐸, 𝐼, 𝑂, 𝑈 , 𝑌 form a complete hexagonal closure: 𝐴 and 𝐸 capture universal alternatives, 𝐼 and 𝑂 capture existential alternatives, and 𝑈 , 𝑌 make the uniform and mixed compositions explicit as first-class semantic positions. 
+
+Proposition 2 (Hexagonal Completion under FOL Semantics). Let 𝐴, 𝐸, 𝐼, 𝑂 be the four propositions defined above, and assume existential import over the subject class, i.e., ∃𝑥 𝑀 (𝑥 ). Together with 𝑌 ∶= 𝐼 ∧ 𝑂 and 𝑈 ∶= 𝐴 ∨ 𝐸 ,the six propositions {𝐴, 𝐸, 𝐼, 𝑂, 𝑈 , 𝑌 } form a logical hexagon with the following four relations:   
+
+> Zhang et al.: Preprint submitted to Elsevier Page 4 of 19 Hexagonal Semantic Reasoning for LLMs
+
+1. Contrariety: 𝐴, 𝐸, 𝑌 are pairwise contraries; 2. Subcontrariety: 𝑈 , 𝐼, 𝑂 are pairwise subcontraries; 3. Contradiction: 𝐴 contradicts 𝑂 , 𝐸 contradicts 𝐼 , and 𝑈 contradicts 𝑌 ;4. Subalternation: 𝐴 ⇒ 𝐼 , 𝐸 ⇒ 𝑂 , 𝐴 ⇒ 𝑈 , 𝐸 ⇒ 𝑈 , 𝑌 ⇒ 𝐼 , and 𝑌 ⇒ 𝑂 .
+
+PROOF . (1) Contrariety. The propositions 𝐴 and 𝐸 cannot both be true under existential import, since a non-empty subject class cannot be uniformly 𝑊 and uniformly ¬𝑊 at the same time. The proposition 𝐴 is also incompatible with 
+
+𝑌 , because 𝑌 = 𝐼 ∧ 𝑂 entails 𝑂 , and 𝑂 ≡ ¬𝐴 . Similarly, 𝐸 is incompatible with 𝑌 , because 𝑌 = 𝐼 ∧ 𝑂 entails 𝐼 , and 
+
+𝐼 ≡ ¬𝐸 . Thus, 𝐴, 𝐸, 𝑌 are pairwise contraries. 
+
+(2) Subcontrariety. Under existential import and classical bivalence, 𝐼 and 𝑂 cannot both be false, because every existing 𝑀 -object must satisfy either 𝑊 or ¬𝑊 . Moreover, if 𝑈 is false, then 
+
+¬𝑈 ≡ ¬( 𝐴 ∨ 𝐸 ) ≡ ¬𝐴 ∧ ¬ 𝐸 ≡ 𝑂 ∧ 𝐼 ≡ 𝑌 . 
+
+Hence 𝑈 cannot be false together with either 𝐼 or 𝑂 , since ¬𝑈 entails both 𝐼 and 𝑂 . Therefore, 𝑈 , 𝐼, 𝑂 are pairwise subcontraries. 
+
+(3) Contradiction. By standard FOL equivalence, ¬𝐴 ≡ 𝑂 and ¬𝐸 ≡ 𝐼 . Hence 𝐴 contradicts 𝑂 , and 𝐸 contradicts 
+
+𝐼 . From the equivalence above, ¬𝑈 ≡ 𝑌 , so 𝑈 contradicts 𝑌 .
+
+(4) Subalternation. The implications follow directly from the definitions. Under existential import, 𝐴 ⇒ 𝐼 and 
+
+𝐸 ⇒ 𝑂 . Since 𝑈 = 𝐴 ∨ 𝐸 , we have 𝐴 ⇒ 𝑈 and 𝐸 ⇒ 𝑈 . Since 𝑌 = 𝐼 ∧ 𝑂 , we have 𝑌 ⇒ 𝐼 and 𝑌 ⇒ 𝑂 .
+
+## 3. Methodology 
+
+We extend the original LogicAgent framework into a hexagon-guided reasoning framework, termed Hexagon-guided LogicAgent (HexLogicAgent ). HexLogicAgent keeps the three-stage design of LogicAgent, but replaces the four-position semiotic square with a six-position logical hexagon. As shown in Figure 3, HexLogicAgent consists of three stages: (1) Hexagonal Semantic Structuring , (2) Logical Reasoning , and (3) Hexagon-guided Reflective Verification . The first stage organizes a target proposition into six semantically related positions, the second stage performs deduction for each relevant position, and the third stage verifies the resulting judgments according to the opposition relations encoded in the logical hexagon. 
+
+3.1. Task Definition 
+
+Given a set of natural-language premises 𝑃 = { 𝑝 1, 𝑝 2, … , 𝑝 𝑛 } and a target proposition 𝑄 , the task is to determine the truth status of 𝑄 with respect to 𝑃 . The answer space is defined as  = { True , False , Unknown }. Here, True indicates that 𝑄 can be derived from 𝑃 , False indicates that the contradiction of 𝑄 can be derived from 𝑃 , and Unknown 
+
+indicates that neither 𝑄 nor its contradiction can be conclusively derived. 1
+
+3.2. Hexagonal Semantic Structuring Stage 
+
+Natural-language propositions are often semantically compressed: a single surface statement may leave its quantificational scope, polarity, existential import, and counterexample space implicit. If deduction starts directly from such an under-specified proposition, the reasoning process may prematurely commit to one semantic interpretation. To mitigate this issue, Hex first maps the target proposition 𝑄 into a logical hexagon before performing deduction. 
+
+Predicate Identification. Given a target proposition 𝑄 , the system first identifies its normalized subject–property structure. We define the basic elements as follows: 
+
+• Individual variable 𝑥 . The variable 𝑥 ranges over the relevant domain of discourse and denotes the object currently being evaluated. 
+
+• Subject predicate 𝑀 (𝑥 ). The predicate 𝑀 (𝑥 ) specifies the subject class under discussion. Depending on the proposition, it may denote entities, concepts, reified actions, or event instances, e.g., 𝑆𝑡𝑢𝑑𝑒𝑛𝑡 (𝑥 ), 𝐴𝑛𝑖𝑚𝑎𝑙 (𝑥 ),
+
+𝐴𝑐𝑡𝑖𝑜𝑛 (𝑥 ), or 𝐸𝑣𝑒𝑛𝑡 (𝑥 ).    
+
+> 1ProntoQA is restricted to the classical two-valued setting ( True /False ), whereas RepublicQA, ProofWriter, FOLIO, and ProverQA additionally include Unknown to handle indeterminate cases.
+> Zhang et al.: Preprint submitted to Elsevier Page 5 of 19
+
+Hexagonal Semantic Reasoning for LLMs 1
+
+Raw Input                                         
+
+> Premise: 𝑃 ={𝑝 !,𝑝 ",…,𝑝 #}
+> Question: 𝑄
+> Hexagonal Semantic Structuring
+> 1. Predicate Identification
+> Extract variable 𝑥 , s ubject
+> 𝑀 𝑥 ,property 𝑊 𝑥 from 𝑄
+> 𝒯 𝑄 =𝑥 ,𝑀 ,𝑊
+> 2. Hexagonal Construction
+> ℋ𝑄 ={𝐴 ,𝐸 ,𝐼 ,𝑂 ,𝑈 ,𝑌 }
+> O
+> U
+> Y
+> AE
+> I
+> 3. Anchor Identification
+> 𝜌 𝑄 ∈ℋ𝑄
+
+2 Logical Reasoning 3 Reflective Verification                                                                                                                                                        
+
+> Premise: 𝑃 ={𝑝 !,𝑝 ",…,𝑝 #}
+> Target: 𝜌 𝑄 ,¬𝜌 𝑄
+> 1. Translator
+> 2. Planner
+> 3. Solver
+> NL: 𝑃 ={𝑝 !,𝑝 ",…,𝑝 #}→
+> FOL: Γ$={Γ$!,Γ$",…,Γ$%}
+> Step 1: Identify the Goal
+> ······
+> Step n: Conclude the Plan
+> Goal: 𝒢 𝒬 ={𝐺 ',𝐺 ¬'}
+> prove 𝜌 𝑄 ,¬𝜌 𝑄
+> Step 1: Identify the Goal
+> ······
+> Final answer: {True/false/Unknown}
+> Target: 𝜌 𝑄 Target: ¬𝜌 𝑄
+> Verdict :𝑣 (𝜌 (𝑄 ))
+> Trace: 𝜏𝜌
+> Verdict :𝑣 (¬𝜌 (𝑄 ))
+> Trace: 𝜏 ¬𝜌
+> 1. Direct Resolution
+> 2. Quick Reflection
+> 3. Deep Reflection
+> If 𝜌 𝑄 ＝True /𝐹𝑎𝑙𝑠𝑒 ∧¬𝜌 𝑄 ＝𝑈𝑛𝑘𝑛𝑜𝑤𝑛
+> Type1: 𝜌 𝑄 correct →𝜌 𝑄
+> Type2: 𝜌 𝑄 incorrect →𝑈𝑛𝑘𝑛𝑜𝑤𝑛
+> If 𝜌 𝑄 ＝𝑈𝑛𝑘𝑛𝑜𝑤𝑛 ∧¬𝜌 𝑄 ＝True /𝐹𝑎𝑙𝑠𝑒
+> Type3: 𝜌 𝑄 correct →𝑈𝑛𝑘𝑛𝑜𝑤𝑛
+> Type4: ¬𝜌 𝑄 correct →¬(¬𝜌 (𝑄 ))
+> If 𝜌 𝑄 ∈𝒞 𝒸 𝓉 𝓇 ={𝐴 ,𝐸 ,𝑌 }
+> •∃ℎ∈𝒞 𝒸 𝓉 𝓇 ∖{𝜌 𝑄 },𝑣 ℎ=True →𝐹𝑎𝑙𝑠𝑒
+> •Otherwise →𝑈𝑛𝑘𝑛𝑜𝑤𝑛
+> If 𝜌 𝑄 ∈𝒞 𝑠𝑢𝑏𝑐𝑡𝑟 ={𝑈 ,𝐼 ,𝑂 }
+> •∃ℎ∈𝒞 𝑠𝑢𝑏𝑐𝑡 𝑟 ⧵𝜌 𝑄 ,𝑣 ℎ=𝐹𝑎𝑙𝑠𝑒 →𝑇𝑟𝑢𝑒
+> •∃ℎ∈𝐴𝑑𝑗 (𝜌 (𝑄 )),𝑣 (ℎ)=𝑇𝑟𝑢𝑒 →𝑇𝑟𝑢𝑒
+> •Otherwise →𝑈𝑛𝑘𝑛𝑜𝑤𝑛
+> 𝜌 𝑄 is
+> False
+
+Figure 3: Overview of HexLogicAgent. The agent processes a natural-language reasoning problem through three stages. (1) Hexagonal Semantic Structuring extracts the predicate tuple  (𝑄 ) = ⟨𝑥, 𝑀, 𝑊 ⟩, constructs the logical hexagon 
+
+(𝑄 ) = { 𝐴, 𝐸, 𝐼, 𝑂, 𝑈 , 𝑌 }, and maps the target proposition to its anchor position 𝜌 (𝑄 ). (2) Logical Reasoning formalizes the premises into Γ𝑃 , plans two proof goals for 𝜌 (𝑄 ) and ¬𝜌 (𝑄 ), and derives preliminary verdicts with reasoning traces. (3) Reflective Verification applies direct resolution, quick reflection, and deep reflection over the hexagonal relations to produce the final answer in {True , False , Unknown }.
+
+• Property condition 𝑊 (𝑥 ). The predicate 𝑊 (𝑥 ) specifies the property or condition attributed to objects satisfying 𝑀 (𝑥 ). It may correspond to states, attributes, normative meanings, evaluative meanings, or relation-based conditions, e.g., 𝐷𝑖𝑙𝑖𝑔𝑒𝑛𝑡 (𝑥 ), 𝐻𝑎𝑟𝑚𝑓 𝑢𝑙 (𝑥 ), 𝐽 𝑢𝑠𝑡 (𝑥 ), 𝐺𝑜𝑜𝑑 (𝑥 ), or ∃𝑦 (𝑇 𝑒𝑎𝑐ℎ𝑒𝑟 (𝑦 ) ∧ 𝐻𝑒𝑙𝑝 (𝑥, 𝑦 )) .This step yields a normalized predicate tuple: 
+
+ (𝑄 ) = ⟨𝑥, 𝑀, 𝑊 ⟩. (7) For example, propositions such as ‘all 𝑀 are 𝑊 ” and ‘some 𝑀 are 𝑊 ” share the same predicate tuple: 𝑀 (𝑥 ) identifies the subject class, while 𝑊 (𝑥 ) identifies the asserted property or condition. They differ only in quantificational force, corresponding to universal commitment and existential realization, respectively. Thus, predicate identification abstracts away surface variation and provides the basis for constructing the hexagonal semantic space generated by ⟨𝑥, 𝑀, 𝑊 ⟩.
+
+Hexagonal Position Construction. Following Proposition 2, HexLogic instantiates the logical hexagon using the normalized tuple  (𝑄 ) = ⟨𝑥, 𝑀, 𝑊 ⟩. The four basic positions are 𝐴, 𝐸, 𝐼, 𝑂 , and the two composite positions are 
+
+𝑈 = 𝐴 ∨ 𝐸 and 𝑌 = 𝐼 ∧ 𝑂 . Together, they form the hexagonal semantic space of the target proposition: 
+
+(𝑄 ) = { 𝐴, 𝐸, 𝐼, 𝑂, 𝑈 , 𝑌 }. (8) In this space, 𝐴 and 𝐸 capture universal alternatives, 𝐼 and 𝑂 capture existential alternatives, and 𝑈 , 𝑌 make uniform and mixed compositions explicit. 
+
+Anchor Position Identification. Since the target proposition 𝑄 may instantiate different logical forms, HexLogicAgent identifies its anchor position within the constructed hexagonal space. The anchor mapping is defined as 𝜌 (𝑄 ) ∈ (𝑄 ),where 𝜌 (𝑄 ) denotes the hexagonal position that best matches the normalized meaning of 𝑄 . A universal affirmative proposition is mapped to 𝐴 , a universal negative proposition to 𝐸 , an existential affirmative proposition to 𝐼 , and an existential negative proposition to 𝑂 . If 𝑄 expresses a uniform alternative, it is mapped to 𝑈 ; if it expresses a mixed condition where both alternatives are realized, it is mapped to 𝑌 .
+
+Zhang et al.: Preprint submitted to Elsevier Page 6 of 19 Hexagonal Semantic Reasoning for LLMs 
+
+Hexagonal Constraint Registration. After constructing (𝑄 ) and identifying 𝜌 (𝑄 ), HexLogicAgent does not treat the six positions as independent propositions. Instead, it registers the hexagonal relations established in Proposition 2 as structural constraints for downstream reasoning and verification. Since the positions are instantiated from the same normalized tuple ⟨𝑥, 𝑀, 𝑊 ⟩, their contradiction, contrariety, subcontrariety, and subalternation relations are guaranteed by construction under existential import. Formally, the registered constraint set is defined as 
+
+hex = { con , ctr , subctr , subalt} , (9) where  ∗ con ,  ∗ ctr ,  ∗ subctr , and  ∗ subalt correspond to contradiction, contrariety, subcontrariety, and subalternation constraints, respectively. These constraints are not used to re-prove the hexagon itself; rather, they are used later to check whether the solver’s position-level judgments are mutually coherent. 
+
+3.3. Logical Reasoning Stage 
+
+This stage performs logical deduction over the hexagonal semantic space constructed in the previous stage. It consists of three functional units: a Translator for formalization, a Planner for goal and path construction, and a Solver 
+
+for deductive reasoning. 
+
+Translator. The translator converts the natural-language premises 𝑃 = { 𝑝 1, 𝑝 2, … , 𝑝 𝑛 } into a formal premise set Γ𝑃 
+
+in FOL. Unlike the predicate identification step, which normalizes the target proposition 𝑄 into the subject–property tuple  (𝑄 ) = ⟨𝑥, 𝑀, 𝑊 ⟩, the translator focuses on formalizing the contextual premises that support or refute the hexagonal positions. The translated premises provide the logical context under which 𝐴, 𝐸, 𝐼, 𝑂, 𝑈 , 𝑌 are evaluated. Each translated premise is checked by a grammar-based validator to ensure syntactic well-formedness. The resulting formal premise set Γ𝑃 is then passed to the planner and solver for downstream deduction. 
+
+Planner. The planner constructs reasoning blueprints for the anchor position 𝜌 (𝑄 ) and its negation ¬𝜌 (𝑄 ). Here, 𝜌 (𝑄 )
+
+denotes the hexagonal position that matches the normalized meaning of the target proposition, while ¬𝜌 (𝑄 ) serves as its contradictory target. The planner therefore builds two primary reasoning goals: 
+
+𝑄 = { 𝐺 𝜌 , 𝐺 ¬𝜌 }, (10) where 𝐺 𝜌 aims to prove 𝜌 (𝑄 ) and 𝐺 ¬𝜌 aims to prove ¬𝜌 (𝑄 ) under the formal premise set Γ𝑃 . For each goal, the planner selects relevant premises from Γ𝑃 and identifies applicable reasoning rules, such as Modus Ponens, Modus Tollens, conjunction, contradiction, and existential instantiation. The remaining hexagonal relations are reserved for the reflective verification stage, where they are used for consistency checking and conflict resolution. 
+
+Solver. The solver executes the two reasoning goals generated by the planner under the formal premise set Γ𝑃 , namely the anchor proposition 𝜌 (𝑄 ) and its negation ¬𝜌 (𝑄 ). For each target 𝑔 ∈ { 𝜌 (𝑄 ), ¬𝜌 (𝑄 )} , it applies logical reasoning rules and returns a verdict 𝑣 (𝑔 ) ∈ True , False , Unknown. Here, True means that 𝑔 can be derived from Γ𝑃 , False 
+
+means that 𝑔 is refuted, and Unknown means that neither side is conclusive. The solver outputs 
+
+𝑉 𝑄 = {( 𝜌 (𝑄 ), 𝑣 (𝜌 (𝑄 )) , 𝜏 𝜌 ), (¬ 𝜌 (𝑄 ), 𝑣 (¬ 𝜌 (𝑄 )) , 𝜏 ¬𝜌 )} , (11) where 𝜏 𝜌 and 𝜏 ¬𝜌 are the corresponding reasoning traces. These results are then passed to the reflective verification stage for consistency checking and conflict resolution. 
+
+3.4. Reflective Verification Stage 
+
+This stage determines the final judgment through a three-stage reflective process that ensures coherence among the answers of the semiotic hexagon’s six propositions. 
+
+Direct Resolution. When 𝜌 (𝑄 ) and ¬𝜌 (𝑄 ) produce complementary verdicts, such as 𝜌 (𝑄 ) = True and ¬𝜌 (𝑄 ) = False, the stage directly adopts the answer of 𝜌 (𝑄 ) as final. This scenario reflects a decisive and non-contradictory judgment grounded in the strict contradiction relationship between the proposition and its contradictory. The decision rule for this resolution strategy is defined as follows: 
+
+𝜌 (𝑄 ) = 
+
+{ True , if 𝜌 (𝑄 ) = True ∧ ¬ 𝜌 (𝑄 ) = False False , if 𝜌 (𝑄 ) = False ∧ ¬ 𝜌 (𝑄 ) = True Unknown , if 𝜌 (𝑄 ), ¬𝜌 (𝑄 ) = Unknown 
+
+(12) If the two verdicts are not complementary, the system enters reflective verification and uses the hexagonal constraint set hex to identify possible inconsistency, missing evidence, or semantic conflict.   
+
+> Zhang et al.: Preprint submitted to Elsevier Page 7 of 19
+
+Hexagonal Semantic Reasoning for LLMs 
+
+Quick Reflection. When either 𝜌 (𝑄 ) or its contradictory ¬𝜌 (𝑄 ) is labeled as Unknown , the stage triggers quick reflection by forwarding the two verdicts and their reasoning traces into a large language model. This design leverages the observation that verification is often easier than generation: given candidate reasoning traces, an LLM can more reliably inspect consistency, identify missing steps, and detect unsupported conclusions than generate a correct proof from scratch [38, 39]. The model then analyzes the internal consistency of the deduction process and returns a refined judgment based on four reflection types: 
+
+Case 1: If 𝜌 (𝑄 ) = True/False ∧ ¬ 𝜌 (𝑄 ) = Unknown 
+
+• Type 1: 𝜌 (𝑄 ) correct ⇒ Return 𝜌 (𝑄 ) = 𝜌 (𝑄 )
+
+• Type 2: 𝜌 (𝑄 ) incorrect ⇒ Return 𝜌 (𝑄 ) = Unknown 
+
+Case 2: If 𝜌 (𝑄 ) = Unknown ∧ ¬ 𝜌 (𝑄 ) = True/False 
+
+• Type 3: 𝜌 (𝑄 ) correct ⇒ Return 𝜌 (𝑄 ) = Unknown 
+
+• Type 4: ¬𝜌 (𝑄 ) correct ⇒ Return 𝜌 (𝑄 ) = ¬(¬ 𝜌 (𝑄 )) 
+
+Deep Reflection. When both 𝜌 (𝑄 ) and its contradictory ¬𝜌 (𝑄 ) receive the same decisive verdict, e.g., both True or both False , the system enters Deep Reflection mode. This mode expands verification from the two conflicting verdicts to the semantic neighborhood of the anchor position under the hexagonal constraint set hex . We divide the six positions into the contrary group ctr = { 𝐴, 𝐸, 𝑌 }, where no two positions should be jointly true, and the subcontrary group 
+
+subctr = { 𝑈 , 𝐼, 𝑂 }, where no two positions should be jointly false. For subalternation-based checking, the adjacent superordinate positions of 𝑈 , 𝐼, 𝑂 are defined as Adj( 𝑈 ) = { 𝐴, 𝐸 }, Adj( 𝐼 ) = { 𝐴, 𝑌 }, Adj( 𝑂 ) = { 𝐸, 𝑌 }. The final reflective rule is defined as follows: 
+
+Case 1: 𝜌 (𝑄 ) ∈ ctr 
+
+• ∃ℎ ∈ ctr ⧵ {𝜌 (𝑄 )} , 𝑣 (ℎ) = True ⇒ Return 𝜌 (𝑄 ) = False. (% by Rule (1) in Prop. 2: contrariety.) 
+
+• Otherwise ⇒ Return 𝜌 (𝑄 ) = Unknown. 
+
+Case 2: 𝜌 (𝑄 ) ∈ subctr 
+
+• ∃ℎ ∈ subctr ⧵ {𝜌 (𝑄 )} , 𝑣 (ℎ) = False ⇒ Return 𝜌 (𝑄 ) = True. (% by Rule (2) in Prop. 2: subcontrariety.) 
+
+• ∃ℎ ∈ Adj( 𝜌 (𝑄 )) , 𝑣 (ℎ) = True ⇒ Return 𝜌 (𝑄 ) = True. (% by Rule (4) in Prop. 2: subalternation.) 
+
+• Otherwise ⇒ Return 𝜌 (𝑄 ) = Unknown. 
+
+Overall, the reflective verification stage provides a layered mechanism for converting local verifier outputs into a coherent final judgment. Direct resolution handles clear contradiction-based cases, quick reflection re-examines asym-metric uncertainty through reasoning-trace inspection, and deep reflection resolves decisive conflicts by consulting the broader hexagonal neighborhood. In this way, the system does not treat each proposition in isolation, but enforces consistency among contradiction, contrary, subcontrary, and subalternation relations before returning True , False , or 
+
+Unknown .
+
+Algorithm 1 Hexagon-Guided Reflective Reasoning 
+
+Require: Natural-language premises 𝑃 = { 𝑝 1, … , 𝑝 𝑛 } and target proposition 𝑄 
+
+Ensure: Final answer 𝑎 ∈ { True , False , Unknown } 
+
+> 1:
+
+// Stage 1: Hexagonal semantic structuring  
+
+> 2:
+
+( (𝑄 ), (𝑄 ), 𝜌 (𝑄 ), hex ) ← HEX STRUCT (𝑄 ) ⊳ predicate tuple, hexagon, anchor, constraints  
+
+> 3:
+
+// Stage 2: Logical reasoning  
+
+> 4:
+
+Γ𝑃 ← TRANSLATOR (𝑃 ) ⊳ formalize premises  
+
+> 5:
+
+𝑄 ← PLANNER (Γ 𝑃 , 𝜌 (𝑄 ), ¬𝜌 (𝑄 )) ⊳ construct anchor and contradictory goals  
+
+> 6:
+
+for all 𝑔 ∈ 𝑄 do  
+
+> 7:
+
+(𝑣 (𝑔 ), 𝜏 𝑔 ) ← SOLVER (Γ 𝑃 , 𝑔 ) ⊳ obtain verdict and trace  
+
+> 8:
+
+𝑉 𝑄 ← {( 𝜌 (𝑄 ), 𝑣 (𝜌 (𝑄 )) , 𝜏 𝜌 ), (¬ 𝜌 (𝑄 ), 𝑣 (¬ 𝜌 (𝑄 )) , 𝜏 ¬𝜌 )}  
+
+> 9:
+
+// Stage 3: Hexagon-guided reflective verification  
+
+> 10:
+
+𝜔 ← SELECT MODE (𝑉 𝑄 ) ⊳ 𝜔 ∈ { DIRECT , QUICK , DEEP } 
+
+> 11:
+
+𝑎 ← REFLECT VERIFY (𝑉 𝑄 , (𝑄 ), hex , 𝜔 ) ⊳ apply the selected verification strategy  
+
+> 12:
+
+return 𝑎 
+
+Zhang et al.: Preprint submitted to Elsevier Page 8 of 19 Hexagonal Semantic Reasoning for LLMs 
+
+## 4. Experiments 
+
+In this section, we conduct extensive experiments to evaluate the effectiveness, robustness, and internal design of HexLogicAgent. Specifically, we aim to answer the following research questions (RQs): 
+
+• RQ1: How does HexLogicAgent perform against representative linear, aggregate, symbolic, and semiotic reasoning methods across different benchmarks and backbone models? (Section 4.2) 
+
+• RQ2: How does each component of HexLogicAgent contribute to the final performance, including hexagonal semantic structuring and reflective verification? (Section 4.3) 
+
+• RQ3: How does HexLogicAgent behave under increasing logical complexity, and what insights emerge from error and efficiency analyses? (Section 4.4) In the remainder of this section, we first introduce the experimental settings, including benchmark datasets, backbone models, and baseline methods(Section 4.1). Finally, we provide qualitative case studies to illustrate how hexagonal semantic structuring and reflective verification affect the reasoning process (Appendix). 
+
+4.1. Experimental Settings 
+
+Benchmarks. We evaluate HexLogicAgent on five logical reasoning benchmarks: FOLIO [40], ProntoQA [41], ProofWriter [42], ProverQA [43], and RepublicQA [34]. These benchmarks cover three complementary scenarios: 1. Controlled deductive reasoning. ProntoQA evaluates multi-hop deduction over synthetic proof chains, while ProofWriter tests rule-based reasoning under open-world assumptions. 2. Natural-language formal reasoning. FOLIO provides expert-curated natural-language problems annotated with first-order logic, and ProverQA further combines natural-language statements, FOL translations, and theorem-prover-verified reasoning chains. 3. Abstract philosophical reasoning. RepublicQA, introduced in the LogicAgent setting, evaluates reasoning over abstract philosophical propositions derived from classical argumentative contexts, testing semantic ambiguity, normative concepts, and counterargument structures. 
+
+Backbone models. We conduct experiments on three backbone models to examine whether HexLogicAgent generalizes across different model families and deployment settings: 1. Closed-source model: DeepSeek-V3.2, used as a representative closed-source backbone. 2. Open-source model: Qwen3-30B-A3B, used as a representative open-source backbone. 3. LogicAgent-aligned backbone: Qwen2.5-32B, used to maintain consistency with the original LogicAgent evaluation, while also forming an intra-family comparison with Qwen3-30B-A3B. This setup allows us to test both general cross-model effectiveness and direct improvement over the previous semiotic-square-based framework under the same backbone. 
+
+Baselines. We compare HexLogicAgent with nine representative baselines, characterized by four reasoning features: linear reasoning (LR), aggregative reasoning (AR), symbolic reasoning (SR), and semiotic reasoning (SeR). 1. Linear reasoning: Direct prompting and Chain-of-Thought (CoT) [21], which follow a single reasoning path. 2. Aggregative Reasoning: Tree-of-Thought (ToT) [24], Cumulative Reasoning (CR) [23], and DetermLR [25], which explore or refine multiple reasoning paths. 3. Symbolic reasoning: Logic-LM [31], SymbCoT [29], and Aristotle [28], which introduce symbolic represen-tations, logical decomposition, or formal constraints. 4. Semiotic reasoning: LogicAgent [34], the most directly related baseline, which organizes proposition meanings through the semiotic square.   
+
+> Zhang et al.: Preprint submitted to Elsevier Page 9 of 19
+
+Hexagonal Semantic Reasoning for LLMs 
+
+Table 1 Main results across three backbone models. Each method is characterized by four reasoning features: linear reasoning (LR), aggregative reasoning (AR), symbolic reasoning (SR), and semiotic reasoning (SeR). AVG. is the macro-average accuracy over the five benchmarks. Bold values mark the best results; green underlines mark the second-best results; red-shaded rows mark HexLogicAgent and △ shows its absolute gain over the second-best result.                                                                                                                                                                                                                                                                                                                                             
+
+> Model Feature Method Benchmarks ↑AVG. ↑
+> LR AR SR SeR FOLIO ProntoQA Proof Writer ProverQA RepublicQA
+> DeepSeek V3.2
+> ✓×××Direct 64.22 60.60 47.83 58.00 74.00 60.93
+> ✓×××CoT 79.90 100.00 87.17 60.20 66.50 78.75
+> ✓✓××ToT 83.82 98.40 91.67 64.60 64.00 80.50
+> ✓✓××CR 83.35 99.00 90.50 63.80 64.00 80.13
+> ✓✓××DetermLR 82.84 100.00 92.00 66.60 66.00 81.49
+> ✓×✓×LogicLM 69.12 98.80 77.00 74.20 37.50 71.32
+> ✓×✓×SymbCoT 85.29 97.71 91.33 76.00 36.00 77.27
+> ✓✓✓×Aristotle 79.41 100.00 90.50 74.50 77.50 84.38
+> ✓✓✓✓LogicAgent 85.78 100.00 92.16 76.40 79.50 86.77
+> ✓✓✓✓HexLogicAgent 87.74 100.00 95.50 82.40 81.50 89.43
+> △+1.96 +0.00 +3.34 +6.00 +2.00 +2.66
+> Qwen2.5 32B
+> ✓×××Direct 60.29 82.00 59.17 39.60 68.50 61.91
+> ✓×××CoT 68.42 92.40 63.17 47.20 72.00 68.64
+> ✓✓××ToT 72.54 82.50 64.40 53.40 56.00 65.77
+> ✓✓××CR 71.57 80.20 58.33 51.80 57.00 63.78
+> ✓✓××DetermLR 71.56 96.50 65.33 63.90 71.50 73.76
+> ✓×✓×LogicLM 71.93 91.89 63.82 62.40 70.00 72.01
+> ✓×✓×SymbCoT 70.59 95.20 64.67 57.20 76.00 72.73
+> ✓✓✓×Aristotle 68.68 94.80 63.23 56.20 74.50 71.48
+> ✓✓✓✓LogicAgent 79.90 97.80 71.95 68.60 82.50 80.15
+> ✓✓✓✓HexLogicAgent 81.37 99.20 75.00 72.40 86.50 82.89
+> △+1.47 +1.40 +3.05 +3.80 +4.00 +2.74
+> Qwen3 30B-A3B
+> ✓×××Direct 59.80 82.00 54.83 49.00 71.00 63.33
+> ✓×××CoT 76.96 100.00 78.50 56.60 65.50 75.51
+> ✓✓××ToT 64.71 100.00 82.00 70.50 75.00 78.44
+> ✓✓××CR 67.15 100.00 84.00 71.80 74.50 79.49
+> ✓✓××DetermLR 79.90 100.00 84.17 68.20 72.50 80.95
+> ✓×✓×LogicLM 62.25 48.60 32.50 56.80 39.00 47.83
+> ✓×✓×SymbCoT 82.27 100.00 81.00 73.75 35.00 74.40
+> ✓✓✓×Aristotle 77.45 100.00 79.50 72.80 74.50 80.85
+> ✓✓✓✓LogicAgent 81.86 100.00 84.17 75.20 76.50 83.55
+> ✓✓✓✓HexLogicAgent 85.29 100.00 89.00 77.00 78.50 85.96
+> △+3.02 +0.00 +4.83 +1.80 +2.00 +2.41
+
+4.2. Main Results 
+
+To answer RQ1, Table 1 reports the main results across five benchmarks and three backbone models. 
+
+(1) HexLogicAgent consistently achieves the best overall performance across all backbone models. This shows that the proposed hexagon-guided reasoning framework is effective beyond a single model family or deployment setting. Specifically, HexLogicAgent obtains the highest macro-average accuracy on DeepSeek-V3.2, Qwen2.5-32B, and Qwen3-30B-A3B. Compared with the strongest baseline in each setting, it improves the average accuracy by 
+
++2 .66 , +2 .74 , and +2 .41 points, respectively. These results indicate that the logical hexagon provides a stable semantic structure for improving LLM reasoning across different backbones. 
+
+(2) HexLogicAgent consistently improves over LogicAgent by enhancing semantic understanding. This comparison is particularly important because LogicAgent already organizes proposition meanings using the semiotic square. Across all frontier LLMs, extending the semantic structure to the logical hexagon consistently improves reasoning accuracy, increasing the average accuracy from 86 .77 to 89 .43 on DeepSeek-V3.2, from 80 .15 to 82 .89 
+
+on Qwen2.5-32B, and from 83 .55 to 85 .96 on Qwen3-30B-A3B. Figure 4 further explains this improvement. While 
+
+Zhang et al.: Preprint submitted to Elsevier Page 10 of 19 Hexagonal Semantic Reasoning for LLMs 0% 20% 40% 60% 80% 100% 
+
+> Success rate
+> Others
+> LogicAgent
+> HexLogicAgent
+
+Semantic Understanding Success Rate 
+
+> 0%
+> 13%
+> 100%
+
+Figure 4: Semantic-understanding success rate. The figure compares the semantic-understanding success rates of the other reasoning methods, LogicAgent, and HexLogicAgent, which achieve 0% , 13% , and 100% , respectively. 
+
+conventional reasoning methods fail to correctly capture the semantic relations in these cases ( 0% success rate), and LogicAgent succeeds on only 13% of them, HexLogicAgent achieves a 100% success rate. These results indicate that introducing existential and mixed-state positions enables substantially more accurate semantic interpretation, which translates into more reliable downstream logical reasoning. 
+
+(3) HexLogicAgent shows strong advantages on both structured reasoning and semantically abstract tasks. 
+
+On benchmarks requiring formal or multi-step logical verification, the gains are particularly clear. For example, on DeepSeek-V3.2, HexLogicAgent improves over LogicAgent by +6 .00 points on ProverQA and +3 .34 points on ProofWriter. On Qwen3-30B-A3B, it improves by +4 .83 points on ProofWriter and +3 .02 points on FOLIO. At the same time, HexLogicAgent remains competitive on semantically abstract reasoning tasks such as RepublicQA, which involve philosophical propositions and counterargument structures. Across all three backbones, it achieves the best performance on RepublicQA, improving over the second-best result by +2 .00 , +4 .00 , and +2 .00 points, respectively. These results indicate that the logical hexagon enables both more complete verification in structured reasoning and better handling of abstract proposition meanings. 
+
+Overall, the results answer RQ1 affirmatively. HexLogicAgent consistently outperforms all representative baselines across benchmarks and backbone models. Moreover, its consistent gains over LogicAgent demonstrate the advantage of the logical hexagon over the semiotic square, validating the effectiveness of hexagon-guided semantic structuring and reflective verification. 0 5 10 15 20           
+
+> |ΔAVG|
+> w/o FOL
+> w/o NL
+> w/o Plan
+> 13.83
+> 19.97
+> 1.50
+> 14.98
+> 12.78
+> 1.65
+> (a) Mechanism-level
+> 0246810 12
+> |ΔAVG|
+> w/o Hexagon
+> w/o ¬ ρ(Q)
+> w/o U,Y
+> w/o ¤ctr /¤subctr
+> 8.02
+> 6.92
+> 2.41
+> 3.94
+> 13.16
+> 11.40
+> 2.66
+> 6.26
+> (b) Hexagonal structure
+> FOLIO
+> ProntoQA
+> ProofWriter
+> ProverQA
+> RepublicQA
+> −6
+> −4
+> −2
+> 0
+> 2
+> 4
+> Δ accuracy
+> -5.39
+> +0.00
+> -2.50
+> +2.40
+> -2.00
+> -6.37
+> +0.00
+> -3.00
+> +4.10
+> -3.00
+> (c) Dataset-wise effect of w/o Plan
+> Qwen3-30B-A3B DeepSeek-V3.2
+
+Figure 5: Ablation drops and dataset-wise effect of planning removal. Panels (a) and (b) show absolute average accuracy drops under mechanism-level and hexagonal-structure ablations, where larger |ΔAVG | indicates a more important component. Panel (c) shows the dataset-wise accuracy change after removing the planning module, highlighting that w/o Plan improves ProverQA but hurts most other benchmarks. Zhang et al.: Preprint submitted to Elsevier Page 11 of 19 Hexagonal Semantic Reasoning for LLMs 
+
+Model Setting FOLIO ProntoQA Proof Writer ProverQA RepublicQA AVG ΔAVG 
+
+Qwen3 30B-A3B 
+
+HexLogicAgent 85.29 100.00 89.00 77.00 78.50 85.96 —w/o FOL 72.55 84.20 82.67 49.20 72.00 72.12 -13.83 w/o NL 68.63 75.60 82.33 63.40 40.00 65.99 -19.97 
+
+w/o Plan 79.90 100.00 86.50 79.40 76.50 84.46 -1.50 
+
+DeepSeek V3.2 
+
+HexLogicAgent 87.74 100.00 95.50 82.40 81.50 89.43 —w/o FOL 69.12 90.40 85.33 58.40 69.00 74.45 -14.98 
+
+w/o NL 73.53 96.20 93.33 80.20 40.00 76.65 -12.78 w/o Plan 81.37 100.00 92.50 86.50 78.50 87.77 -1.65 
+
+Table 2 Mechanism-level ablation results. FOL, NL, and Plan denote formal-logic reasoning, natural-language semantic reasoning, and planning, respectively. AVG denotes the macro-average accuracy over the five benchmarks, and ΔAVG reports the absolute change from the full HexLogicAgent. Bold red marks the largest average drop within each model block. 
+
+Model Setting FOLIO ProntoQA Proof Writer ProverQA RepublicQA AVG ΔAVG 
+
+Qwen3 30B-A3B 
+
+HexLogicAgent 85.29 100.00 89.00 77.00 78.50 85.96 —w/o Hexagon 66.67 99.80 84.33 68.40 70.50 77.94 -8.02 
+
+w/o ¬𝜌 (𝑄 ) 72.22 100.00 83.11 69.87 70.00 79.04 -6.92 w/o 𝑈 , 𝑌 81.86 100.00 84.17 75.20 76.50 83.55 -2.41 w/o ctr ∕subctr 78.92 99.80 83.17 75.20 73.00 82.02 -3.94 
+
+DeepSeek V3.2 
+
+HexLogicAgent 87.74 100.00 95.50 82.40 81.50 89.43 —w/o Hexagon 65.19 98.40 90.17 63.07 64.50 76.27 -13.16 
+
+w/o ¬𝜌 (𝑄 ) 62.25 98.60 90.67 67.60 71.00 78.02 -11.40 w/o 𝑈 , 𝑌 85.78 100.00 92.16 76.40 79.50 86.77 -2.66 w/o ctr ∕subctr 70.10 99.80 92.83 81.60 71.50 83.17 -6.26 
+
+Table 3 Hexagonal-structure ablation results. ¬𝜌 (𝑄 ) denotes the contradictory anchor target; 𝑈 ∕𝑌 denotes the two composite hexagonal positions; ctr = { 𝐴, 𝐸, 𝑌 } and subctr = { 𝑈 , 𝐼, 𝑂 } denote the contrary and subcontrary groups. AVG denotes the macro-average accuracy over the five benchmarks, and ΔAVG reports the absolute change from the full HexLogicAgent. 
+
+Bold red marks the largest average drop within each model block. 
+
+4.3. Ablation Study 
+
+To answer RQ2, we conduct ablation studies to examine the contribution of each component in HexLogicAgent, as shown in Tables 2–3 and Figure 5. 
+
+(1) FOL and NL provide complementary grounding. Removing either FOL or NL leads to large drops on both backbones, showing that HexLogicAgent depends on both symbolic constraints and natural-language semantic associations. On Qwen3-30B-A3B, removing NL causes the largest degradation, with AVG dropping from 85 .96 to 
+
+65 .99 (−19 .97 ), while removing FOL reduces AVG to 72 .12 (−13 .83 ). On DeepSeek-V3.2, removing FOL has the strongest effect, decreasing AVG from 89 .43 to 74 .45 (−14 .98 ), while removing NL drops AVG to 76 .65 (−12 .78 ). These results indicate that FOL improves inferential precision through formal constraints, whereas NL preserves contextual and semantic cues that are not fully captured by symbolic forms alone. 
+
+(2) The logical hexagon is not merely an additional structure, but a useful relational constraint system. 
+
+Removing the full hexagonal structure causes substantial performance degradation on both backbones: 85 .96 → 77 .94 
+
+(−8 .02 ) on Qwen3-30B-A3B and 89 .43 → 76 .27 (−13 .16 ) on DeepSeek-V3.2. Among the fine-grained components, removing the contradictory anchor target ¬𝜌 (𝑄 ) also causes large drops, from 85 .96 to 79 .04 (−6 .92 ) and from 89 .43 to 
+
+78 .02 (−11 .40 ), respectively. The contrary/subcontrary group constraints further contribute to performance, especially on DeepSeek-V3.2, where removing ctr ∕subctr reduces AVG from 89 .43 to 83 .17 (−6 .26 ). By contrast, removing the 
+
+Zhang et al.: Preprint submitted to Elsevier Page 12 of 19 Hexagonal Semantic Reasoning for LLMs 
+
+composite positions 𝑈 , 𝑌 leads to smaller drops ( −2 .41 and −2 .66 ). This suggests that the main benefit of the logical hexagon comes from enforcing structured semantic relations, especially contradiction, contrariety, and subcontrariety. 
+
+(3) Planning is useful overall, but can be harmful for already long reasoning chains. Removing Plan slightly improves ProverQA on both backbones: 77 .00 → 79 .40 (+2 .40 ) on Qwen3-30B-A3B and 82 .40 → 86 .50 (+4 .10 ) on DeepSeek-V3.2. However, this gain is not consistent across datasets. Excluding ProverQA, removing Plan reduces the average accuracy from 88 .20 to 85 .73 (−2 .47 ) on Qwen3-30B-A3B and from 91 .19 to 88 .09 (−3 .09 ) on DeepSeek-V3.2. This indicates that planning generally helps organize heterogeneous reasoning tasks, but when the original reasoning chain is already long, an extra planning stage may further extend the trajectory, increasing context burden, memory pressure, and error accumulation. Therefore, planning should be adaptive rather than fixed for long-chain logical reasoning. 
+
+Overall, the ablation results answer RQ2 affirmatively. Both the mechanism-level components and the hexagonal semantic structure contribute to the final performance. FOL and NL offer complementary grounding signals, while the logical hexagon improves reasoning by enforcing structured relations among contradiction, contrariety, subcontrariety, and composite positions.                      
+
+>  
+>  
+> 
+>  
+> 
+>  
+> 
+>  
+> 
+>  
+> 
+> 
+>  
+> 
+> 
+> 
+>  
+>  
+> 
+> 
+>  
+> 
+>  
+> 
+>  
+> 
+>  
+> 
+>  
+> 
+> 
+>  
+> 
+> 
+> 
+> (a ) Deepseek -V3.2 (c) Qwen3 -30B -A3B
+>  
+>  
+> 
+>  
+> 
+>  
+> 
+>  
+> 
+>  
+> 
+>  
+> 
+> 
+> 
+> 
+>  
+> 
+> 
+> 
+> (b) Qwen2.5 -32B -Instruct
+> (d) Qwen2.5 -7B -Instruct (e) Qwen3 -8B -Instruct
+>  
+>  
+>  
+> 
+>  
+> 
+>  
+> 
+>  
+> 
+>  
+> 
+> 
+>  
+> 
+> 
+> 
+>  
+>  
+> 
+> 
+> 
+>  
+> 
+>  
+> 
+>  
+> 
+>  
+> 
+>  
+> 
+> 
+> 
+> 
+>  
+> 
+> 
+> 
+>  
+>  
+> 
+> 
+> 
+>  
+> 
+>  
+> 
+>  
+> 
+>  
+> 
+>  
+> 
+> 
+> 
+> 
+>  
+> 
+> 
+> 
+>  
+>  
+>  
+> 
+>  
+> 
+>  
+> 
+>  
+> 
+>  
+> 
+> 
+>  
+> 
+> 
+> 
+
+Figure 6: Phase transition curves across LoCM. Panels (a)–(c) compare Direct prompting, CoT, and LogicAgent on DeepSeek-V3.2, Qwen2.5-32B-Instruct, and Qwen3-30B-A3B, respectively. Panels (d)–(e) compare LogicAgent with representative training-based methods on Qwen2.5-7B-Instruct and Qwen3-8B-Instruct. Each point represents the accuracy within a LoCM bin, and the insets enlarge representative local regions. 
+
+4.4. Analysis 
+
+To answer RQ3, we conduct three complementary analyses. (1) Phase-transition analysis examines model performance under increasing logical complexity (LOCM). (2) Error analysis characterizes common reasoning failures and investigates how the logical hexagon mitigates them. (3) Efficiency analysis evaluates the computational overhead of HexLogicAgent. 
+
+4.4.1. Phase-Transition Analysis 
+
+Inspired by the notion of logical phase transitions [44], we analyze how model performance changes with increasing LoCM, as shown in Figure 6. 
+
+(1) HexLogicAgent delays logical phase transitions on frontier LLMs. As logical complexity increases, all methods eventually experience performance degradation. However, Direct prompting and CoT undergo abrupt accuracy drops once LoCM exceeds the medium-complexity region, whereas HexLogicAgent maintains substantially higher accuracy in the high-complexity regime. Notably, neither advanced prompting strategies nor representative training-based methods fundamentally delay the transition point. In contrast, HexLogicAgent consistently postpones 
+
+Zhang et al.: Preprint submitted to Elsevier Page 13 of 19 Hexagonal Semantic Reasoning for LLMs 
+
+the onset of logical phase transitions, suggesting that explicitly guiding reasoning with logical hexagon structures is an effective mechanism for improving robustness under increasing logical complexity .
+
+(2) The benefits of HexLogicAgent become more pronounced as logical complexity increases. The performance gap between HexLogicAgent and conventional prompting methods is relatively modest on low-complexity problems but widens progressively in high-complexity regions. This suggests that explicitly modeling richer logical relations is particularly beneficial for solving structurally complex reasoning tasks, where conventional prompting begins to fail. 
+
+(3) The gains diminish on smaller models. On Qwen2.5-7B and Qwen3-8B, HexLogicAgent no longer consis-tently outperforms training-based baselines. This is likely because the framework relies on strong instruction following, reliable FOL translation, multi-stage reasoning, and long-context processing, all of which remain challenging for smaller models. (a) Overall Failure Composition (b) Dataset -wise Failure Composition (c) Failure Transition Matrix     
+
+> Proportion
+> Gold Label
+> Predicted Label
+>  $""$&$ $"($ #' 
+> 
+> 
+> 
+> 
+> 
+> 
+> $"$$"$%
+> &%&)% '$#$" 
+> %"!!!%'!*
+> ($"!!
+> "  *
+> Dataset
+
+Figure 7: Failure-mode analysis of HexLogicAgent. Panel (a) shows the overall composition of erroneous predictions, categorized as reasoning insufficiency, overconfidence, and logical fallacy. Panel (b) reports the normalized failure composition for each benchmark, revealing that reasoning insufficiency dominates across datasets, while overconfidence is particularly prominent on ProofWriter and RepublicQA. Panel (c) presents the directional transitions from gold labels to predicted labels, with percentages computed over all erroneous predictions. 
+
+4.4.2. Error Analysis 
+
+We further analyze the erroneous predictions produced by HexLogicAgent with DeepSeek-V3.2, as summarized in Figure 7. The analysis covers all incorrect predictions across the five benchmarks and groups them into three categories: reasoning insufficiency, overconfidence, and logical fallacy. 
+
+(1) Reasoning insufficiency is the dominant failure mode. As shown in Figure 7(a), reasoning insufficiency accounts for 64 .4% of all errors. These errors occur when the gold label is either True or False , but the model predicts Unknown . Overconfidence accounts for another 24 .5% , whereas direct logical fallacies between True and False 
+
+constitute only 11 .2% . Thus, most errors are associated with the treatment of uncertainty rather than direct reversals of logical polarity. 
+
+(2) The distribution of failure modes varies across benchmarks. Figure 7(b) reports the normalized error composition on the four three-way classification benchmarks. Reasoning insufficiency accounts for 67 .4% of the FOLIO errors, 59 .3% of the ProofWriter errors, 75 .0% of the ProverQA errors, and 59 .5% of the RepublicQA errors. Overconfidence is particularly visible on ProofWriter and RepublicQA, where it represents 40 .7% and 36 .0% of the errors, respectively. ProntoQA is omitted from this panel because it adopts a binary-label setting. 
+
+(3) Errors are asymmetric with respect to uncertainty. The transition matrix in Figure 7(c) shows that the largest individual transition is True → Unknown , accounting for 36 .0% of all errors, followed by False → Unknown 
+
+at 28 .4% . In the opposite direction, Unknown → False and Unknown → True account for 15 .5% and 9.0% ,respectively. Direct polarity reversals are comparatively balanced and infrequent: True → False accounts for 5.8% ,while False → True accounts for 5.4% . These results identify uncertainty calibration as the main remaining source of error in HexLogicAgent. 
+
+Zhang et al.: Preprint submitted to Elsevier Page 14 of 19 Hexagonal Semantic Reasoning for LLMs                                    
+
+> #-.),(#.+(1'*%/')#.
+> 2 +#$(#!/'1##-'$'!/'+*
+> 2 +#3%+*
+> 2 +(*
+> 2 +
+> 2 +
+>  4
+>  4 
+>  4
+>  4
+>  4 
+> 0(()+"#( .
+> 0*/')#&*%#0*"#-+),+*#*/ (/'+*.
+> "+,'*&",)&.%(#-%'",&)#, &"
+> %+" -
+> )
+> 1')
+> +%,-)-&"
+> )#% #"(-
+> "0)#% #"(-
+> )#% 
+> "-"+'
+> 
+> )
+> 
+> 
+> 
+>  
+> 
+> 
+> 
+> 
+> 
+> 
+> )'*+%,)(/%-$0%,-%(#"-$)!,
+> '(#&"(%"+!$ )!#("% ("
+> 
+> 
+> 
+> 
+> 
+> 
+> 
+> 
+> 
+> +'  *'.
+> !')
+> %
+> '!()%)"
+> % ! $)
+> -% ! $)
+> *'./!!$.')%,$  
+> (a) Comparison with Existing Methods (b) Runtime under Component Ablations (c) Accuracy -Efficiency Pareto
+> w/o FOL
+> w/o NL
+> w/o Plan
+> w/o Hexagon
+> w/o Reflection
+> Accuracy
+> Per -sample solving time (s) Per -sample solving time (s) Per -sample solving time (s)
+
+Figure 8: Time-efficiency analysis of HexLogicAgent. Panel (a) compares the per-sample solving time of HexLogicAgent and existing reasoning methods on a logarithmic scale. Panel (b) reports the per-sample solving time under different component ablations, with percentages denoting runtime changes relative to the full model. Panel (c) presents the accuracy– efficiency Pareto diagram on Qwen3-30B-A3B, where the dashed red line indicates the Pareto frontier. 
+
+4.4.3. Efficiency Analysis 
+
+We evaluate the computational efficiency of HexLogicAgent through comparisons with existing reasoning methods, component-level runtime ablations, and accuracy–efficiency analysis, as shown in Figure 8. 
+
+(1) HexLogicAgent has a moderate runtime among structured reasoning methods. Figure 8(a) reports the average per-sample solving time on a logarithmic scale. HexLogicAgent requires 94 .27 seconds per sample, compared with 89 .02 seconds for LogicAgent and 96 .64 seconds for LogicLM. It is slower than lightweight prompting methods such as Direct ( 0.92 seconds), CoT ( 2.54 seconds), SymbCoT ( 32 .81 seconds), and Aristotle ( 65 .26 seconds), but faster than DetermLR ( 162 .51 seconds), CR ( 282 .42 seconds), and ToT ( 316 .62 seconds). 
+
+(2) Reflective verification and hexagonal structuring account for most of the additional runtime. As shown in Figure 8(b), removing reflective verification reduces the per-sample solving time from 94 .27 to 52 .42 seconds, corresponding to a 44 .4% reduction. Removing the hexagonal structuring stage reduces the runtime to 57 .46 seconds (39 .0% ), while removing planning reduces it to 73 .63 seconds ( 21 .9% ). By comparison, removing natural-language reasoning or formal-logic reasoning results in smaller reductions, producing runtimes of 88 .00 and 88 .54 seconds, respectively. This decomposition shows that most of the computational overhead comes from constructing and verifying multiple semantic positions rather than from either reasoning representation alone. 
+
+(3) HexLogicAgent remains on the accuracy–efficiency Pareto frontier. Figure 8(c) compares average accuracy and per-sample solving time on Qwen3-30B-A3B. The Pareto frontier consists of Direct, CoT, Aristotle, LogicAgent, and HexLogicAgent. Compared with LogicAgent, HexLogicAgent improves the average accuracy from 83 .55% to 
+
+85 .96% , while increasing the per-sample runtime from 89 .02 to 94 .27 seconds. This corresponds to a 2.41 -point accuracy gain with an additional 5.25 seconds per sample, indicating that the hexagonal extension provides an improved accuracy–efficiency trade-off over the semiotic-square baseline. 
+
+Overall, the results answer RQ3 affirmatively. HexLogicAgent is more robust under increasing logical complex-ity, with larger gains on challenging reasoning tasks. Remaining errors are dominated by uncertainty calibration rather than logical polarity reversal, while the additional runtime mainly comes from hexagon construction and reflective verification. Despite this overhead, HexLogicAgent remains on the Pareto frontier, achieving a favorable accuracy– efficiency trade-off. 
+
+## 5. Related Work 
+
+LLM-Based Logical Reasoning. Existing LLM [45–47] reasoning methods can be broadly categorized into three paradigms: Linear Reasoning (LR), Aggregative Reasoning (AR), and Symbolic Reasoning (SR). LR methods improve reasoning by generating a single chain of intermediate natural-language steps, including Chain-of-Thought (CoT) [21], self-consistency [48], and subsequent prompting strategies [49–54]. AR methods further enhance robustness by exploring or aggregating multiple reasoning trajectories, such as Tree-of-Thought [24], CLOVER [22], DetermLR [25], cumulative reasoning [23], and other planning-based frameworks [26, 55]. SR methods integrate LLMs with formal representations, symbolic deduction, or theorem proving, including NL-to-FOL translation [27, 30], LogicLM [31], SymbCoT [29], and Aristotle [28]. Despite their differences, LR, AR, and SR all primarily improve logical deduction 
+
+Zhang et al.: Preprint submitted to Elsevier Page 15 of 19 Hexagonal Semantic Reasoning for LLMs 
+
+after proposition meanings have been interpreted, providing limited support for explicitly organizing semantic relations before reasoning. 
+
+Semantic Organization for Logical Reasoning. Natural-language reasoning requires not only valid logical deduction but also appropriate semantic interpretation of propositions before deduction begins [18, 56]. Formal studies in semiotics and logic have long investigated semantic organization through structured relations among propositions. Greimas’ semiotic square [32, 33, 57] characterizes semantic opposition using contrary, contradictory, and subaltern relations, while the logical hexagon [35–37] further introduces existential and mixed-state relations to provide a more complete semantic structure. However, these semantic theories have rarely been incorporated into modern LLM reasoning systems. Our previous LogicAgent framework [34] introduced semiotic-square-guided reasoning, whereas this work extends it to the logical hexagon, enabling richer semantic organization and more reliable logical reasoning through hexagon-guided structuring and reflective verification. 
+
+Logical Reasoning Benchmarks. Logical reasoning benchmarks have evolved from synthetic rule-based datasets to increasingly realistic natural-language reasoning tasks. Early benchmarks, such as PrOntoQA [41] and ProofWriter [42], emphasize deductive reasoning in controlled environments with formally defined rules. Subsequent benchmarks, including FOLIO [40] and ProverQA [43], introduce richer natural-language scenarios and first-order logical representations. More recently, RepublicQA [34] further improves realism by incorporating semantically diverse, context-dependent, and abstract propositions, providing a more challenging evaluation of LLM reasoning. These benchmarks have substantially advanced the evaluation of logical reasoning. Our work is complementary to this line of research: rather than constructing new benchmarks, we investigate how richer semantic organization before deduction can improve reasoning performance across existing benchmarks. 
+
+## 6. Conclusion 
+
+In this work, we investigated semantic-aware logical reasoning for large language models. We presented HexLog-icAgent, a reasoning framework that extends the semiotic square to the logical hexagon by introducing existential and mixed-state semantics, enabling richer semantic organization before logical deduction. HexLogicAgent combines hexagon-guided semantic structuring with reflective verification to bridge semantic interpretation and logical reasoning within a unified framework. Extensive experiments on five logical reasoning benchmarks and multiple LLM backbones demonstrate consistent improvements over representative linear, aggregative, symbolic, and semiotic reasoning methods. Furthermore, our analyses show that HexLogicAgent improves semantic understanding, delays logical phase transitions under increasing logical complexity, and achieves a favorable accuracy–efficiency trade-off. Looking forward, an important direction is to integrate semantic organization with the emerging generation of thinking LLMs. Although recent reasoning models incorporate long-chain deliberation and self-reflection, their exploratory reasoning often incurs substantial token consumption and reasoning latency. We believe that explicitly organizing proposition meanings before deduction can provide more structured reasoning guidance, reducing unnec-essary exploration while improving reasoning reliability and efficiency. More broadly, we hope this work encourages further integration of formal semantic theories with LLM reasoning, leading to more reliable, interpretable, and efficient reasoning systems. 
+
+## CRediT authorship contribution statement 
+
+Yunyao Zhang: Writing – review & editing, Writing – original draft, Methodology, Conceptualization. Xinglang Zhang: Investigation, Validation, Writing – review & editing. Zeliang Chen: Writing – review & editing. Junqing Yu: Writing – review & editing. Zikai Song: Writing – review & editing, Supervision. 
+
+## Acknowledgments 
+
+This work is supported by the National Natural Science Foundation of China (Numbers 62272184 and 62402189), the China Postdoctoral Science Foundation (Numbers 2024M751012, 2025T180429, and GZC20230894), the Post-doctor Project of Hubei Province (Number 2024HBBHCXB014), the Natural Science Foundation of Hubei Province No.JCZRMS202600758, and Sponsored by CIPS-SMP-Zhipu Large Model Fund (CIPS-SMP20250306), The compu-tation is completed in the HPC Platform of Huazhong University of Science and Technology.   
+
+> Zhang et al.: Preprint submitted to Elsevier Page 16 of 19
+
+Hexagonal Semantic Reasoning for LLMs 
+
+## Appendix: Case Study 
+
+We use Socrates’ counterexample to Cephalus’ definition of justice in Plato’s Republic to illustrate how HexLog-icAgent distinguishes a local counterexample from a universal negation. 
+
+Context and Question 
+
+Returning borrowed money to its rightful owner under normal circumstances is an act of repaying a debt. Returning borrowed money restores rightful property and does not endanger innocent people. Any action satisfying these conditions is just. Returning a borrowed weapon is also a debt repayment. If its owner has become mentally unstable, returning the weapon enables harm to innocent people. Any action enabling harm to innocent people is not just. 
+
+Question Is the statement “All acts of repaying debts are just” correct? 
+
+Stage 1: Hexagonal Semantic Structuring 
+
+HexLogicAgent first normalizes the target proposition into the subject–property tuple  (𝑄 ) =
+
+⟨𝑥, 𝐷𝑒𝑏𝑡𝑅𝑒𝑝𝑎𝑦𝑚𝑒𝑛𝑡 (𝑥 ), 𝐽 𝑢𝑠𝑡 (𝑥 )⟩ and identifies its semantic anchor. 
+
+Position Logical form 
+
+𝐴 ∀𝑥 (𝐷𝑒𝑏𝑡𝑅𝑒𝑝𝑎𝑦𝑚𝑒𝑛𝑡 (𝑥 ) → 𝐽 𝑢𝑠𝑡 (𝑥 )) 
+
+𝐸 ∀𝑥 (𝐷𝑒𝑏𝑡𝑅𝑒𝑝𝑎𝑦𝑚𝑒𝑛𝑡 (𝑥 ) → ¬𝐽 𝑢𝑠𝑡 (𝑥 )) 
+
+𝐼 ∃𝑥 (𝐷𝑒𝑏𝑡𝑅𝑒𝑝𝑎𝑦𝑚𝑒𝑛𝑡 (𝑥 ) ∧ 𝐽 𝑢𝑠𝑡 (𝑥 )) 
+
+𝑂 ∃𝑥 (𝐷𝑒𝑏𝑡𝑅𝑒𝑝𝑎𝑦𝑚𝑒𝑛𝑡 (𝑥 ) ∧ ¬ 𝐽 𝑢𝑠𝑡 (𝑥 )) 
+
+𝑈 𝑈 = 𝐴 ∨ 𝐸 𝑌 𝑌 = 𝐼 ∧ 𝑂 
+
+The target statement is anchored at 𝜌 (𝑄 ) = 𝐴 , whose contradictory position is ¬𝜌 (𝑄 ) = 𝑂 .
+
+Stage 2: Logical Reasoning Premises. Let 𝑟 𝑚 denote the ordinary money-return action and 𝑟 𝑤 denote the weapon-return action. 1. 𝐷𝑒𝑏𝑡𝑅𝑒𝑝𝑎𝑦𝑚𝑒𝑛𝑡 (𝑟 𝑚 ).2. 𝑅𝑒𝑠𝑡𝑜𝑟𝑒𝑠𝑅𝑖𝑔ℎ𝑡𝑓 𝑢𝑙𝑃 𝑟𝑜𝑝𝑒𝑟𝑡𝑦 (𝑟 𝑚 ) and ¬𝐸𝑛𝑑𝑎𝑛𝑔𝑒𝑟𝑠𝐼𝑛𝑛𝑜𝑐𝑒𝑛𝑡𝑃 𝑒𝑜𝑝𝑙𝑒 (𝑟 𝑚 ).3. ∀𝑥 (( 𝑅𝑒𝑠𝑡𝑜𝑟𝑒𝑠𝑅𝑖𝑔ℎ𝑡𝑓 𝑢𝑙𝑃 𝑟𝑜𝑝𝑒𝑟𝑡𝑦 (𝑥 ) ∧ ¬ 𝐸𝑛𝑑𝑎𝑛𝑔𝑒𝑟𝑠𝐼𝑛𝑛𝑜𝑐𝑒𝑛𝑡𝑃 𝑒𝑜𝑝𝑙𝑒 (𝑥 )) → 𝐽 𝑢𝑠𝑡 (𝑥 )) .4. 𝐷𝑒𝑏𝑡𝑅𝑒𝑝𝑎𝑦𝑚𝑒𝑛𝑡 (𝑟 𝑤 ) and 𝑀𝑒𝑛𝑡𝑎𝑙𝑙𝑦𝑈 𝑛𝑠𝑡𝑎𝑏𝑙𝑒𝑂𝑤𝑛𝑒𝑟 (𝑟 𝑤 ).5. ∀𝑥 (𝑀𝑒𝑛𝑡𝑎𝑙𝑙𝑦𝑈 𝑛𝑠𝑡𝑎𝑏𝑙𝑒𝑂𝑤𝑛𝑒𝑟 (𝑥 ) → 𝐸𝑛𝑎𝑏𝑙𝑒𝑠𝐻𝑎𝑟𝑚𝑇 𝑜𝐼𝑛𝑛𝑜𝑐𝑒𝑛𝑡𝑃 𝑒𝑜𝑝𝑙𝑒 (𝑥 )) .6. ∀𝑥 (𝐸𝑛𝑎𝑏𝑙𝑒𝑠𝐻𝑎𝑟𝑚𝑇 𝑜𝐼𝑛𝑛𝑜𝑐𝑒𝑛𝑡𝑃 𝑒𝑜𝑝𝑙𝑒 (𝑥 ) → ¬𝐽 𝑢𝑠𝑡 (𝑥 )) .
+
+Ordinary repayment The premises derive 𝐽 𝑢𝑠𝑡 (𝑟 𝑚 ). Since 𝐷𝑒𝑏𝑡𝑅𝑒𝑝𝑎𝑦𝑚𝑒𝑛𝑡 (𝑟 𝑚 ) also holds, the existential affirma-tive position is supported: 𝐼 = True .
+
+Weapon repayment The owner’s mental instability entails 𝐸𝑛𝑎𝑏𝑙𝑒𝑠𝐻𝑎𝑟𝑚𝑇 𝑜𝐼𝑛𝑛𝑜𝑐𝑒𝑛𝑡𝑃 𝑒𝑜𝑝𝑙𝑒 (𝑟 𝑤 ), which yields 
+
+¬𝐽 𝑢𝑠𝑡 (𝑟 𝑤 ). Together with 𝐷𝑒𝑏𝑡𝑅𝑒𝑝𝑎𝑦𝑚𝑒𝑛𝑡 (𝑟 𝑤 ), the existential negative position is supported: 
+
+𝑂 = True .
+
+Stage 3: Hexagon-Guided Reflective Verification 
+
+Since both existential propositions are supported, 𝐼 = True and 𝑂 = True , the verifier derives the mixed state 
+
+𝑌 = 𝐼 ∧ 𝑂 = True , indicating that debt repayments form a mixed rather than uniform class. The target proposition is anchored at the universal affirmative position 𝐴 . According to the contrary constraint 
+
+ctr = { 𝐴, 𝐸, 𝑌 }, the mixed state rejects the universal affirmative, yielding 𝐴 = False . Meanwhile, because 𝐼 = True ,the universal negative proposition cannot hold, and thus 𝐸 = False .Therefore, the weapon-return example establishes only the local counterexample 𝑂 = ¬ 𝐴 , rather than the stronger global negative position 𝐸 . Accordingly, the final verdict is 
+
+False Figure 9: Case study illustrating how HexLogicAgent distinguishes a local counterexample from a universal negation. Zhang et al.: Preprint submitted to Elsevier Page 17 of 19 Hexagonal Semantic Reasoning for LLMs 
+
+## References 
+
+[1] Daya Guo, Dejian Yang, Haowei Zhang, et al. Deepseek-r1 incentivizes reasoning in llms through reinforcement learning. Nature , 645(8081): 633–638, 2025. [2] Aaron Hurst, Adam Lerer, Adam P Goucher, Adam Perelman, Aditya Ramesh, Aidan Clark, AJ Ostrow, Akila Welihinda, Alan Hayes, Alec Radford, et al. Gpt-4o system card. arXiv preprint arXiv:2410.21276 , 2024. [3] An Yang, Bowen Yu, Chengyuan Li, Dayiheng Liu, Fei Huang, Haoyan Huang, Jiandong Jiang, Jianhong Tu, Jianwei Zhang, Jingren Zhou, et al. Qwen2. 5-1m technical report. arXiv preprint arXiv:2501.15383 , 2025. [4] Mengting Wan, Tara Safavi, Sujay Kumar Jauhar, Yujin Kim, Scott Counts, Jennifer Neville, Siddharth Suri, Chirag Shah, Ryen W. White, Longqi Yang, Reid Andersen, Georg Buscher, Dhruv Joshi, and Nagu Rangan. Tnt-llm: Text mining at scale with large language models. In Proceedings of the 30th ACM SIGKDD Conference on Knowledge Discovery and Data Mining , KDD ’24, page 5836–5847, New York, NY, USA, 2024. Association for Computing Machinery. ISBN 9798400704901. doi: 10.1145/3637528.3671647. URL 
+
+https://doi.org/10.1145/3637528.3671647 .[5] Johannes Treutlein, Dami Choi, Jan Betley, Sam Marks, Cem Anil, Roger Grosse, and Owain Evans. Connecting the dots: Llms can infer and verbalize latent structure from disparate training data. In A. Globerson, L. Mackey, D. Belgrave, A. Fan, U. Paquet, J. Tomczak, and C. Zhang, editors, Advances in Neural Information Processing Systems , volume 37, pages 140667–140730. Curran Associates, Inc., 2024. doi: 10.52202/079017-4465. URL https://proceedings.neurips.cc/paper_files/paper/2024/file/ fe489a28a54583ee802b8e2955c024c2-Paper-Conference.pdf .[6] Jenny Kunz and Marco Kuhlmann. Properties and challenges of LLM-generated explanations. In Su Lin Blodgett, Amanda Cercas Curry, Sunipa Dev, Michael Madaio, Ani Nenkova, Diyi Yang, and Ziang Xiao, editors, Proceedings of the Third Workshop on Bridging Human– Computer Interaction and Natural Language Processing , pages 13–27, Mexico City, Mexico, June 2024. Association for Computational Linguistics. doi: 10.18653/v1/2024.hcinlp-1.2. URL https://aclanthology.org/2024.hcinlp-1.2/ .[7] Yingqiang Ge, Wenyue Hua, Kai Mei, jianchao ji, Juntao Tan, Shuyuan Xu, Zelong Li, and Yongfeng Zhang. Openagi: When llm meets domain experts. In A. Oh, T. Naumann, A. Globerson, K. Saenko, M. Hardt, and S. Levine, editors, Advances in Neural Information Processing Systems , volume 36, pages 5539–5568. Curran Associates, Inc., 2023. URL https://proceedings.neurips.cc/paper_files/paper/ 2023/file/1190733f217404edc8a7f4e15a57f301-Paper-Datasets_and_Benchmarks.pdf .[8] Weiqi Wang, Tianqing Fang, Chunyang Li, Haochen Shi, Wenxuan Ding, Baixuan Xu, Zhaowei Wang, Jiaxin Bai, Xin Liu, Cheng Jiayang, Chunkit Chan, and Yangqiu Song. CANDLE: Iterative conceptualization and instantiation distillation from large language models for commonsense reasoning. In Lun-Wei Ku, Andre Martins, and Vivek Srikumar, editors, Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 2351–2374, Bangkok, Thailand, August 2024. Association for Computational Linguistics. doi: 10.18653/v1/2024.acl-long.128. URL https://aclanthology.org/2024.acl-long.128/ .[9] Ke Wang, Houxing Ren, Aojun Zhou, Zimu Lu, Sichun Luo, Weikang Shi, Renrui Zhang, Linqi Song, Mingjie Zhan, and Hongsheng Li. Mathcoder: Seamless code integration in llms for enhanced mathematical reasoning. arXiv preprint arXiv:2310.03731 , 2023. [10] Ben Eisner, Yi Yang, Todor Davchev, Mel Vecerik, Jonathan Scholz, and David Held. Deep se (3)-equivariant geometric reasoning for precise placement tasks. arXiv preprint arXiv:2404.13478 , 2024. [11] Richard W Paul. Critical and reflective thinking: A philosophical perspective. In Dimensions of thinking and cognitive instruction , pages 445–494. Routledge, 2013. [12] Yunyao Zhang, Yihao Ai, Zuocheng Ying, Qirui Mi, Junqing Yu, Wei Yang, and Zikai Song. Coupling macro dynamics and micro states for long-horizon social simulation, 2026. [13] Yunyao Zhang, Zuocheng Ying, Xinglang Zhang, Junqing Yu, Peng Fang, Xu Chen, Wei Yang, and Zikai Song. Intervensim: Intervention-aware social network simulation for opinion dynamics, 2026. [14] Dali Wang, Yunyao Zhang, Junqing Yu, Yi-Ping Phoebe Chen, Chen Xu, and Zikai Song. Seeing further and wider: Joint spatio-temporal enlargement for micro-video popularity prediction, 2026. URL https://arxiv.org/abs/2604.20311 .[15] Yunyao Zhang, Zikai Song, Hang Zhou, Wenfeng Ren, Yi-Ping Phoebe Chen, Junqing Yu, and Wei Yang. 𝑔𝑎 − 𝑠 3: Comprehensive social network simulation with group agents. In Wanxiang Che, Joyce Nabende, Ekaterina Shutova, and Mohammad Taher Pilehvar, editors, Findings of the Association for Computational Linguistics: ACL 2025 , pages 8950–8970, Vienna, Austria, July 2025. Association for Computational Linguistics. ISBN 979-8-89176-256-5. doi: 10.18653/v1/2025.findings-acl.468. URL https://aclanthology.org/ 2025.findings-acl.468/ .[16] Changsen Yuan, Rui Lin, and Cunhan Guo. Reliable reasoning: Learning and inference based on the ability of large language models. 
+
+Applied Soft Computing , 190:114618, 2026. ISSN 1568-4946. doi: https://doi.org/10.1016/j.asoc.2026.114618. URL https://www. sciencedirect.com/science/article/pii/S1568494626000669 .[17] Edward Gibson. Linguistic complexity: Locality of syntactic dependencies. Cognition , 68(1):1–76, 1998. [18] David Tuggy. Ambiguity, polysemy, and vagueness. 1993. [19] Qingchuan Li, Jiatong Li, Zirui Liu, Mingyue Cheng, Yitong Zhou, Yuting Zeng, Qi Liu, and Tongxuan Liu. Are llms stable formal logic translators in logical reasoning across linguistically diversified texts? In Proceedings of the ACM Web Conference 2026 , WWW ’26, page 3633–3644, New York, NY, USA, 2026. Association for Computing Machinery. ISBN 9798400723070. doi: 10.1145/3774904.3792161. URL https://doi.org/10.1145/3774904.3792161 .[20] Peter Smith. An introduction to formal logic . Cambridge University Press, 2003. [21] Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Fei Xia, Ed Chi, Quoc V Le, Denny Zhou, et al. Chain-of-thought prompting elicits reasoning in large language models. Advances in neural information processing systems , 35:24824–24837, 2022. [22] Hyun Ryu, Gyeongman Kim, Hyemin S Lee, and Eunho Yang. Divide and translate: Compositional first-order logic translation and verification for complex logical reasoning. arXiv preprint arXiv:2410.08047 , 2024. [23] Yifan Zhang, Jingqin Yang, Yang Yuan, and Andrew Chi-Chih Yao. Cumulative reasoning with large language models. arXiv preprint arXiv:2308.04371 , 2023. 
+
+Zhang et al.: Preprint submitted to Elsevier Page 18 of 19 Hexagonal Semantic Reasoning for LLMs 
+
+[24] Shunyu Yao, Dian Yu, Jeffrey Zhao, Izhak Shafran, Tom Griffiths, Yuan Cao, and Karthik Narasimhan. Tree of thoughts: Deliberate problem solving with large language models. Advances in neural information processing systems , 36:11809–11822, 2023. [25] Hongda Sun, Weikai Xu, Wei Liu, Jian Luan, Bin Wang, Shuo Shang, Ji-Rong Wen, and Rui Yan. Determlr: Augmenting llm-based logical reasoning from indeterminacy to determinacy. In Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , pages 9828–9862, 2024. [26] Zi’ou Zheng, Christopher Malon, Martin Renqiang Min, and Xiaodan Zhu. Exploring the role of reasoning structures for constructing proofs in multi-step natural language reasoning with large language models. arXiv preprint arXiv:2410.08436 , 2024. [27] Yuan Yang, Siheng Xiong, Ali Payani, Ehsan Shareghi, and Faramarz Fekri. Harnessing the power of large language models for natural language to first-order logic translation. arXiv preprint arXiv:2305.15541 , 2023. [28] Jundong Xu, Hao Fei, Meng Luo, Qian Liu, Liangming Pan, William Yang Wang, Preslav Nakov, Mong-Li Lee, and Wynne Hsu. Aristotle: Mastering logical reasoning with a logic-complete decompose-search-resolve framework. arXiv preprint arXiv:2412.16953 , 2024. [29] Jundong Xu, Hao Fei, Liangming Pan, Qian Liu, Mong-Li Lee, and Wynne Hsu. Faithful logical reasoning via symbolic chain-of-thought. 
+
+arXiv preprint arXiv:2405.18357 , 2024. [30] Christopher Hahn, Frederik Schmitt, Julia J Tillman, Niklas Metzger, Julian Siber, and Bernd Finkbeiner. Formal specifications from natural language. arXiv preprint arXiv:2206.01962 , 2022. [31] Liangming Pan, Alon Albalak, Xinyi Wang, and William Yang Wang. Logic-lm: Empowering large language models with symbolic solvers for faithful logical reasoning. arXiv preprint arXiv:2305.12295 , 2023. [32] Algirdas Julien Greimas, Joseph Courtés, Larry Crist, and Daniel Patte. Semiotics and language: An analytical dictionary . Indiana University Press Bloomington, 1982. [33] Algirdas Julien Greimas. On meaning: Selected writings in semiotic theory. (No Title) , 1987. [34] Yunyao Zhang, Xinglang Zhang, Junxi Sheng, Wenbing Li, Junqing Yu, Yi-Ping Phoebe Chen, Wei Yang, and Zikai Song. Semantic-aware logical reasoning via a semiotic framework, 2026. [35] Jean-Yves Béziau. The power of the hexagon. Logica Universalis , 6(1):1–43, 2012. [36] Alessio Moretti. Why the logical hexagon? Logica Universalis , 6(1):69–107, 2012. [37] Aimable-André Dufatanye. From the logical square to blanché’s hexagon: formalization, applicability and the idea of the normative structure of thought. Logica Universalis , 6(1):45–67, 2012. [38] Stephen A Cook. The complexity of theorem-proving procedures. In Logic, automata, and computational complexity: The works of Stephen A. Cook , pages 143–152. 2023. [39] Yuda Song, Hanlin Zhang, Carson Eisenach, Sham Kakade, Dean Foster, and Udaya Ghai. Mind the gap: Examining the self-improvement capabilities of large language models. In International Conference on Learning Representations , volume 2025, pages 39894–39931, 2025. [40] Simeng Han, Hailey Schoelkopf, Yilun Zhao, Zhenting Qi, Martin Riddell, Wenfei Zhou, James Coady, David Peng, Yujie Qiao, Luke Benson, et al. Folio: Natural language reasoning with first-order logic. arXiv preprint arXiv:2209.00840 , 2022. [41] Abulhair Saparov and He He. Language models are greedy reasoners: A systematic formal analysis of chain-of-thought. arXiv preprint arXiv:2210.01240 , 2022. [42] Oyvind Tafjord, Bhavana Dalvi Mishra, and Peter Clark. Proofwriter: Generating implications, proofs, and abductive statements over natural language. arXiv preprint arXiv:2012.13048 , 2020. [43] Chengwen Qi, Ren Ma, Bowen Li, He Du, Binyuan Hui, Jinwang Wu, Yuanjun Laili, and Conghui He. Large language models meet symbolic provers for logical reasoning evaluation. arXiv preprint arXiv:2502.06563 , 2025. [44] Xinglang Zhang, Yunyao Zhang, ZeLiang Chen, Junqing Yu, Wei Yang, and Zikai Song. Logical phase transitions: Understanding collapse in llm logical reasoning, 2026. [45] Wenbing Li, Hang Zhou, Junqing Yu, Zikai Song, and Wei Yang. Coupled mamba: Enhanced multi-modal fusion with coupled state space model. arXiv preprint arXiv:2405.18014 , 2024. [46] Wenbing Li, Zikai Song, Hang Zhou, Yunyao Zhang, Junqing Yu, and Wei Yang. Lora-mixer: Coordinate modular lora experts through serial attention routing. arXiv preprint arXiv:2507.00029 , 2025. [47] Yafeng Wu, Yunyao Zhang, Liliang Ye, Guiyi Zeng, Junqing Yu, Chen Xu, and Zikai Song. Hotcomment: A benchmark for evaluating popularity of online comments. arXiv preprint arXiv:2604.25614 , 2026. [48] Xuezhi Wang, Jason Wei, Dale Schuurmans, Quoc Le, Ed Chi, Sharan Narang, Aakanksha Chowdhery, and Denny Zhou. Self-consistency improves chain of thought reasoning in language models. arXiv preprint arXiv:2203.11171 , 2022. [49] Xiang Zhang, Juntai Cao, Jiaqi Wei, Chenyu You, and Dujian Ding. Why prompt design matters and works: A complexity analysis of prompt search space in llms. arXiv preprint arXiv:2503.10084 , 2025. [50] Iman Mirzadeh, Keivan Alizadeh, Hooman Shahrokhi, Oncel Tuzel, Samy Bengio, and Mehrdad Farajtabar. Gsm-symbolic: Understanding the limitations of mathematical reasoning in large language models. arXiv preprint arXiv:2410.05229 , 2024. [51] Sicheng Feng, Gongfan Fang, Xinyin Ma, and Xinchao Wang. Efficient reasoning models: A survey. arXiv preprint arXiv:2504.10903 , 2025. [52] Shuo Yang, Caren Han, Siwen Luo, and Eduard Hovy. Magic-vqa: Multimodal and grounded inference with commonsense knowledge for visual question answering. In Findings of the Association for Computational Linguistics: ACL 2025 , pages 16967–16986, 2025. [53] Sicheng Feng, Song Wang, Shuyi Ouyang, Lingdong Kong, Zikai Song, Jianke Zhu, Huan Wang, and Xinchao Wang. Can mllms guide me home? a benchmark study on fine-grained visual reasoning from transit maps. arXiv preprint arXiv:2505.18675 , 2025. [54] Yuhao Shen, Tianyu Liu, Junyi Shen, Jinyang Wu, Quan Kong, Li Huan, and Cong Wang. Double: Breaking the acceleration limit via double retrieval speculative parallelism, 2026. [55] Hongyu Zhao, Kangrui Wang, Mo Yu, and Hongyuan Mei. Explicit planning helps language models in logical reasoning. arXiv preprint arXiv:2303.15714 , 2023. [56] Ernest Lepore and Matthew Stone. Logic and semantic analysis. In Philosophy of Logic , pages 173–204. Elsevier, 2007. [57] Algirdas Julien Greimas. Maupassant: The semiotics of text. 1988. 
+
+Zhang et al.: Preprint submitted to Elsevier Page 19 of 19

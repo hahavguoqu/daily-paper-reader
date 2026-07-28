@@ -1,0 +1,327 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-07-28T20:23:14.699016+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 4,
+    "deep_cap": 6,
+    "deep_selected": 4,
+    "quick_candidates": 4,
+    "quick_skim_target": 11,
+    "quick_selected": 4
+  },
+  "deep_dive": [
+    {
+      "id": "2607.22925v1",
+      "source": "arxiv",
+      "title": "Not All LLM Reasoning is Visible in the Chain-of-Thought",
+      "abstract": "A key question for AI safety is whether a language model expresses all of its reasoning in its output tokens. We demonstrate a concrete failure mode where frontier models exhibit invisible reasoning by leveraging semantically irrelevant filler tokens to improve performance on synthetic reasoning tasks. We evaluate 13 frontier language models across three tasks and find that many models benefit significantly from filler tokens, with accuracy improvements of up to 13 percentage points. The benefit depends on which tokens are used and differs across models. We further show that filler tokens enable Claude Opus 4.5 to satisfy a hidden modular arithmetic constraint without sacrificing accuracy on its primary task, demonstrating that invisible reasoning can serve objectives entirely invisible to CoT monitoring. Reinforcement learning gives Qwen3-235B strong preferences over filler token content, but neither RL nor supervised fine-tuning produces a filler token benefit that persists at test time. Our results indicate that frontier models already perform consequential computation with no interpretable trace in their output tokens.",
+      "authors": [
+        "Vatsal Baherwani",
+        "Tom Goldstein",
+        "Ashwinee Panda"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL",
+        "cs.AI",
+        "cs.LG"
+      ],
+      "published": "2026-07-24T21:32:48+00:00",
+      "link": "https://arxiv.org/pdf/2607.22925v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "directly studies invisible reasoning in chain-of-thought",
+      "llm_evidence_cn": "直接研究链式思维中的不可见推理",
+      "llm_evidence": "直接研究链式思维中的不可见推理",
+      "canonical_evidence": "直接研究链式思维中的不可见推理",
+      "llm_tldr_en": "Reveals that frontier LLMs use filler tokens to perform invisible reasoning within CoT, improving accuracy by up to 13 points, raising safety concerns.",
+      "llm_tldr_cn": "大型语言模型在执行链式思维推理时，可能利用语义无关的填充标记进行不可见推理。本文在13个前沿模型上发现，填充标记可使准确率提升高达13个百分点。特别地，Claude Opus 4.5利用填充标记在不牺牲主要任务准确率的情况下满足隐藏的模算术约束。这表明模型的推理过程可能无法完全在输出标记中表达，对AI安全构成挑战。",
+      "llm_tldr": "大型语言模型在执行链式思维推理时，可能利用语义无关的填充标记进行不可见推理。本文在13个前沿模型上发现，填充标记可使准确率提升高达13个百分点。特别地，Claude Opus 4.5利用填充标记在不牺牲主要任务准确率的情况下满足隐藏的模算术约束。这表明模型的推理过程可能无法完全在输出标记中表达，对AI安全构成挑战。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.23019v1",
+      "source": "arxiv",
+      "title": "Reason Popper-ly: Patching In-Context Reasoning with Inductive Logic Programming",
+      "abstract": "Chain-of-thought (CoT) prompting enables large language models (LLMs) to tackle multi-step reasoning tasks, yet the generated intermediate steps are not guaranteed to be logically sound. We present Reason Popper-ly, a neurosymbolic framework that uses inductive logic programming (ILP) to learn relation composition rules from reasoning traces and deploys them as an online verifier for step-level correction. Given an LLM-generated trace, the method checks each inferred step against the learned rule table, diagnoses the violation type, rewrites incorrect steps with symbolically derived repairs, and regenerates the remaining suffix so that the model can produce its final answer conditioned on a verified trace. We evaluate on CLUTRR, a multi-hop kinship reasoning benchmark, using five language models over reasoning chains of 2 to 10 hops. Across all models, Reason Popper-ly consistently improves terminal accuracy over standard CoT, with gains of up to 48 percentage points for small models and 15 points for frontier models on the longest chains. Compared with a fully exogenous symbolic pipeline, our method performs better on harder instances by preserving the model's successful grounding while correcting only verifiable reasoning failures. In addition, step-level ILP verification yields a fine-grained error taxonomy that provides diagnostic insight beyond final-answer accuracy.",
+      "authors": [
+        "Zirong Chen",
+        "Meiyi Ma"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.LO",
+        "cs.SC"
+      ],
+      "published": "2026-07-25T03:24:05+00:00",
+      "link": "https://arxiv.org/pdf/2607.23019v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "improving CoT reasoning with ILP verification",
+      "llm_evidence_cn": "用归纳逻辑编程改进CoT推理",
+      "llm_evidence": "用归纳逻辑编程改进CoT推理",
+      "canonical_evidence": "用归纳逻辑编程改进CoT推理",
+      "llm_tldr_en": "Proposes Reason Popper-ly, a neurosymbolic framework using inductive logic programming to learn rules from CoT traces and verify/correct steps online, improving logical soundness.",
+      "llm_tldr_cn": "针对链式思维提示中推理步骤逻辑不严谨的问题，本文提出Reason Popper-ly神经符号框架，通过归纳逻辑编程从推理轨迹中学习关系组合规则，并作为在线验证器逐步骤检查和修正，最终产生逻辑正确的推理序列。在CLUTRR上的实验表明该方法有效提升了推理正确性。",
+      "llm_tldr": "针对链式思维提示中推理步骤逻辑不严谨的问题，本文提出Reason Popper-ly神经符号框架，通过归纳逻辑编程从推理轨迹中学习关系组合规则，并作为在线验证器逐步骤检查和修正，最终产生逻辑正确的推理序列。在CLUTRR上的实验表明该方法有效提升了推理正确性。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.23771v1",
+      "source": "arxiv",
+      "title": "Training Language Models to Cooperate with Inference-Time Controllers",
+      "abstract": "Large language model (LLM) performance increasingly depends not only on the base model, but also on the inference-time controller used to organize reasoning. Existing post-training methods, however, typically optimize for a single fixed interaction pattern, despite real deployments relying on diverse controllers such as Chain-of-Thought, self-consistency, debate, planning, and verification pipelines. This creates a training--deployment mismatch and limits transfer to new workflows. We introduce CALM (Controller-Aware Language Models), a post-training framework that explicitly places controllers in the training loop. We formulate controller-aware post-training as multi-task reinforcement learning over controller-induced interaction protocols, where controllers are compositions of reusable local reasoning modules. This structure also induces a module-level decomposition of mixed-controller training under a turn-level GRPO objective, enabling a systematic study of controller and module-aware training strategies. We evaluate CALM on held-out controller compositions and broader controller shifts, showing that controller-aware post-training improves generalization across inference-time workflows beyond single-controller optimization.",
+      "authors": [
+        "Moumita Choudhury",
+        "Vanshaj Khattar",
+        "Jing Liu",
+        "Toshiaki Koike-Akino",
+        "Ankush Chakrabarty",
+        "Shlomo Zilberstein",
+        "Ye Wang"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-07-26T17:44:33+00:00",
+      "link": "https://arxiv.org/pdf/2607.23771v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "training LLMs to cooperate with CoT and other controllers",
+      "llm_evidence_cn": "训练大语言模型与CoT等推理控制器协作",
+      "llm_evidence": "训练大语言模型与CoT等推理控制器协作",
+      "canonical_evidence": "训练大语言模型与CoT等推理控制器协作",
+      "llm_tldr_en": "Introduces CALM, a post-training framework that trains LLMs to cooperate with diverse inference-time controllers including chain-of-thought, using multi-task RL over interaction protocols.",
+      "llm_tldr_cn": "针对现有训练方法只针对单一交互模式，而实际部署需要多种推理控制器（如CoT、自洽性、辩论等）的问题，本文提出CALM框架，通过多任务强化学习在控制器诱导的交互协议上训练大模型，使其能够灵活适配任意控制器，弥合训练与部署的鸿沟。",
+      "llm_tldr": "针对现有训练方法只针对单一交互模式，而实际部署需要多种推理控制器（如CoT、自洽性、辩论等）的问题，本文提出CALM框架，通过多任务强化学习在控制器诱导的交互协议上训练大模型，使其能够灵活适配任意控制器，弥合训练与部署的鸿沟。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.21722v1",
+      "source": "arxiv",
+      "title": "Be Consistent! Enhancing Robust Visual Reasoning in LVLMs with Consistency Constraints",
+      "abstract": "While Large Vision-Language Models (LVLMs) exhibit strong perceptual capabilities, they remain vulnerable in visual reasoning tasks. Existing benchmarks largely focus on symbolic mathematical or scientific problems and simple vision-centric tasks, offering limited assessment of complex visual reasoning and logical consistency, a critical requirement for reliable reasoning systems. We introduce ConVBench, a complex vision-centric reasoning benchmark in which each image is paired with two logically equivalent questions across six categories: action and state, complex counting, spatial reasoning, causal and intent understanding, commonsense reasoning, and temporal perception. To complement this benchmark, we define two evaluation metrics, logical consistency and robust accuracy, that jointly assess both the correctness and consistency of model responses. We further present ConVLM, which improves LVLM reasoning through Group Relative Policy Optimization (GRPO)-based reinforcement learning with a novel consistency reward. This method leverages automatically generated logically equivalent question-answer pairs and a dual-reward design combining accuracy- and consistency-based signals, encouraging agreement between paired responses. The framework functions effectively with or without strict answer supervision.",
+      "authors": [
+        "Liqiang Jing",
+        "Xiong Zhou",
+        "Siddharth Varia",
+        "Neha Anna John",
+        "Xinya Du",
+        "Vassilis N. Ioannidis"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-07-23T18:04:51+00:00",
+      "link": "https://arxiv.org/pdf/2607.21722v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "visual reasoning consistency benchmark",
+      "llm_evidence_cn": "视觉推理一致性基准",
+      "llm_evidence": "视觉推理一致性基准",
+      "canonical_evidence": "视觉推理一致性基准",
+      "llm_tldr_en": "Introduces ConVBench, a vision-centric reasoning benchmark with logically equivalent question pairs to evaluate consistency in LVLMs; proposes two evaluation metrics.",
+      "llm_tldr_cn": "本文针对大型视觉语言模型在复杂视觉推理任务中逻辑一致性不足的问题，提出了ConVBench基准，通过为每张图片配对联逻辑等价的问题来评估六类推理能力。同时设计了两个评价指标，旨在推动模型在视觉推理中的鲁棒性和一致性提升。",
+      "llm_tldr": "本文针对大型视觉语言模型在复杂视觉推理任务中逻辑一致性不足的问题，提出了ConVBench基准，通过为每张图片配对联逻辑等价的问题来评估六类推理能力。同时设计了两个评价指标，旨在推动模型在视觉推理中的鲁棒性和一致性提升。",
+      "llm_tags": [
+        "query:vlm-cot:composite"
+      ],
+      "matched_query_tag": "query:vlm-cot:composite",
+      "matched_query_text": "Papers central to 视觉大模型CoT及大厂出品，大模型相关且有扎实的工程基础, especially work that connects or combines: chain of thought reasoning large model; large model by big tech companies.",
+      "matched_requirement_id": "req-composite-vlm-cot",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2607.24617v1",
+      "source": "arxiv",
+      "title": "LaRec: Unleashing LLM-based Latent Reasoning for Generative Recommendation",
+      "abstract": "Large Language Models (LLMs) have shown great promise in recommendation due to superior reasoning abilities. However, existing methods mainly rely on explicit Chain-of-Thought (CoT), resulting in verbose reasoning texts and inefficient response times. latent reasoning aims to balance efficiency by thinking within a continuous latent space, yet it faces two major challenges: (1) Lack of Fine-grained Supervision: Latent reasoning relies solely on feedback from the final labels, providing sparse supervisory signals that struggle to effectively guide the optimization of multiple hidden reasoning steps. (2) Single Reasoning Path: The deterministic nature of latent reasoning impedes the exploration of users' diverse interests and preferences, thereby limiting the recommendation capabilities of LLMs. To address these issues, we propose \\textbf{$LaRec$}, an efficient generative recommendation framework designed to unleash the potential of latent reasoning in LLMs. $LaRec$ consists of two core stages: First, we design Latent Pre-training that empowers LLMs with latent reasoning capabilities by providing rich supervisory signals to the latent space reasoning via step-level alignment and process direction alignment. Second, we introduce Personalized RL-tuning. Specifically, we construct a personalized Gaussian Mixture Distribution for each user based on their historical interests. By randomly sampling distinct reasoning starting points from this distribution during training, we guide the LLMs to traverse diverse reasoning paths within the latent space, enabling efficient exploration of user's multi-faceted interests. Experiments on multiple datasets show that $LaRec$ significantly outperforms existing baselines with comparable efficiency.",
+      "authors": [
+        "Yu Xia",
+        "Zihan Lin",
+        "Wei Yang",
+        "Rui Zhong",
+        "Cheng Chen",
+        "Huan Ren",
+        "Yao Hu"
+      ],
+      "primary_category": "cs.IR",
+      "categories": [
+        "cs.IR"
+      ],
+      "published": "2026-07-27T16:14:57+00:00",
+      "link": "https://arxiv.org/pdf/2607.24617v1",
+      "tags": [
+        "keyword:vlm-cot",
+        "query:vlm-cot"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "proposes latent reasoning as an alternative to explicit chain-of-thought for LLM-based recommendation",
+      "llm_evidence_cn": "提出潜在推理替代显式思维链用于基于LLM的推荐",
+      "llm_evidence": "提出潜在推理替代显式思维链用于基于LLM的推荐",
+      "canonical_evidence": "提出潜在推理替代显式思维链用于基于LLM的推荐",
+      "llm_tldr_en": "LaRec introduces latent reasoning for LLM-based recommendation to avoid verbose chain-of-thought, tackling fine-grained supervision and single path issues.",
+      "llm_tldr_cn": "大语言模型推荐中显式思维链导致文本冗长且效率低。LaRec提出在连续潜在空间中进行推理，以平衡效率与质量。针对缺乏细粒度监督和单一推理路径的挑战，LaRec探索了潜在推理的优化方法，为推荐系统提供更高效的推理替代方案。",
+      "llm_tldr": "大语言模型推荐中显式思维链导致文本冗长且效率低。LaRec提出在连续潜在空间中进行推理，以平衡效率与质量。针对缺乏细粒度监督和单一推理路径的挑战，LaRec探索了潜在推理的优化方法，为推荐系统提供更高效的推理替代方案。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2607.17935v1",
+      "source": "arxiv",
+      "title": "DeLIVeR: Decomposed Learning for Information-grounded Veracity Recognition via Reinforced Knowledge Graph Exploration",
+      "abstract": "Automated fact-checking remains a challenge for Large Language Models (LLMs) due to \"query brittleness\" in traditional retrieval systems. We propose DeLIVeR (Decomposed Learning for Information-grounded Veracity Recognition), a framework that treats evidence retrieval as a reinforced strategic exploration task. DeLIVeR utilizes a Planner LLM to decompose complex claims into targeted question sets, which are used to traverse structured Knowledge Graphs (KGs) for high-precision evidence. We optimize the Planner's policy using Group Relative Policy Optimization (GRPO) with a reward system prioritizing structural diversity and verdict accuracy. Our evaluation on LIAR, FEVER, and PolitiFact shows that DeLIVeR significantly outperforms state-of-the-art baselines. Using Qwen2.5-7B, our framework achieved peak F1-scores of 83.73, 84.57, and 79.70 respectively, representing a 10-15% improvement over HippoRAG2. By shifting to a reinforced question-planning strategy, DeLIVeR effectively bridges multi-hop reasoning gaps and provides an auditable, transparent path for verifiable misinformation detection.",
+      "authors": [
+        "Cong Hoan Nguyen",
+        "Thomas Hoang",
+        "Hieu Minh Duong",
+        "Long Nguyen"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL",
+        "cs.AI"
+      ],
+      "published": "2026-07-20T13:32:42+00:00",
+      "link": "https://arxiv.org/pdf/2607.17935v1",
+      "tags": [
+        "keyword:vlm-cot",
+        "query:vlm-cot"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "decomposes claims using Planner LLM for fact-checking, related to chain-of-thought reasoning",
+      "llm_evidence_cn": "使用规划器大模型分解复杂声明进行事实核查，与链式推理相关",
+      "llm_evidence": "使用规划器大模型分解复杂声明进行事实核查，与链式推理相关",
+      "canonical_evidence": "使用规划器大模型分解复杂声明进行事实核查，与链式推理相关",
+      "llm_tldr_en": "Proposes DeLIVeR, which uses a Planner LLM to decompose claims into questions and explores Knowledge Graphs for fact-checking.",
+      "llm_tldr_cn": "传统检索系统在大模型事实核查中存在查询脆弱性问题。本文提出DeLIVeR框架，利用规划器大模型将复杂声明分解为定向问题集，并通过强化学习策略遍历知识图谱以获取高精度证据。该方法在LIAR、FEVER和PolitiFact数据集上显著提升了事实核查的准确性和证据多样性。",
+      "llm_tldr": "传统检索系统在大模型事实核查中存在查询脆弱性问题。本文提出DeLIVeR框架，利用规划器大模型将复杂声明分解为定向问题集，并通过强化学习策略遍历知识图谱以获取高精度证据。该方法在LIAR、FEVER和PolitiFact数据集上显著提升了事实核查的准确性和证据多样性。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2607.19739v1",
+      "source": "arxiv",
+      "title": "Personalized Recommendation Tool Learning via Autonomous Language Agents",
+      "abstract": "Although large language models (LLMs) have recently gained traction in recommender systems due to their strong reasoning capabilities and extensive world knowledge, previous LLM-based agents suffer from hallucination and context-length limitations, and thus are not suitable for full-ranking recommendation tasks. To circumvent these limitations through architectural design rather than modifying the LLM itself, we propose an agent-based recommendation framework, memory-based $\\textbf{P}$ersonalized $\\textbf{R}$ecommendation $\\textbf{T}$ool learning via autonomous language $\\textbf{A}$gents (PRTA), in which an LLM acts as a central planner interacting with multiple recommendation models as tools. The LLM-based agent is responsible for high-level reasoning and personalized tool selection, while traditional recommendation models perform full-ranking scoring, leveraging their scalability in modeling behavioral patterns. To support personalized tool selection, we design reflection mechanisms that enable the agent to evaluate and compare tools for each user based on user profiles and candidate ranked lists. Extensive experiments across three public datasets demonstrate the superiority of \\modelname over traditional recommendation and LLM-based baselines in improving full-ranking recommendation performance.",
+      "authors": [
+        "Mingdai Yang",
+        "Zhiwei Liu",
+        "Weizhi Zhang",
+        "Yibo Wang",
+        "Hao Peng",
+        "Philip Yu"
+      ],
+      "primary_category": "cs.IR",
+      "categories": [
+        "cs.IR",
+        "cs.AI"
+      ],
+      "published": "2026-07-22T04:10:41+00:00",
+      "link": "https://arxiv.org/pdf/2607.19739v1",
+      "tags": [
+        "keyword:vlm-cot",
+        "query:vlm-cot"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "uses LLM as central planner for high-level reasoning in recommendation, related to reasoning approaches",
+      "llm_evidence_cn": "使用LLM作为中央规划器进行高层面推理，与推理方法相关",
+      "llm_evidence": "使用LLM作为中央规划器进行高层面推理，与推理方法相关",
+      "canonical_evidence": "使用LLM作为中央规划器进行高层面推理，与推理方法相关",
+      "llm_tldr_en": "PRTA uses an LLM-based agent as a planner interacting with multiple recommendation tools, leveraging reasoning capabilities for personalized recommendation.",
+      "llm_tldr_cn": "大语言模型在推荐中展现推理能力，但受幻觉和上下文限制。PRTA框架让LLM代理作为中央规划器，调用多个推荐模型工具，通过高层面推理克服这些限制，实现全排序推荐。该方法在不修改LLM本身的情况下提升了推荐性能。",
+      "llm_tldr": "大语言模型在推荐中展现推理能力，但受幻觉和上下文限制。PRTA框架让LLM代理作为中央规划器，调用多个推荐模型工具，通过高层面推理克服这些限制，实现全排序推荐。该方法在不修改LLM本身的情况下提升了推荐性能。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2607.21933v1",
+      "source": "arxiv",
+      "title": "Semiotic logical hexagon theory for LLM logical reasoning",
+      "abstract": "Large language models (LLMs) have become powerful tools for language understanding and logical reasoning. However, they still make mistakes when a problem requires both understanding meaning and following logic. A key reason is that natural-language statements often carry implicit semantic relations before any formal reasoning begins. If these hidden meanings are not properly organized, the model may reach incorrect conclusions even when the subsequent reasoning process appears logically valid. Existing methods improve reasoning through decomposition, symbolic translation, external solvers, or self-verification, but pay comparatively less attention to the semantic structure on which reasoning depends. In this paper, we further investigate how semantic organization influences logical reasoning in LLMs. To this end, we propose HexLogicAgent, a framework that first organizes the meaning of natural-language statements and then guides logical reasoning through structured verification. In our investigation, we also make two observations. First, incomplete semantic representations, rather than deductive inference itself, are a major source of logical reasoning failures in LLMs. Second, explicitly modeling the complete structure of semantic opposition substantially delays the degradation of reasoning performance as logical complexity increases. Experiments on challenging logical reasoning benchmarks demonstrate that HexLogicAgent consistently improves reasoning reliability across multiple LLMs. The core idea is supported by a logical hexagon theory, which explains why a complete structure of opposing meanings is necessary for reliable reasoning.",
+      "authors": [
+        "Yunyao Zhang",
+        "Xinglang Zhang",
+        "Zeliang Chen",
+        "Junqing Yu",
+        "Zikai Song"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI"
+      ],
+      "published": "2026-07-24T03:10:34+00:00",
+      "link": "https://arxiv.org/pdf/2607.21933v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "semantic organization for LLM reasoning",
+      "llm_evidence_cn": "大语言模型推理的语义组织",
+      "llm_evidence": "大语言模型推理的语义组织",
+      "canonical_evidence": "大语言模型推理的语义组织",
+      "llm_tldr_en": "Proposes a semiotic logical hexagon theory to organize implicit semantic relations for improving LLM logical reasoning beyond existing methods.",
+      "llm_tldr_cn": "现有大模型推理提升方法集中于分解、符号翻译或外部求解，但对推理依赖的语义结构关注不足。本文提出符号学逻辑六边形理论，通过组织自然语言中的隐含语义关系来提升LLM逻辑推理的正确性。该方法在需要理解含义与遵循逻辑的任务上展现出潜力，为推理的语义组织提供了新视角。",
+      "llm_tldr": "现有大模型推理提升方法集中于分解、符号翻译或外部求解，但对推理依赖的语义结构关注不足。本文提出符号学逻辑六边形理论，通过组织自然语言中的隐含语义关系来提升LLM逻辑推理的正确性。该方法在需要理解含义与遵循逻辑的任务上展现出潜力，为推理的语义组织提供了新视角。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}

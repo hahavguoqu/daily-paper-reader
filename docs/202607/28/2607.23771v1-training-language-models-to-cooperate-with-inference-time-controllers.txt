@@ -1,0 +1,1279 @@
+Title: Training Language Models to Cooperate with Inference-Time Controllers
+
+URL Source: https://arxiv.org/pdf/2607.23771v1
+
+Published Time: Tue, 28 Jul 2026 01:15:44 GMT
+
+Number of Pages: 22
+
+Markdown Content:
+# Training Language Models to Cooperate with Inference-Time Controllers 
+
+Moumita Choudhury 1 Vanshaj Khattar 2 Jing Liu 2 Toshiaki Koike-Akino 2 Ankush Chakrabarty 2
+
+Shlomo Zilberstein 1 Ye Wang 2
+
+## Abstract 
+
+Large language model (LLM) performance in-creasingly depends not only on the base model, but also on the inference-time controller used to organize reasoning. Existing post-training methods, however, typically optimize for a sin-gle fixed interaction pattern, despite real de-ployments relying on diverse controllers such as Chain-of-Thought, self-consistency, debate, planning, and verification pipelines. This cre-ates a training–deployment mismatch and lim-its transfer to new workflows. We introduce 
+
+CALM (Controller-Aware Language Models), a post-training framework that explicitly places controllers in the training loop. We formulate controller-aware post-training as multi-task rein-forcement learning over controller-induced inter-action protocols, where controllers are composi-tions of reusable local reasoning modules. This structure also induces a module-level decompo-sition of mixed-controller training under a turn-level GRPO objective, enabling a systematic study of controller and module-aware training strategies. We evaluate CALM on held-out controller compo-sitions and broader controller shifts, showing that controller-aware post-training improves general-ization across inference-time workflows beyond single-controller optimization. 
+
+## 1. Introduction 
+
+Artificial intelligence systems based on large language mod-els (LLMs) are rapidly evolving from standalone predictors into general-purpose agents capable of reasoning, planning, and interacting with complex environments (Brown et al., 2020; Chowdhery et al., 2023; Touvron et al., 2023). Rather than relying on a single query to the model, modern LLM  
+
+> 1
+
+College of Information and Computer Sciences, Univer-sity of Massachusetts Amherst, Amherst, Massachusetts, USA  
+
+> 2
+
+Mitsubishi Electric Research Laboratories, Cambridge, Mas-sachusetts, USA . Correspondence to: Moumita Choudhury <am-choudhury@umass.edu >.
+
+Preprint. July 28, 2026. 
+
+systems increasingly operate through structured inference-time procedures that allocate additional computation across multiple calls, intermediate reasoning steps, sampling, ag-gregation, search, or interaction with tools and memory. This shift has made the performance of LLM agents depend not only on the capability of the underlying model, but also on how inference is organized and orchestrated at test time. A growing family of inference-time procedures has emerged to enhance LLM reasoning and agency. Foundational meth-ods include Chain-of-Thought prompting (Wei et al., 2022), Self-Consistency (Wang et al., 2023), Tree-of-thought, and Algorithm-of-thought (Yao et al., 2023; Sel et al., 2024), while more structured pipelines integrate Self-refinement (Madaan et al., 2023; Shinn et al., 2023), Multi-agent de-bate (Du et al., 2023), Tool-augmented reasoning (Schick et al., 2023), and workflows that combine planning, mem-ory, and external actions (Yao et al., 2022). We refer to such inference-time procedures as controllers : a controller specifies how the model is queried over one or more calls, in-cluding the number of turns, the active role at each turn, and any aggregation, verification, or search logic. As controllers are now becoming sophisticated enough to be automatically searched and optimized (Hu et al., 2025; Saad-Falcon et al., 2024), the performance still depends on the base model which is typically post-trained for a single fixed interac-tion pattern. For example, prior work discusses fine-tuning strategies for specific inference-time techniques such as Best-of-N sampling (Chow et al., 2025). This mismatch is consequential: modern deployments rely on a family of con-trollers that often share recurring local reasoning behaviors, such as CoT generation, verification, planning, or critique, while differing in call structure, role composition, and num-ber of turns. A model trained on only one workflow can over-specialize to that controller and fail to transfer when familiar reasoning behaviors appear in novel compositions. This raises a natural question: how should the base model itself be post-trained to cooperate effectively with a family 
+
+of controllers, rather than a single fixed one? 
+
+To address this question, we introduce CALM (Controller-
+
+Aware Language Models), a post-training framework that explicitly places controllers in the training loop. We for-mulate controller-aware post-training as a multi-task RL problem over controllers . Each controller defines a Markov 1arXiv:2607.23771v1 [cs.AI] 26 Jul 2026 Training Language Models to Cooperate with Inference-Time Controllers (a) Training controllers   
+
+> Chain -of -thought
+> Wei et al. 2022
+> COT
+> Step -back
+> Zheng et al. 2023
+> ABST COT
+> Self -refine
+> Madaan et al. 2024
+> LLM Debate
+> Du et al. 2023
+> COT CRITIC
+> DEB
+> DEB
+> JUDGE
+> ×2 rounds
+> DEB
+
+(b) Single -controller post -training   
+
+> Fixed controller (e.g., Self -Refine)
+> COT CRITIC COT
+> Trajectory level Reward
+
+R
+
+> GroupNorm()
+> Trajectory level
+> Advantages,
+> turn -level clipping
+
+Â
+
+> Turn -level advantages
+> Â (same for all turns)
+
+ℒ𝒢ℛ𝒫𝒪 
+
+(c) CALM: Multi -controller post -training                 
+
+> ×5 rounds
+> sample c ~ Uniform(C)
+> Shared policy πθ
+> Roll out G trajectories under controller c
+> τ1: R=1
+> τ2: R=0
+> τ3: R=1
+> τ4: R=0
+> Training strategies
+> CALM (default)
+> All turns from controller c
+> treated as a flat batch
+> Module -decomposed variants
+> Turns grouped by module type
+> (COT, CRITIC, ABST, ...)
+> COT
+> e.g. c = Self -Refine, G = 4 trajectories
+> Chain -of -
+> thought
+> Self -
+> refine
+> Step -
+> back
+> LLM
+> Debate
+> Sampled from controller family
+> COT CRITIC COT
+> COT CRITIC COT
+> COT CRITIC COT
+> COT CRITIC COT
+> COT CRITIC ABST
+
+Figure 1. Overview of CALM. (a) Training controllers are compositions of reusable modules (COT, CRITIC, ABSTRACTOR, DEBATER, JUDGE, etc.) drawn from established inference-time methods (Hu et al., 2025). Each controller consists of diverse set of roles and could follow a number of turns with or without memory. (b) Single-controller post-training baseline, where a fixed controller generates trajectories. We use a multi-turn variation of the GRPO (Wan et al., 2025) objective. (c) CALM’s multi-controller post-training approach, which samples a controller uniformly at each iteration, rolls out multiple trajectories under a shared policy, and trains using either a flat batch of all turns or module-decomposed variants grouped by turn type. 
+
+Decision Process (MDP), and training proceeds over a distri-bution of such MDPs rather than a single fixed one. Further-more, controllers are not independent tasks; they share recur-ring local components such as CoT generation, verification, planning, critique, etc., while differing in how these compo-nents are arranged and ordered. We call these shared com-ponents modules . A controller is therefore a composition 
+
+of reusable modules, and the central hypothesis of CALM is that if the model learns these modules well, it can gen-eralize to unseen controller compositions. Our controllers are implemented as executable Python programs, following the code-as-controller paradigm of ADAS (Hu et al., 2025) where each controller is a function that sequences module calls, routes outputs between turns, and handles branching or iteration logic, making the full controller inventory trans-parent, reproducible, and automatically extensible to new compositions. Since controllers share reusable modules, but differ in how those modules are arranged, CALM opens a space of module-level training strategies that does not exist in single-controller post-training. We study four variants that decompose the multi-controller loss by module type un-der a turn-level GRPO objective (Shao et al., 2024; Wan et al., 2025): flat mixing of all turns, uniform weighting across module types, adaptive gradient-norm balancing, and single-role-per-step training. Because controllers differ in turn count and role composition, some modules naturally produce larger gradient updates than others; the variants explore whether explicitly accounting for this imbalance im-proves cross-controller generalization. We aim to map the design space that the compositional controller view opens and to identify which axes matter most for cross-controller transfer. Our experiments are designed to measure whether CALM truly learns reusable controller-aware reasoning rather than simply memorizing training workflows. We evaluate both on held-out controller compositions built from familiar reason-ing primitives and on more challenging controller shifts that alter the inventory of local roles or interfaces. The former isolates whether CALM can recombine known reasoning behaviors in novel workflows, while the latter measures whether the shared policy remains robust under broader structural shift. We further evaluate across mathematical reasoning tasks to assess whether the findings generalize beyond a single task distribution. In summary, this paper makes the following contributions: 1) formulating controller-aware LLM post-training as a 2Training Language Models to Cooperate with Inference-Time Controllers 
+
+multi-task RL problem over controller-induced MDPs ,which aims to learn a single policy that generalizes across controllers rather than optimizing for one fixed workflow, 2) proposing CALM as a framework for multi-controller training, and systematically investigate a range of module-level training strategies, including mixed module training, uniform weighting, adaptive gradient-norm balancing, and single-role-per-step training to understand the impact of different strategies, and 3) evaluating CALM on held-out controller compositions and broader controller shifts across mathematical reasoning tasks, separating transfer to new workflows built from familiar reasoning primitives from robustness to more substantial controller variation. Our ex-periments show that multi-controller training consistently outperforms single-controller baselines, which overfit to their native controller and degrade on unseen compositions, with improvements holding under both compositional re-combination and broader controller shift across math rea-soning tasks. 
+
+## 2. Preliminaries 
+
+We briefly review the RL objectives that CALM builds on. RL for language models frames decoding as a token-level MDP (Wang et al., 2024) with objective J (θ) = 
+
+E[R(y, y∗)] . GRPO (Shao et al., 2024) optimizes this via a clipped importance-weighted objective over groups of G
+
+sampled responses:           
+
+> J(θ) = E
+> "
+> 1
+> G
+> GX
+> i=1
+> 1
+> |yi|
+> |yi|
+> X
+> j=1
+> min
+> 
+> ri,j (θ) ˆAi,j ,
+> clip  ri,j (θ),1−ϵ, 1+ ϵˆAi,j
+> 
+> −βD KL
+>  πθ∥πref
+> !#
+> (1)
+
+where ri,j (θ) = πθ (yi,j | x, yi,<j ) / π θold (yi,j | x, yi,<j )
+
+is the token-level importance ratio and ˆAi,j = ( Ri − μ)/σ 
+
+is the group-normalized advantage. 
+
+Turn-level GRPO for multi-turn interaction. Standard GRPO applies clipping at the token level, which introduces length bias in multi-turn trajectories and can encourage ex-cessively long single-turn responses. ReMA (Wan et al., 2025) addresses this with a turn-level ratio : the impor-tance ratio for turn t is averaged over all tokens within that turn, ri,t (θ) = 1
+
+> |yi,t |
+
+P 
+
+> j
+
+ri,t,j (θ), and clipping is applied at the turn level rather than the token level. The resulting trajectory-level objective is:          
+
+> J(θ) = E
+> "
+> 1
+> G
+> GX
+> i=1
+> 1
+> TiTiX
+> t=1
+> 1
+> |yi,t |
+> |yi,t |
+> X
+> j=1
+> min
+> 
+> ri,t (θ) ˆAi,t,j ,
+> clip  ri,t (θ),1−ϵ, 1+ ϵˆAi,t,j
+> 
+> −βD KL
+>  πθ∥πref
+> !#
+> (2)
+
+CALM adopts this turn-level formulation and extends it to the multi-controller setting, where controllers differ substan-tially in turn count and role composition. 
+
+## 3. Problem Formulation 
+
+We formalize CALM as a multi-task reinforcement learn-ing problem over a family of controller-induced interaction protocols. 
+
+Controllers and modules. A controller c is a structured inference-time procedure that orchestrates one or more LLM calls to solve a given problem. Each controller defines a set of modules Mc = {m1, . . . , m K } and a control flow fc. A module mk = ( ρk, κ k) pairs a role ρk (e.g., 
+
+Chain-of-Thought Agent , Critic Agent ) with a turn interface κk that specifies a role-specific instruction prompt and a structured output schema (e.g., [thinking, answer] , [feedback, correct] , etc.). The control flow fc is a program that determines the invocation order of modules, routes the output of one module as input to the next, and may include, but not limited to, non-LLM logic such as conditional branching or iteration, tool calls, mathe-matical operators, etc. For example, Self-Refine (Madaan et al., 2023) defines three modules (a CoT Agent , a 
+
+Critic Agent , and the same CoT Agent re-invoked with a reflection prompt) and a control flow that loops the critique–revise cycle up to N times or until the critic signals correctness. 
+
+Trajectories. Given a problem instance x ∼ D , executing controller c yields a multi-turn trajectory 
+
+τ =  (m(1) , y 1,1: T1 ), . . . , (m(Uc), y Uc,1: TUc ),where Uc is the number of LLM calls (turns) under con-troller c, m(u) ∈ M c is the module active at turn u, and 
+
+yu, 1: Tu is the token sequence generated at that turn. The same module may be invoked at multiple turns (e.g., the CoT module is called both before and after the critic in Self-Refine), and Uc may vary across instances when the control flow includes conditional logic. 
+
+State and policy. At turn u, the model observes su = x, τ<u , κ(u), where τ<u is the interaction history up to turn u (as assembled by the control flow fc) and 
+
+κ(u) is the turn interface of the active module. We train a single shared policy πθ that generates tokens autore-gressively conditioned on su, via πθ (yu,j | su,j ), where 
+
+su,j =  x, τ <u , y u,<j , κ (u).
+
+Reward. For reasoning tasks with verifiable answers, the reward is terminal and binary: R(τ ) ∈ { 0, 1}. Intermediate turns receive no reward, except the format rewards which are applied at each turn (See Section 6.1). 3Training Language Models to Cooperate with Inference-Time Controllers 
+
+Module vocabulary and compositionality. Across train-ing controllers, we identify a shared module vocabulary 
+
+M = {1, . . . , M } by grouping turns whose modules share the same role instruction and output schema. Ta-ble 4 lists an example of five module types that appear in our experiments. The key observation is that differ-ent controllers compose these modules in different ways: Chain-of-Thought uses only the COT module; Step-back Abstraction (Zheng et al., 2023) sequences ABSTRAC - 
+
+> TOR
+
+→ COT ; Self-Refine (Madaan et al., 2023) sequences  
+
+> COT
+
+→ CRITIC → COT , with repeated interaction between  
+
+> COT
+
+and CRITIC modules; and LLM-Debate (Du et al., 2023) interleaves multiple DEBATER turns with a JUDGE .This compositional structure motivates our central hypothe-sis: if the shared policy learns to execute each module well, it can generalize to novel compositions of the same modules, i.e., controller configurations not seen during training. 
+
+Training objective. Let Ctrain denote the set of training controllers. Since the test-time controller distribution is unavailable during training, we optimize 
+
+Jtrain (θ) = 1
+
+|C train |
+
+X
+
+> c∈C train
+
+Ex∼D Eτ ∼πθ (·| x,c )
+
+R(τ ).
+
+(3) This objective trains a single shared policy over a distribu-tion of controller-induced MDPs, placing CALM closer to robust multi-task RL (Teh et al., 2017; Yu et al., 2020) The compositional module structure further connects CALM to modular multi-task RL (Andreas et al., 2017; Devin et al., 2017), though we use a single shared policy conditioned on local turn interfaces rather than explicit architectural modularity or learned routing. 
+
+## 4. Controller Aware Language Model 
+
+We describe the CALM training framework in two parts. Section 4.1 introduces the base multi-controller GRPO ob-jective with turn-level aggregation. Section 4.2 presents several training strategies including module-level decomposition of this objective. 
+
+4.1. Turn-level GRPO over controllers 
+
+We adopt Group Relative Policy Optimization (GRPO) (Shao et al., 2024) and extend it to the multi-controller setting using a turn-level aggregation following Wan et al. (2025). At each training step, a controller c is sampled uniformly from Ctrain and a problem 
+
+x is sampled from D. The control flow fc is then executed 
+
+G times to produce a group of trajectories τi ∼ πθ (· | x, c ),for i = 1, . . . , G , each receiving a terminal reward 
+
+Ri ∈ { 0, 1}.
+
+Multi-controller CALM objective. The full CALM train-ing objective averages the controller-level losses over the training controller distribution and adds a KL penalty to the reference policy: 
+
+LCALM (θ) = 1
+
+|C train |
+
+X
+
+> c∈C train
+
+LGRPO  
+
+> c
+
+(θ) + β KL (4) where KL = E[DKL (πθ ∥ πref )] is the average KL diver-gence to the reference policy over all tokens in the batch. In practice, each training step samples a single controller 
+
+c ∼ Uniform( Ctrain ) and a single problem instance x ∼ D ,so the outer sum is approximated by a single-sample esti-mate. LGRPO  
+
+> c
+
+(θ) uses a same turn level objective similar to (Wan et al., 2025). 
+
+Training instability in multi-turn RL. Multi-turn GRPO with terminal rewards presents known training stability challenges. As the number of turns grows, the credit as-signment problem intensifies: a single binary reward must be distributed across turns that may contribute very differ-ently to the outcome. In practice, we observe that training can become unstable after a moderate number of optimiza-tion steps, consistent with findings in prior multi-turn RL work (Wan et al., 2025; Wang et al., 2025). Both single-controller and multi-controller configurations are affected. We do not claim to solve this instability; rather, we design our training protocol and evaluation to account for it (Sec-tion 6). 
+
+4.2. Multi-controller training variants 
+
+We investigate four experimental variants of multi-controller training that differ in how gradient updates are distributed across module types. We start with the simplest starting point which trains all the modules together as they appear in a batch without any explicit decomposition. However, the compositional structure of controllers and the fact that different controllers share reusable module types enables a natural decomposition of the multi-controller loss by mod-ule. We describe the four training variants below with the experimental section showing systematic comparisons of these four training strategies. 
+
+Multi-controller mixing ( CALM -MIXED ). The first vari-ant trains on multi-controller data without module decom-position. All turns from all controllers are placed in a single flat batch and optimized with the undifferentiated turn-level GRPO loss averaged across sampled controllers. The effec-tive weight of each module is proportional to the number of turns it contributes, so frequent modules like COT natu-rally receive more gradient signal. This variant establishes a direct baseline for whether module-aware decomposition confers any benefit over straightforward multi-controller training. 4Training Language Models to Cooperate with Inference-Time Controllers 
+
+Module decomposed training strategies. We now de-scribe different training strategies for module decomposed training. Recall from Section 3 that each turn u in trajectory 
+
+i is associated with a module type m(u) ∈ M . For module 
+
+m, define the set of turns of that type within trajectory i:
+
+U(m) 
+
+> i
+
+= u : m(u) = m .
+
+The module-masked GRPO loss isolates the contribution of module m to the overall update:            
+
+> LGRPO
+> m(θ) = −1
+> G
+> GX
+> i=1
+> 1
+> |U (m)
+> i|+η
+> X
+> u∈U (m)
+> i
+> min
+> 
+> ri,u (θ) ˆA(c)
+> i,clip  ri,u (θ),1−ε, 1+ εˆA(c)
+> i
+> 
+> ,
+> (5)
+
+where η > 0 avoids division by zero when trajectory i
+
+contains no turn of type m. The advantage ˆA(c) 
+
+> i
+
+remains trajectory-level (Eq. 9); the decomposition separates which turns contribute to the gradient , but does not alter the credit assignment. Given a batch that may contain trajectories from multiple modules, let Mbatch denote the set of module types present. Thus, the objective for module decomposed training is: 
+
+LCALM Decomp (θ) = X
+
+> m∈M batch
+
+wm LGRPO  
+
+> m
+
+(θ) + β KL ,
+
+(6) where wm are per-module weights and KL is the average KL penalty over all tokens in the batch. Different choices of wm yield different training strategies, which we describe next. 
+
+Uniform module weighting ( CALM -UNIFORM ). The sec-ond variant sets wm = 1 /|M batch | for all active modules, so each module type contributes equally to the gradient update independent of how many turns it occupies in the current batch. This is the simplest form of module-aware decomposition and serves as the reference point for the decomposed variants. 
+
+Single-role-per-step training (CALM -SINGLE ). The third variant takes module isolation to its extreme: at each training step, after rolling out trajectories under the sampled controller, we randomly select one module type 
+
+m∗ ∼ Uniform( Mbatch ) and compute the loss only on turns of type m∗, discarding data from all other modules. This eliminates cross-module gradient interaction within a step at the cost of discarding turn data. It directly tests whether inter-module gradient interference is a significant obstacle to cross-controller generalization. 
+
+Adaptive gradient-norm weighting ( CALM -ADAPTIVE ). 
+
+The fourth variant investigates whether explicit gradient balancing across modules is beneficial. Modules may induce very different gradient scales, causing a subset to dominate the shared-parameter update - a phenomenon analogous to task domination in multi-task learning (Yu et al., 2020; Chen et al., 2018). We maintain an exponential moving average of the gradient norm for each module: 
+
+νm ← ρ ν m + (1 − ρ) γm, γm = ∥∇ θ LGRPO  
+
+> m
+
+(θ)∥2,
+
+(7) and set module weights inversely proportional to the smoothed gradient norm:      
+
+> wm= clip
+>  ¯ννm+δ
+> α, w min , w max
+> 
+> ,
+> ¯ν=1
+> |M active |
+> X
+> m
+> νm,(8)
+
+where δ > 0 prevents division by zero, α controls the balancing strength, and clipping bounds prevent extreme weights. Modules with persistently large gradients receive lower weight, and vice versa. A warmup phase with uniform weights is used for the first Tw steps to allow gradient norm estimates to stabilize. As we discuss in Section 6, each variant has strengths in different evaluation regimes, and no single configuration dominates across all controller types. 
+
+## 5. Related Work 
+
+Inference-time computation and controllers. A grow-ing body of work augments LLM reasoning by structur-ing inference across multiple calls or intermediate steps. Foundational methods include Chain-of-Thought prompt-ing (Wei et al., 2022), Self-Consistency (Wang et al., 2023), and Tree-of-Thoughts (Yao et al., 2023). More structured pipelines incorporate self-refinement (Madaan et al., 2023; Shinn et al., 2023), multi-agent debate (Du et al., 2023), and tool-augmented reasoning (Schick et al., 2023). Recent work has begun automating the design and search of such inference-time procedures (Saad-Falcon et al., 2024; Hu et al., 2025). CALM is complementary to this line of work: rather than optimizing the controller given a fixed model, we optimize the model given a distribution of controllers. 
+
+Single-controller fine-tuning. Prior post-training work largely assumes a single fixed interaction pattern. Chow et al. (2025) study fine-tuning strategies specific to Best-of-N sampling; Shinn et al. (2023) train agents for Reflexion-style verbal reinforcement; and RLHF and related meth-ods (Brown et al., 2020) target single-turn or single-role interaction. These approaches produce models that may over-specialize to one workflow and fail to transfer when familiar reasoning behaviors appear in a novel controller composition. CALM addresses this directly by placing the training objective over a family of controllers rather than a single fixed one. 5Training Language Models to Cooperate with Inference-Time Controllers 
+
+Multi-task and robust reinforcement learning. Multi-task RL trains a shared policy over a distribution of tasks or MDPs (Caruana, 1997; Teh et al., 2017; Yu et al., 2020). Ro-bust policy optimization seeks policies that remain effective under distributional shift (Tessler et al., 2019; Ghosh et al., 2021). CALM is related to both: we train a shared policy over controller-induced MDPs and evaluate on held-out con-troller distributions. However, the multi-controller setting introduces structure not present in standard multi-task RL. Controllers are not independent tasks — they share reusable local reasoning modules while differing in composition and turn structure. This heterogeneity produces module-level gradient imbalance that standard multi-task objectives do not address. Our compositional multi-module RL objective is specifically designed for this setting, and to the best of our knowledge, no prior work has studied post-training over a distribution of inference-time controllers. 
+
+Modular and compositional reinforcement learning. Aseparate line of work studies policies composed from reusable sub-policies or skill primitives (Devin et al., 2017; Andreas et al., 2017; Eysenbach et al., 2019). These ap-proaches often require explicit task decomposition, modu-lar architectures, or learned routing between sub-policies. CALM differs in that we use a single shared policy condi-tioned on local turn interfaces, without requiring architec-tural modularity or explicit module routing. The composi-tional structure is instead reflected in the training objective through module-masked gradient updates and gradient-norm balancing. 
+
+Meta-learning for language models. Meta-learning ap-proaches such as MAML (Finn et al., 2017) and its variants optimize for fast adaptation to new tasks from limited expe-rience. While superficially related, the goal of meta-learning is distinct from CALM’s objective: meta-learning targets rapid fine-tuning at test time, whereas CALM trains a sin-gle fixed policy that transfers to new controller composi-tions without any test-time gradient update. This distinction matters in practice, since most deployment settings do not permit test-time optimization of model parameters. 
+
+Multi-turn and multi-agent RL for LLMs. Recent work has explored RL objectives for multi-turn LLM interac-tion (Wan et al., 2025) and multi-agent settings (Wang et al., 2025). CALM builds on the turn-level GRPO formula-tion of Wan et al. (2025), which aggregates token-level importance ratios at the turn level to handle variable-length multi-turn trajectories. We extend this formulation to the multi-controller setting by introducing module-level loss de-composition and gradient-norm balancing to handle the het-erogeneous turn structure induced by different controllers. 
+
+## 6. Experiments 
+
+We conduct two experiments to evaluate controller-aware post-training. Experiment 1 compares all four CALM vari-ants against single-controller baselines across twelve eval-uation controllers, evaluating in-distribution performance of multi-controller training. Experiment 2 tests whether such training generalize to unseen controllers and out-of-distribution data. 
+
+6.1. Experimental Setup Datasets and models. For both experiments, we train on 2,048 problems from the GSM8K (Cobbe et al., 2021) training split using L LAMA -3.2-3B-I NSTRUCT (Grattafiori et al., 2024). In Experiment 1, we evaluate the trained models on the GSM8K test set. For Experiment 2, we use MATH500 (Lightman et al., 2023) and AMC23 1 for testing on out-of-distribution data. Reward is binary in both experi-ments: R = 1 if the final extracted answer is correct, R = 0 
+
+otherwise. In addition to the binary correctness reward, we add a lightweight format reward at every turn to encourage well-formed structured outputs. The format reward penal-izes JSON parse errors (−0.5) , missing required output fields (−0.2) , and extraneous fields (−0.1) , and assigns zero otherwise. This ensures the shared policy maintains valid turn interfaces across all module types throughout training, without conflating formatting compliance with task correctness. 
+
+Controllers. Experiment 1 uses six training controllers (B1–B6) and evaluates on the same set of controllers span-ning three tiers, as listed in Table 1. Training controllers 
+
+(B1–B6) are seen during training; compositional controllers 
+
+(H1–H3) recombine known modules in novel arrangements; 
+
+controller-shift controllers (H4–H6) introduce entirely new module types. All controllers are derived from prior lit-erature (Hu et al., 2025), with the exception of H2 and H3, which we design manually to highlight the compo-sitional properties of controller structures. Experiment 2 uses the same six controllers for CALM during training and evaluates on six controllers across the same three tiers, as listed in Table 1. For Experiment 2, we choose CoT as the single controller candidate because it was the one of the strongest single-controller baselines in Experiment 1. The python code and description of controllers are available in Appendix B.2 
+
+Baselines. In Experiment 1, we compare the four CALM variants (Table 2) against single-controller baselines. The single controller baselines were each trained on one con-troller from Training Controllers , using the same objective, directly exposing the cost of over-specialization. In Experi-
+
+> 1https://huggingface.co/datasets/math-ai/ amc23
+
+6Training Language Models to Cooperate with Inference-Time Controllers 
+
+Table 1. Simplified view of controllers used in both experiments. Train : seen during CALM training. Comp. : novel compositions of known modules. Shift : new module types introduced at test time. ✓ marks the subset evaluated in Experiment 2.                                                               
+
+> ID Controller Modules Tier Exp. 1 Exp. 2
+> B1 Chain-of-Thought COT Train ✓✓
+> B2 Self-Refine COT →(CRITIC →COT )×2Train ✓✓
+> B3 LLM-Debate DEBATER ×3→JUDGE Train ✓
+> B4 Step-back Abstr. ABSTRACTOR →COT Train ✓
+> B5 Quality-Diversity COT ×3→JUDGE Train ✓
+> B6 Dyn. Role Assign ROUTER →COT Train ✓
+> H1 CoT Self-Consist. COT ×5+vote Comp. ✓✓
+> H2 Step-back + Refine ABST →COT →CRITIC →COT Comp. ✓✓
+> H3 Debate + Refine DEB ×3→JUDGE →CRITIC →COT Comp. ✓
+> H4 Dyn. Role-Playing TEACHER →STUDENT →VERIFIER → · · · Shift ✓✓
+> H5 Reflective Verif. NUM →LOG →HEUR →VERIFIER Shift ✓✓
+> H6 Learning Agent LEARN -AGENT →FEEDBACK -AGENT ×3Shift ✓
+
+ment 2, we compare the single-controller CoT baseline (B1) against CALM variants to see if the learned behaviors are transferable. All training hyperparameters are reported in Appendix C. 
+
+6.2. Experiment 1: Performance Comparison between CALM vs. Single Controllers 
+
+Table 2 reports accuracy for single-controller baselines and all four CALM variants. All variants are trained for 3 epochs ( 192 steps). For Self-Refine (B2), we report re-sults at the best validation checkpoint (step 156 ), as training becomes unstable beyond that point. We refer to this as the known phenomenon of multi-turn training instability (See Section 4.1). 
+
+Single-controller baselines over-specialize. Baselines trained on a single workflow perform well under their own controller but degrade sharply elsewhere. Debate (B3) achieves 71 .87% on its own controller but drops to 40 .86% 
+
+on Chain-of-Thought (B1); Quality-Diversity (B5) similarly collapses to 38 .89% on B1. Self-Refine achieves the low-est on average on training controllers ( 36 .30% ), although it achieves ( 58 .23%) in its own controller. In contrast, CoT (B1, avg. 71 .04% ) and Step-back (B4, avg. 71 .11% ) are the strongest single-controller baselines because the CoT mod-ule they rely on appears in every evaluation controller. Fur-thermore, RoleAssign (B6) performs ( 43 .97% ) even worse in B2 than the base model ( 49 .66% ) with no additional RL training which indicates overfitting to a particular controller type even though it performs well in its own controller (75 .59% ). 
+
+All CALM variants improve over single-controller base-lines. All four CALM variants outperform the best single-controller baseline (Step-back, 71 .11% ) on the training-controller average, with averages ranging from 71 .49% 
+
+(CALM -SINGLE ) to 73 .72% (CALM -ADAPTIVE ). The gain is largest on Self-Refine (B2), where single-controller base-lines span 43 .97% − 59 .36% but CALM variants reach 
+
+60 .96% − 66 .41% , confirming that multi-controller training learns critic-style turns more robustly than any individual controller. On compositional controllers, CALM -ADAPTIVE 
+
+(70 .68% ) and CALM -MIXED (70 .31% ) lead, both above the best single-controller baseline (Step-back, 68 .31% ); CALM - 
+
+> SINGLE
+
+(65 .78% ) lags, suggesting that discarding cross-module turn data hurts performance on longer interleaved compositions (H2, H3). 
+
+No variant dominates under controller shift. CALM - 
+
+> MIXED
+
+(75 .69% ) and CALM -SINGLE (75 .46% ) are the strongest under controller shift, both exceeding the CoT baseline ( 74 .91% ) by a small margin. However, CALM - 
+
+> ADAPTIVE
+
+drops to 69 .98% which is below the CoT base-line despite leading on compositional controllers, reveal-ing that adaptive gradient-norm balancing can over-fit to the training module distribution and hurt robustness under broader structural change. Overall, no single variant domi-nates across all three tiers: CALM -ADAPTIVE is best when the test controllers recombine familiar modules; CALM - 
+
+> MIXED
+
+is most robust when the controller distribution may shift substantially. 
+
+6.3. Experiment 2: Performance Comparison on Out-of-distribution Dataset 
+
+For this experiment, we take the trained models from Ex-periment 1 and test it with out-of-distribution math datasets. Table 3 reports results on MATH500 and AMC 2023, which out-of-distribution evaluations for the MATH Level 3–5 training data. On MATH500, CALM -MIXED and CALM - 
+
+> ADAPTIVE
+
+jointly achieve the highest training average (38 .90% ), and CALM -MIXED leads on both compositional (35 .40% ) and controller-shift ( 40 .10% ) tiers, while CoT remains competitive on individual controllers such as B1 (45 .00% ) and H4 ( 39 .80% ). The harder AMC 2023 bench-mark reveals a clearer separation: CALM -MIXED leads across all three tiers with averages of 20 .00% , 26 .25% ,and 23 .75% , substantially outperforming the CoT baseline (16 .25% , 18 .75% , 22 .50% ). CALM -UNIFORM achieves the 7Training Language Models to Cooperate with Inference-Time Controllers 
+
+Table 2. Results across all evaluation controllers. Each row reports accuracy (%) under the corresponding evaluation controller. Single-controller baselines are trained on one controller only. CALM variants are trained on all six training controllers. Base model represents applying the controller zero-shot. Red-highlighted cells indicate matched controller pairs (e.g., B1-B1, . . . , B6-B6). Bold indicates the best result per column.                                                                                                                                                                                       
+
+> Training Compositional Controller-Shift Run B1 B2 B3 B4 B5 B6 Avg H1 H2 H3 Avg H4 H5 H6 Avg
+> Base Model 16.83 49.66 36.69 20.39 36.62 25.63 30.97 16.91 55.57 57.70 43.39 58.30 57.39 58.53 58.07 CoT (B1) 75.74 57.70 74.22 76.27 65.43 76.88 71.04 76.19 62.55 64.82 67.85 74.30 75.44 74.98 74.91 Self-Refine (B2) 26.08 58.23 34.95 36.62 31.01 30.93 36.30 27.22 58.83 51.48 45.84 53.30 53.75 53.45 53.50 Debate (B3) 40.86 58.98 71.87 63.23 51.02 46.25 55.37 41.09 65.58 60.80 55.82 70.89 73.39 65.20 69.83 Step-back (B4) 74.75 57.39 74.75 75.89 68.31 75.59 71.11 74.60 65.88 64.44 68.31 74.45 75.89 71.95 74.10 Quality-Diversity (B5) 38.89 59.36 76.27 65.28 65.43 45.41 58.44 39.88 61.41 64.29 55.19 70.13 76.27 71.49 72.63 RoleAssign (B6) 74.37 43.97 72.18 73.39 55.04 75.59 65.76 75.21 49.89 52.99 59.36 71.19 75.21 71.95 72.78 CALM-MIXED 76.50 66.11 77.48 76.57 65.28 78.77 73.45 76.72 68.54 65.66 70.31 76.57 76.72 73.77 75.69
+> CALM-SINGLE 76.95 60.96 76.12 74.45 62.40 78.09 71.49 77.41 60.65 59.29 65.78 76.27 76.50 73.62 75.46 CALM-UNIFORM 77.10 63.84 77.03 75.97 67.10 78.17 73.20 77.48 66.11 64.06 69.22 72.63 77.10 70.81 73.51 CALM-ADAPTIVE 77.71 66.41 77.26 74.68 67.17 79.08 73.72 77.86 68.08 66.11 70.68 69.90 73.92 65.81 69.88
+
+Table 3. Experiment 2 results on MATH500 and AMC 2023. Bold indicates the best result per column within each dataset. 
+
+Training Compositional Controller-Shift Dataset Run B1 B2 Avg H1 H2 Avg H4 H5 Avg MATH500 
+
+Chain-of-Thought 45.00 31.60 38.30 33.40 34.20 33.80 39.80 37.20 38.50 CALM-MIXED 42.40 35.40 38.90 36.60 34.20 35.40 39.00 41.20 40.10 
+
+CALM-SINGLE 41.20 35.40 38.30 33.60 33.40 33.50 37.60 38.40 38.00 CALM-UNIFORM 40.60 34.80 37.70 34.20 35.80 35.00 39.40 36.60 38.00 CALM-ADAPTIVE 42.00 35.80 38.90 33.60 36.60 35.10 41.20 37.20 39.20 
+
+AMC 2023 
+
+Chain-of-Thought 22.50 10.00 16.25 15.00 22.50 18.75 27.50 17.50 22.50 CALM-MIXED 25.00 15.00 20.00 27.50 25.00 26.25 32.50 15.00 23.75 CALM-SINGLE 22.50 15.00 18.75 15.00 15.00 15.00 22.50 17.50 20.00 CALM-UNIFORM 15.00 15.00 15.00 7.50 22.50 15.00 25.00 27.50 26.25 
+
+CALM-ADAPTIVE 20.00 17.50 18.75 15.00 12.50 13.75 25.00 25.00 25.00 
+
+strongest controller-shift average on AMC 2023 ( 26 .25% ), driven by a strong H5 result ( 27 .50% ), while CALM -
+
+ADAPTIVE underperforms on compositional controllers (13 .75% ). Overall, multi-controller training generalizes to both harder in-distribution problems and out-of-distribution competition benchmarks, with CALM -MIXED providing the most consistent gains across tiers and datasets. 
+
+## 7. Conclusion 
+
+We present CALM as a framework to address a fundamental mismatch in how LLMs are post-trained. As the discovery of inference-time techniques continue to advance, the ques-tion of how a base model should be trained to cooperate effectively with a diverse and evolving family of controllers remains largely open. We present four different variations of multi-controller post training. Our experiments on GSM8K show that multi-controller training consistently outperforms single-controller baselines, which degrade sharply when evaluated outside their native workflow, and that the bene-fit extends to held-out controller compositions and broader controller shifts involving new module types. No single module-weighting variant dominates across all settings, sug-gesting that the choice of training strategy should be in-formed by the anticipated test-time controller distribution. More broadly, CALM points to a productive direction for future work: bridging the gap between two complementary lines of research: the automatic discovery of inference-time techniques, and the post-training of base models to use them effectively. 
+
+## 8. Impact Statement 
+
+This paper presents work whose goal is to advance the field of Compositional Learning for LLM Agents. There are many potential societal consequences of our work, none of which we feel must be specifically highlighted here. 
+
+## References 
+
+AI, M. Llama 3.2 3b instruct. https://huggingface. co/meta-llama/Llama-3.2-3B-Instruct ,2024. 8Training Language Models to Cooperate with Inference-Time Controllers 
+
+Andreas, J., Klein, D., and Levine, S. Modular multitask reinforcement learning with policy sketches. In Inter-national conference on machine learning , pp. 166–175. PMLR, 2017. Brown, T., Mann, B., Ryder, N., Subbiah, M., Kaplan, J. D., Dhariwal, P., Neelakantan, A., Shyam, P., Sastry, G., Askell, A., et al. Language models are few-shot learners. 
+
+Advances in neural information processing systems , 33: 1877–1901, 2020. Caruana, R. Multitask learning. Machine Learning , 28(1): 41–75, 1997. Chen, Z., Badrinarayanan, V., Lee, C.-Y., and Rabinovich, A. Gradnorm: Gradient normalization for adaptive loss balancing in deep multitask networks. In International conference on machine learning , pp. 794–803. PMLR, 2018. Chow, Y., Tennenholtz, G., Gur, I., Zhuang, V., Dai, B., Kumar, A., Agarwal, R., Thiagarajan, S., Boutilier, C., and Faust, A. Inference-aware fine-tuning for best-of-n sampling in large language models. In The Thirteenth International Conference on Learning Representations ,2025. URL https://openreview.net/forum? id=77gQUdQhE7 .Chowdhery, A., Narang, S., Devlin, J., Bosma, M., Mishra, G., Roberts, A., Barham, P., Chung, H. W., Sutton, C., Gehrmann, S., et al. Palm: Scaling language modeling with pathways. Journal of Machine Learning Research ,24(240):1–113, 2023. Cobbe, K., Kosaraju, V., Bavarian, M., Chen, M., Jun, H., Kaiser, L., Plappert, M., Tworek, J., Hilton, J., Nakano, R., et al. Training verifiers to solve math word problems. 
+
+arXiv preprint arXiv:2110.14168 , 2021. Devin, C., Gupta, A., Darrell, T., Abbeel, P., and Levine, S. Learning modular neural network policies for multi-task and multi-robot transfer. In 2017 IEEE international conference on robotics and automation (ICRA) , pp. 2169– 2176. IEEE, 2017. Du, Y., Li, S., Torralba, A., Tenenbaum, J. B., and Mordatch, I. Improving factuality and reasoning in language models through multiagent debate. In Forty-first International Conference on Machine Learning , 2023. Eysenbach, B., Gupta, A., Ibarz, J., and Levine, S. Diversity is all you need: Learning skills without a reward function. In International Conference on Learning Representations ,2019. Finn, C., Abbeel, P., and Levine, S. Model-agnostic meta-learning for fast adaptation of deep networks. In Interna-tional conference on machine learning , pp. 1126–1135. PMLR, 2017. Ghosh, D., Gupta, A., Reddy, A., Fu, J., Devin, C., Eysen-bach, B., and Levine, S. Generalization to new actions in reinforcement learning. In International Conference on Machine Learning , pp. 3661–3671. PMLR, 2021. Grattafiori, A., Dubey, A., Jauhri, A., Pandey, A., Kadian, A., Al-Dahle, A., Letman, A., Mathur, A., Schelten, A., Vaughan, A., et al. The llama 3 herd of models. arXiv preprint arXiv:2407.21783 , 2024. Hu, S., Lu, C., and Clune, J. Automated design of agentic systems. In ICLR , 2025. Lightman, H., Kosaraju, V., Burda, Y., Edwards, H., Baker, B., Lee, T., Leike, J., Schulman, J., Sutskever, I., and Cobbe, K. Let’s verify step by step. In The twelfth inter-national conference on learning representations , 2023. Madaan, A., Tandon, N., Gupta, P., Hallinan, S., Gao, L., Wiegreffe, S., Alon, U., Dziri, N., Prabhumoye, S., Yang, Y., et al. Self-refine: Iterative refinement with self-feedback. Advances in Neural Information Processing Systems , 36:46534–46594, 2023. Saad-Falcon, J., Lafuente, A. G., Natarajan, S., Maru, N., Todorov, H., Guha, E., Buchanan, E. K., Chen, M., Guha, N., R ´e, C., et al. Archon: An architecture search framework for inference-time techniques. arXiv preprint arXiv:2409.15254 , 2024. Schick, T., Dwivedi-Yu, J., Dess `ı, R., Raileanu, R., Lomeli, M., Hambro, E., Zettlemoyer, L., Cancedda, N., and Scialom, T. Toolformer: Language models can teach themselves to use tools. Advances in Neural Information Processing Systems , 36:68539–68551, 2023. Sel, B., Tawaha, A., Khattar, V., Jia, R., and Jin, M. Al-gorithm of thoughts: Enhancing exploration of ideas in large language models. In International Conference on Machine Learning , pp. 44136–44189. PMLR, 2024. Shao, Z., Wang, P., Zhu, Q., Xu, R., Song, J., Bi, X., Zhang, H., Zhang, M., Li, Y., Wu, Y., et al. Deepseekmath: Push-ing the limits of mathematical reasoning in open language models. arXiv preprint arXiv:2402.03300 , 2024. Sheng, G., Zhang, C., Ye, Z., Wu, X., Zhang, W., Zhang, R., Peng, Y., Lin, H., and Wu, C. Hybridflow: A flexi-ble and efficient rlhf framework. arXiv preprint arXiv: 2409.19256 , 2024. Shinn, N., Cassano, F., Gopinath, A., Narasimhan, K., and Yao, S. Reflexion: Language agents with verbal rein-forcement learning. Advances in Neural Information Processing Systems , 36:8634–8652, 2023. Teh, Y. W., Bapst, V., Czarnecki, W. M., Quan, J., Kirk-patrick, J., Hadsell, R., Heess, N., and Pascanu, R. Distral: 9Training Language Models to Cooperate with Inference-Time Controllers 
+
+Robust multitask reinforcement learning. In Advances in Neural Information Processing Systems , volume 30, 2017. Tessler, C., Efroni, Y., and Mannor, S. Action robust rein-forcement learning and applications in continuous control. In International Conference on Machine Learning , pp. 6215–6224. PMLR, 2019. Touvron, H., Lavril, T., Izacard, G., Martinet, X., Lachaux, M.-A., Lacroix, T., Rozi `ere, B., Goyal, N., Hambro, E., Azhar, F., et al. Llama: Open and efficient foundation lan-guage models. arXiv preprint arXiv:2302.13971 , 2023. Wan, Z., Li, Y., Wen, X., Song, Y., Wang, H., Yang, L., Schmidt, M., Wang, J., Zhang, W., Hu, S., et al. Rema: Learning to meta-think for llms with multi-agent rein-forcement learning. arXiv preprint arXiv:2503.09501 ,2025. Wang, J., Fang, M., Wan, Z., Wen, M., Zhu, J., Liu, A., Gong, Z., Song, Y., Chen, L., Ni, L. M., et al. Openr: An open source framework for advanced reasoning with large language models. arXiv preprint arXiv:2410.09671 ,2024. Wang, X., Wei, J., Schuurmans, D., Le, Q., Chi, E., Narang, S., Chowdhery, A., and Zhou, D. Self-consistency im-proves chain of thought reasoning in language models. 
+
+ICLR , 2023. Wang, Z., Wang, K., Wang, Q., Zhang, P., Li, L., Yang, Z., Jin, X., Yu, K., Nguyen, M. N., Liu, L., et al. Ragen: Understanding self-evolution in llm agents via multi-turn reinforcement learning. arXiv preprint arXiv:2504.20073 ,2025. Wei, J., Wang, X., Schuurmans, D., Bosma, M., Xia, F., Chi, E., Le, Q. V., Zhou, D., et al. Chain-of-thought prompting elicits reasoning in large language models. Advances in neural information processing systems , 35:24824–24837, 2022. Yao, S., Zhao, J., Yu, D., Du, N., Shafran, I., Narasimhan, K. R., and Cao, Y. React: Synergizing reasoning and acting in language models. In The eleventh international conference on learning representations , 2022. Yao, S., Yu, D., Zhao, J., Shafran, I., Griffiths, T., Cao, Y., and Narasimhan, K. Tree of thoughts: Deliberate problem solving with large language models. Advances in neural information processing systems , 36:11809–11822, 2023. Yu, T., Kumar, S., Gupta, A., Levine, S., Hausman, K., and Finn, C. Gradient surgery for multi-task learning. In Advances in Neural Information Processing Systems ,volume 33, pp. 5824–5836, 2020. Zheng, H. S., Mishra, S., Chen, X., Cheng, H.-T., Chi, E. H., Le, Q. V., and Zhou, D. Take a step back: Evoking reasoning via abstraction in large language models. arXiv preprint arXiv:2310.06117 , 2023. 10 Training Language Models to Cooperate with Inference-Time Controllers 
+
+## Appendix Table of Contents 
+
+A Multi-controller Training Objective . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 12 
+
+B Module Vocabulary and Controller Pseudocode . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 13 
+
+C Hyperparameters and Training Details . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19 
+
+D Training Plots . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 19 
+
+E Qualitative Examples . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 21 11 Training Language Models to Cooperate with Inference-Time Controllers 
+
+## A. Multi-controller Training Objective 
+
+We adopt Group Relative Policy Optimization (GRPO) (Shao et al., 2024) and extend it to the multi-controller setting using a turn-level aggregation following Wan et al. (2025). At each training step, a controller c is sampled uniformly from Ctrain 
+
+and a problem x is sampled from D. The control flow fc is then executed G times to produce a group of trajectories 
+
+τi ∼ πθ (· | x, c ), i = 1 , . . . , G, 
+
+each receiving a terminal reward Ri ∈ { 0, 1}.
+
+Group-normalized advantages. Since reward is terminal, all turns within a trajectory share the same advantage. We normalize within the group of G trajectories sampled for the same controller and input: 
+
+ˆA(c) 
+
+> i
+
+= Ri − μc
+
+σc + ϵ , μc = 1
+
+G
+
+> G
+
+X
+
+> k=1
+
+Rk, σc =
+
+vuut 1
+
+G
+
+> G
+
+X
+
+> k=1
+
+(Rk − μc)2. (9) Note that the advantage ˆA(c) 
+
+> i
+
+is identical for every turn u within trajectory i: the decomposition does not perform turn-level credit assignment. 
+
+Turn-level ratio aggregation. For token j at turn u of trajectory i, the importance ratio is 
+
+ri,u,j (θ) = πθ (yi,u,j | si,u,j )
+
+πθold (yi,u,j | si,u,j ) , (10) where si,u,j = ( x, τ i,<u , y i,u,<j , κ (u)) is the state at token j of turn u (see Section 3). Following Wan et al. (2025), we aggregate ratios at the turn level to avoid length bias across turns with different token counts: 
+
+ri,u (θ) = 1
+
+Ti,u Ti,u 
+
+X
+
+> j=1
+
+ri,u,j (θ), (11) where Ti,u is the number of tokens generated at turn u of trajectory i.
+
+Controller-level GRPO loss. For a single sampled controller c, the turn-level GRPO loss over the group of G trajectories is: 
+
+LGRPO  
+
+> c
+
+(θ) = − 1
+
+G
+
+> G
+
+X
+
+> i=1
+
+1
+
+UiUiX
+
+> u=1
+
+1
+
+Ti,u Ti,u 
+
+X
+
+> j=1
+
+min 
+
+
+
+ri,u (θ) ˆA(c) 
+
+> i
+
+, clip  ri,u (θ), 1−ε, 1+ ε ˆA(c)
+
+> i
+
+
+
+, (12) where Ui is the number of turns in trajectory i and ε is the clipping parameter. The normalization by 1/U i is important in the multi-controller setting because controllers differ substantially in the number of turns (e.g., 1 turn for Chain-of-Thought vs. 7 turns for LLM-Debate): without it, longer controllers would dominate the loss. 
+
+Multi-controller CALM objective. The full CALM training objective averages the controller-level losses over the training controller distribution and adds a KL penalty to the reference policy: 
+
+LCALM (θ) = 1
+
+|C train |
+
+X
+
+> c∈C train
+
+LGRPO  
+
+> c
+
+(θ) + β KL (13) where KL = E[DKL (πθ ∥ πref )] is the average KL divergence to the reference policy over all tokens in the batch. In practice, each training step samples a single controller c ∼ Uniform( Ctrain ) and a single problem x ∼ D , so the outer sum is approximated by a single-sample estimate. 12 Training Language Models to Cooperate with Inference-Time Controllers 
+
+Expanding Eq. 13 fully with the turn-level ratio (Eq. 11) and advantage (Eq. 9), the complete objective is: 
+
+LCALM (θ) = − 1
+
+|C train |
+
+X
+
+> c∈C train
+
+1
+
+G
+
+> G
+
+X
+
+> i=1
+
+1
+
+UiUiX
+
+> u=1
+
+1
+
+Ti,u Ti,u 
+
+X
+
+> j=1
+
+min 
+
+ 1
+
+Ti,u Ti,u 
+
+X
+
+> j=1
+
+ri,u,j (θ)
+
+| {z } 
+
+> turn-level ratio ri,u (θ)
+
+ˆA(c) 
+
+> i
+
+, clip 
+
+ 1
+
+Ti,u Ti,u 
+
+X
+
+> j=1
+
+ri,u,j (θ), 1−ε, 1+ ε
+
+ ˆA(c)
+
+> i
+
+
+
++ β KL , (14) where the four levels of summation correspond to: (1) controllers c sampled from the training family, (2) trajectories i within a group of G rollouts, (3) turns u within each trajectory, normalized by 1/U i, and (4) tokens j within each turn, aggregated into the turn-level ratio ri,u (θ). This objective reduces to single-controller turn-level GRPO (Eq. 4 of Wan et al. (2025)) when |C train | = 1 , and to standard single-turn GRPO (Shao et al., 2024) when additionally Ui = 1 for all trajectories. 
+
+## B. Module Vocabulary and Controller Pseudocode 
+
+B.1. Module vocabulary 
+
+Table 4 lists the full module vocabulary used in our experiments. Each module is defined by a role instruction (system prompt) and an output schema. The shared module vocabulary is the key structure that makes cross-controller generalization possible: a CRITIC turn presents the same interface regardless of whether it appears in Self-Refine or in a held-out compositional controller. However, the modules could have distinct prompt with optionally associated roles (See Section B.2). 
+
+Table 4. Module vocabulary used across all training and evaluation controllers. Each module is identified by its role label and output schema; these are the only controller-specific inputs the shared policy observes at each turn. 
+
+Module Role description Output schema  
+
+> COT
+
+Chain-of-thought reasoning agent [thinking, answer]  
+
+> CRITIC
+
+Critique and feedback agent [feedback, correct]  
+
+> ABSTRACTOR
+
+Step-back abstraction agent [thinking, principle]  
+
+> DEBATER
+
+Multi-agent debate participant [thinking, answer]  
+
+> JUDGE
+
+Aggregation and verdict agent [thinking, answer]  
+
+> ROUTER
+
+Dynamic role assignment agent [choice] 
+
+B.2. Controller implementations 
+
+We implement each controller as a Python callable that takes a problem instance and a policy function and returns a trajectory. The controller specifies the module sequence, routes outputs between turns, and handles any non-LLM logic (branching, iteration, voting). Specifically, each controller is implemented as a Python method using LLMAgentBase , which takes a list of output fields, an agent name, and optional role/temperature arguments. For evaluation, we choose greedy sampling with temperature = 0 . Agents are called with a list of context Info objects and a system instruction. The six training controllers are shown below: 
+
+Listing 1. Chain-of-Thought (B1)                                                                                                      
+
+> def Chain_of_Thought(self, taskInfo):
+> #Instruction for the Chain-of-Thought (CoT) approach #It is aimportant practice that allow the LLM to think step by step before solving the task.
+> cot_instruction ="Please think step by step and then solve the task."
+> #Instantiate anew LLM agent specifically for CoT #To alow LLM thinking before answering, we need to set the an addtional output field ’thinking’.
+> cot_agent =LLMAgentBase([’thinking’, ’answer’], ’Chain-of-Thought Agent’)
+> #Prepare the inputs for the CoT agent #The input should be alist of Info, and the first one is often the taskInfo
+> cot_agent_inputs =[taskInfo]
+> #Get the response from the CoT agent
+> thinking, answer =cot_agent(cot_agent_inputs, cot_instruction)
+
+13 Training Language Models to Cooperate with Inference-Time Controllers 
+
+# Return only the final answer 
+
+return answer 
+
+Listing 2. Self-Refine (B2) 
+
+def Self_Refine_Reflexion(self, taskInfo): 
+
+# Instruction for initial reasoning 
+
+cot_initial_instruction = "Please think step by step and then solve the task." 
+
+# Instruction for reflecting on previous attempts and feedback to improve 
+
+cot_reflect_instruction = "Given previous attempts and feedback, carefully consider where you could go wrong in your latest attempt. Using insights from previous attempts, try to solve the task better." cot_agent = LLMAgentBase([’thinking’, ’answer’], ’Chain-of-Thought Agent’) 
+
+# Instruction for providing feedback and correcting the answer 
+
+critic_instruction = "Please review the answer above and criticize on where might be wrong. If you are absolutely sure it is correct, output ’True’ in ’correct’." critic_agent = LLMAgentBase([’feedback’, ’correct’], ’Critic Agent’) N_max = 2 # Maximum number of attempts # Initial attempt 
+
+cot_inputs = [taskInfo] thinking, answer = cot_agent(cot_inputs, cot_initial_instruction, 0) 
+
+for i in range (N_max): 
+
+# Get feedback and correct status from the critic 
+
+feedback, correct = critic_agent([taskInfo, thinking, answer], critic_instruction, i) 
+
+if correct.content == ’True’: 
+
+break 
+
+# Add feedback to the inputs for the next iteration 
+
+cot_inputs.extend([thinking, answer, feedback]) 
+
+# Reflect on previous attemps and refine the answer 
+
+thinking, answer = cot_agent(cot_inputs, cot_reflect_instruction, i + 1) 
+
+return answer 
+
+Listing 3. LLM-Debate (B3) 
+
+def LLM_Debate(self, taskInfo): 
+
+# Instruction for initial reasoning 
+
+debate_initial_instruction = "Please think step by step and then solve the task." 
+
+# Instruction for debating and updating the solution based on other agents’ solutions 
+
+debate_instruction = "Given solutions to the problem from other agents, consider their opinions as additional advice. Please think carefully and provide an updated answer." 
+
+# Initialize debate agents with different roles and a moderate temperature for varied reasoning 
+
+debate_agents = [LLMAgentBase([’thinking’, ’answer’], ’Debate Agent’, temperature=0.8, role=role) for role in 
+
+[’Math Professor’, ’Grade School Teacher’, ’Math Enthusiast’]] 
+
+# Instruction for final decision-making based on all debates and solutions 
+
+final_decision_instruction = "Given all the above thinking and answers, reason over them carefully and provide a final answer." final_decision_agent = LLMAgentBase([’thinking’, ’answer’], ’Final Decision Agent’, temperature=0.1) max_round = 2 # Maximum number of debate rounds 
+
+all_thinking = [[] for _ in range (max_round)] all_answer = [[] for _ in range (max_round)] 
+
+# Perform debate rounds 
+
+for r in range (max_round): 
+
+for i in range (len (debate_agents)): 
+
+if r == 0: thinking, answer = debate_agents[i]([taskInfo], debate_initial_instruction) 
+
+else :input_infos = [taskInfo] + [all_thinking[r-1][i]] + all_thinking[r-1][:i] + all_thinking[r-1][i +1:] thinking, answer = debate_agents[i](input_infos, debate_instruction) all_thinking[r].append(thinking) all_answer[r].append(answer) 
+
+# Make the final decision based on all debate results and solutions 
+
+thinking, answer = final_decision_agent([taskInfo] + all_thinking[max_round-1] + all_answer[max_round-1], final_decision_instruction) 
+
+return answer 
+
+14 Training Language Models to Cooperate with Inference-Time Controllers 
+
+Listing 4. Step-back Abstraction (B4) 
+
+def Step_back_Abstraction(self, taskInfo): 
+
+# Instruction for understanding the principles involved in the task 
+
+principle_instruction = "What are the physics, chemistry or biology principles and concepts involved in solving this task? First think step by step. Then list all involved principles and explain them." 
+
+# Instruction for solving the task based on the principles 
+
+cot_instruction = "Given the question and the invovled principle behind the question, think step by step and then solve the task." 
+
+# Instantiate LLM agents 
+
+principle_agent = LLMAgentBase([’thinking’, ’principle’], ’Principle Agent’) cot_agent = LLMAgentBase([’thinking’, ’answer’], ’Chain-of-Thought Agent’) 
+
+# Get the principles involved in the task 
+
+thinking, principle = principle_agent([taskInfo], principle_instruction) 
+
+# Use the principles to solve the task 
+
+thinking, answer = cot_agent([taskInfo, thinking, principle], cot_instruction) 
+
+return answer 
+
+Listing 5. Quality-Diversity (B5) 
+
+def Quality_Diversity(self, taskInfo): 
+
+# Instruction for initial reasoning 
+
+cot_initial_instruction = "Please think step by step and then solve the task." 
+
+# Instruction for giving diverse answers 
+
+qd_instruction = "Given previous attempts, try to come up with another interesting way to solve the task." cot_agent = LLMAgentBase([’thinking’, ’answer’], ’Chain-of-Thought Agent’) 
+
+# Instruction for final decision-making based on collected reasoning and answers 
+
+final_decision_instruction = "Given all the above solutions, reason over them carefully and provide a final answer." final_decision_agent = LLMAgentBase([’thinking’, ’answer’], ’Final Decision Agent’, temperature=0.1) N_max = 2 # Maximum number of attempts # Initial attempt 
+
+cot_inputs = [taskInfo] possible_answers = [] thinking, answer = cot_agent(cot_inputs, cot_initial_instruction, 0) 
+
+# Add the answer to the list of possible answers 
+
+possible_answers.extend([thinking, answer]) 
+
+for i in range (N_max): 
+
+# Reflect on previous attempts and generate another interesting answer 
+
+cot_inputs.extend([thinking, answer]) 
+
+# Generate another interesting answer 
+
+thinking, answer = cot_agent(cot_inputs, qd_instruction, i + 1) possible_answers.extend([thinking, answer]) 
+
+# Make the final decision based on all generated answers 
+
+thinking, answer = final_decision_agent([taskInfo] + possible_answers, final_decision_instruction) 
+
+return answer 
+
+Listing 6. Dynamic Role Assignment (B6) 
+
+def Dynamic_Assignment_of_Roles(self, taskInfo): 
+
+# Instruction for step-by-step reasoning 
+
+cot_instruction = "Please think step by step and then solve the task." expert_agents = [LLMAgentBase([’thinking’, ’answer’], ’Expert Agent’, role=role) for role in [’Math Professor’, ’Grade School Teacher’, ’Math Enthusiast’, ’Helpful Assistant’]] 
+
+# Instruction for routing the task to the appropriate expert 
+
+routing_instruction = "Given the task, please choose an Expert to answer the question. Choose from: Math Professor, Grade School Teacher, Math Enthusiast." routing_agent = LLMAgentBase([’choice’], ’Routing agent’) 
+
+# Get the choice of expert to route the task 
+
+choice = routing_agent([taskInfo], routing_instruction)[0] 
+
+if ’professor’ in choice.content.lower(): expert_id = 0
+
+elif ’teacher’ in choice.content.lower(): expert_id = 1
+
+elif ’enthusiast’ in choice.content.lower(): 
+
+15 Training Language Models to Cooperate with Inference-Time Controllers 
+
+expert_id = 2
+
+else :expert_id = 3 # Default to helpful assistant 
+
+thinking, answer = expert_agents[expert_id]([taskInfo], cot_instruction) 
+
+return answer 
+
+Evaluation controllers (H1–H3) are constructed by composing these modules in novel arrangements as described in Table 1. The controller-shift controllers (H4–H6) additionally introduce module types not present in the training vocabulary (TEACHER , STUDENT , VERIFIER , LEARNING -AGENT , FEEDBACK -AGENT , and specialized verifier subtypes). 
+
+Listing 7. Self-Consistency with Chain-of-Thought (H1) 
+
+def Self_Consistency_with_Chain_of_Thought(self, taskInfo): 
+
+# Instruction for step-by-step reasoning 
+
+cot_instruction = "Please think step by step and then solve the task." N = 5 # Number of CoT agents # Initialize multiple CoT agents with a higher temperature for varied reasoning 
+
+cot_agents = [LLMAgentBase([’thinking’, ’answer’], ’Chain-of-Thought Agent’, temperature=0.8) for _ in range (N)] 
+
+# Majority voting function to select the most common answer 
+
+from collections import Counter 
+
+def majority_voting(answers): 
+
+return Counter(answers).most_common(1)[0][0] possible_answers = [] 
+
+for i in range (N): thinking, answer = cot_agents[i]([taskInfo], cot_instruction) possible_answers.append(answer.content) 
+
+# Ensembling the answers from multiple CoT agents 
+
+answer = majority_voting(possible_answers) 
+
+return answer 
+
+Listing 8. Step-back with Refine (H2) 
+
+def Step_back_with_Refine(self, taskInfo): 
+
+# === Module 1: ABSTRACTOR === 
+
+principle_instruction = "What are the physics, chemistry or biology principles and concepts involved in solving this task? First think step by step. Then list all involved principles and explain them." principle_agent = LLMAgentBase([’thinking’, ’principle’], ’Principle Agent’) 
+
+# === Module 2: COT === 
+
+cot_instruction = "Given the question and the invovled principle behind the question, think step by step and then solve the task." cot_agent = LLMAgentBase([’thinking’, ’answer’], ’Chain-of-Thought Agent’) 
+
+# === Module 3: CRITIC === 
+
+critic_instruction = "Please review the answer above and criticize on where might be wrong. If you are absolutely sure it is correct, output ’True’ in ’correct’." critic_agent = LLMAgentBase([’feedback’, ’correct’], ’Critic Agent’) 
+
+# === Module 4: COT-reflect === 
+
+cot_reflect_instruction = "Given previous attempts and feedback, carefully consider where you could go wrong in your latest attempt. Using insights from previous attempts, try to solve the task better." 
+
+# Turn 1: Extract principles (ABSTRACTOR) 
+
+thinking_p, principle = principle_agent([taskInfo], principle_instruction) 
+
+# Turn 2: Solve using principles (COT) 
+
+thinking, answer = cot_agent([taskInfo, thinking_p, principle], cot_instruction) 
+
+# Turn 3: Critique the answer (CRITIC) 
+
+feedback, correct = critic_agent([taskInfo, thinking, answer], critic_instruction) 
+
+# Turn 4: Revise based on feedback (COT-reflect) 
+
+thinking, answer = cot_agent([taskInfo, thinking_p, principle, thinking, answer, feedback], cot_reflect_instruction, 1) 
+
+return answer 
+
+Listing 9. Debate + Refine (H3) 
+
+def H5__Debate___Refine(self, taskInfo): 
+
+# === Modules 1-3: DEBATERS === 
+
+16 Training Language Models to Cooperate with Inference-Time Controllers 
+
+debate_initial_instruction = "Please think step by step and then solve the task." debate_agents = [LLMAgentBase([’thinking’, ’answer’], ’Debate Agent’, temperature=0.8, role=role) for role in 
+
+[’Math Professor’, ’Grade School Teacher’, ’Math Enthusiast’]] 
+
+# === Module 4: JUDGE === 
+
+final_decision_instruction = "Given all the above thinking and answers, reason over them carefully and provide a final answer." final_decision_agent = LLMAgentBase([’thinking’, ’answer’], ’Final Decision Agent’, temperature=0.1) 
+
+# === Module 5: CRITIC === 
+
+critic_instruction = "Please review the answer above and criticize on where might be wrong. If you are absolutely sure it is correct, output ’True’ in ’correct’." critic_agent = LLMAgentBase([’feedback’, ’correct’], ’Critic Agent’) 
+
+# === Module 6: COT-reflect === 
+
+cot_reflect_instruction = "Given previous attempts and feedback, carefully consider where you could go wrong in your latest attempt. Using insights from previous attempts, try to solve the task better." cot_agent = LLMAgentBase([’thinking’, ’answer’], ’Chain-of-Thought Agent’) 
+
+# Turns 1-3: One round of debate (DEBATERS) 
+
+all_thinking = [] all_answer = [] 
+
+for i in range (3): thinking, answer = debate_agents[i]([taskInfo], debate_initial_instruction) all_thinking.append(thinking) all_answer.append(answer) 
+
+# Turn 4: Judge decides (JUDGE) 
+
+thinking_j, answer_j = final_decision_agent([taskInfo] + all_thinking + all_answer, final_decision_instruction) 
+
+# Turn 5: Critic reviews judge’s answer (CRITIC) 
+
+feedback, correct = critic_agent([taskInfo, thinking_j, answer_j], critic_instruction) 
+
+# Turn 6: Revise based on feedback (COT-reflect) 
+
+thinking, answer = cot_agent([taskInfo, thinking_j, answer_j, feedback], cot_reflect_instruction, 1) 
+
+return answer 
+
+Listing 10. Dynamic Role-Playing Architecture (H4) 
+
+def Dynamic_Role_Playing_Architecture(self, taskInfo): 
+
+# Instruction for the Teacher agent to explain the task and provide feedback 
+
+teacher_instruction = "Please explain the task in detail and provide any necessary hints or steps to solve it ." 
+
+# Instruction for the Student agent to solve the task based on the Teacher’s explanation 
+
+student_instruction = "Using the Teacher’s explanation and feedback, please solve the task step by step." 
+
+# Instruction for the Verifier agent to review the Student’s answer and provide a final decision 
+
+verifier_instruction = "Please review the Student’s answer, verify its correctness, and provide a final decision. Also, give feedback on the Teacher’s explanation and the Student’s approach." 
+
+# Initialize the Teacher, Student, and Verifier agents 
+
+teacher_agent = LLMAgentBase([’explanation’], ’Teacher Agent’) student_agent = LLMAgentBase([’thinking’, ’answer’], ’Student Agent’) verifier_agent = LLMAgentBase([’final_verdict’, ’teacher_feedback’, ’student_feedback’], ’Verifier Agent’) 
+
+# Teacher agent provides explanation and hints 
+
+teacher_output = teacher_agent([taskInfo], teacher_instruction) explanation = teacher_output[0] 
+
+# Student agent attempts to solve the task based on Teacher’s explanation 
+
+student_output = student_agent([taskInfo, explanation], student_instruction) thinking, answer = student_output 
+
+# Verifier agent reviews the Student’s answer and provides feedback 
+
+verifier_output = verifier_agent([taskInfo, thinking, answer], verifier_instruction) final_verdict, teacher_feedback, student_feedback = verifier_output 
+
+# Teacher agent refines the explanation based on Verifier’s feedback 
+
+refined_teacher_output = teacher_agent([taskInfo, teacher_feedback], teacher_instruction) refined_explanation = refined_teacher_output[0] 
+
+# Student agent refines the solution based on refined Teacher’s explanation and Verifier’s feedback 
+
+refined_student_output = student_agent([taskInfo, refined_explanation, student_feedback], student_instruction )refined_thinking, refined_answer = refined_student_output 
+
+# Return the final answer 
+
+17 Training Language Models to Cooperate with Inference-Time Controllers 
+
+return refined_answer 
+
+Listing 11. Role-based Reflective Peer Review (H5) 
+
+def Role_based_Reflective_Peer_Review(self, taskInfo): 
+
+# Instructions for different reasoning styles 
+
+numerical_instruction = ’Please solve the task using numerical calculations.’ logical_instruction = ’Please solve the task using logical reasoning.’ heuristic_instruction = ’Please solve the task using heuristic reasoning.’ 
+
+# Instruction for reflective verification 
+
+reflective_verification_instruction = ’Please review the solutions provided by other agents, critique where they might be wrong, and suggest improvements.’ 
+
+# Initialize agents with different roles and approaches 
+
+numerical_agent = LLMAgentBase([’thinking’, ’answer’], ’Numerical Solver’, temperature=0.3, role=’numerical solver’) logical_agent = LLMAgentBase([’thinking’, ’answer’], ’Logical Reasoner’, temperature=0.4, role=’logical reasoner’) heuristic_agent = LLMAgentBase([’thinking’, ’answer’], ’Heuristic Solver’, temperature=0.5, role=’heuristic solver’) 
+
+# Get initial solutions from different agents 
+
+numerical_thinking, numerical_answer = numerical_agent([taskInfo], numerical_instruction) logical_thinking, logical_answer = logical_agent([taskInfo], logical_instruction) heuristic_thinking, heuristic_answer = heuristic_agent([taskInfo], heuristic_instruction) 
+
+# Collect initial answers and their thinking processes 
+
+initial_solutions = [numerical_thinking, numerical_answer, logical_thinking, logical_answer, heuristic_thinking, heuristic_answer] 
+
+# Initialize the Reflective Verifier agent 
+
+reflective_verifier_agent = LLMAgentBase([’feedback’, ’refined_answer’], ’Reflective Verifier Agent’) 
+
+# Perform reflective verification 
+
+feedback, refined_answer = reflective_verifier_agent([taskInfo] + initial_solutions, reflective_verification_instruction) 
+
+# Refine the solutions based on feedback 
+
+refined_solutions = [] 
+
+for agent, instruction, thinking, answer in zip ([numerical_agent, logical_agent, heuristic_agent], [numerical_instruction, logical_instruction, heuristic_instruction], [numerical_thinking, logical_thinking, heuristic_thinking], [numerical_answer, logical_answer, heuristic_answer]): refined_thinking, refined_answer = agent([taskInfo, thinking, feedback], instruction) refined_solutions.append(refined_thinking) refined_solutions.append(refined_answer) 
+
+# Final decision-making based on all refined solutions 
+
+final_decision_agent = LLMAgentBase([’thinking’, ’answer’], ’Final Decision Agent’, temperature=0.1) final_thinking, final_answer = final_decision_agent([taskInfo] + refined_solutions, ’Please provide the final answer based on all the reviewed and refined solutions.’) 
+
+return final_answer 
+
+Listing 12. Learning Agent (H6) 
+
+def Learning_Agent(self, taskInfo): 
+
+# Instruction for initial reasoning 
+
+initial_instruction = ’Please think step by step and then solve the task.’ 
+
+# Instruction for reflecting on feedback and improving the strategy 
+
+reflect_instruction = ’Given the feedback from previous attempts, refine your strategy and solve the task again.’ 
+
+# Initialize the Learning Agent 
+
+learning_agent = LLMAgentBase([’thinking’, ’answer’], ’Learning Agent’) 
+
+# Memory to store previous attempts and feedback 
+
+memory = [] 
+
+# Maximum number of refinement iterations 
+
+max_iterations = 3
+
+for i in range (max_iterations): 
+
+# If memory is empty, perform the initial attempt 
+
+if not memory: response = learning_agent([taskInfo], initial_instruction) 
+
+else :
+
+# Reflect on previous feedback and refine the strategy 
+
+18 Training Language Models to Cooperate with Inference-Time Controllers                                                
+
+> response =learning_agent([taskInfo] +memory, reflect_instruction) thinking, answer =response
+> #Get feedback for the current attempt
+> feedback_agent =LLMAgentBase([’feedback’], ’Feedback Agent’) feedback =feedback_agent([taskInfo, thinking, answer], ’Please review the answer and provide feedback.’) [0]
+> #Store the current attempt and feedback in memory
+> memory.extend([thinking, answer, feedback])
+> #Return the final answer after all iterations
+> return answer
+
+B.3. System Prompt Format 
+
+Each agent turn is conditioned on a system prompt composed of a role description and a structured output instruction. For GSM8K, the output fields require integer answers. The prompt is constructed as follows:                                                                                                 
+
+> Role: You are a{role }.
+> Format instruction:
+> Reply EXACTLY with the following JSON format.
+> {"thinking": "Your thinking.", "answer": "Your answer. Return ONLY an integer. DO NOT return anything other than the integer answer." }
+> DO NOT MISS ANY REQUEST FIELDS and ensure that your response is awell-formed JSON object! You are to return ONLY avalid JSON object. Requirements: 1) Double quotes for all keys and string values. 2) No trailing commas, comments, or extra text before/after the JSON. 3) Numbers must be finite (no NaN/Infinity). 4) Return exactly one JSON object. Example of correct format (note that this is just an example): {"thinking": "your thinking", "answer": 2}
+
+The output schema varies by module as shown in Table 4. 
+
+## C. Hyperparameters and Training Details 
+
+All runs use the same base infrastructure built on VeRL (Sheng et al., 2024) with GRPO (Shao et al., 2024) and turn-level ratio aggregation (Wan et al., 2025). Table 5 details the per-run configuration for all single-controller baselines and CALM variants. 
+
+CALM -ADAPTIVE uses additional adaptive weighting parameters: EMA decay ρ=0 .9, balancing strength α=1 .0, clip bounds [wmin , w max ]=[0 .1, 10 .0] , floor δ=10 −6.
+
+## D. Training Plots 
+
+Figure 2 plots the accuracy and reward score (accuracy + format reward) on a held-out validation set over training steps. We note that, under the same compute budget and hyperparameters, multi-turn controllers take longer to converge. Furthermore, Self-Refine (B2) training collapses after a few steps. For B2, we therefore evaluate the checkpoint with the best validation accuracy. 19 Training Language Models to Cooperate with Inference-Time Controllers 
+
+Table 5. Shared hyperparameters across all GSM8K runs. 
+
+Hyperparameter Value 
+
+Model 
+
+Base model Llama-3.2-3B-Instruct (AI, 2024) LoRA rank / alpha 64 / 32 LoRA target modules all-linear 
+
+Data 
+
+Training data GSM8K (Cobbe et al., 2021), 2,048 samples Train batch size 32 Max prompt length 2,048 tokens Max response length 1,536 tokens 
+
+RL objective 
+
+Algorithm Turn-level GRPO (Shao et al., 2024; Wan et al., 2025) Clip mode / agg. mode turn / trajectory Clip ratio ε 0.2 Group size n 8KL loss coefficient 5e-4 Entropy coefficient 0.01 
+
+Optimiser 
+
+Learning rate 5e-6 LR scheduler constant Gradient clip 1.0 Total training steps 192 Total epochs 3
+
+Figure 2. Training curves for different training configurations for single-controller training (B1–B6) 
+
+20 Training Language Models to Cooperate with Inference-Time Controllers 
+
+## E. Qualitative Examples 
+
+E.1. Quality-Diversity: Final Decision Agent recovers from unanimous CoT failure 
+
+The following trajectory ( R = 1 ) shows controller B5 (Quality-Diversity) on a GSM8K problem. All three C OT agents misread the question as a displacement problem and apply the Pythagorean theorem; the Final Decision identifies the shared error and recovers the correct answer of 230. 21 Training Language Models to Cooperate with Inference-Time Controllers Controller: Quality-diversity (B5) Score: 1.0 Turns: 4 Ground truth: 230 
+
+Question 
+
+{"question": "Two trains leave San Rafael at the same time. They begin traveling westward, both traveling for 80 miles. The next day, they travel northwards, covering 150 miles. What’s the distance covered by each train in the two days?" }
+
+Turn 1 — Chain-of-Thought Agent answer: 174 × 
+
+{"thinking": "Since the trains travel for 80 miles westward and then 150 miles northward, we can consider this as a right-angled triangle problem. The distance covered by each train in the two days can be calculated using the Pythagorean theorem. The total distance covered by each train is the hypotenuse of the triangle, which is the square root of (80ˆ2 + 150ˆ2). The distance covered by each train is sqrt(80ˆ2 + 150ˆ2) = sqrt(6400 + 22500) = sqrt(30400) = 174.58 miles. Since the answer should be an integer, we can round down to 174 miles for each train.", "answer": 174 }
+
+Turn 2 — Chain-of-Thought Agent answer: 260 × 
+
+{"thinking": "Another way to solve this problem is by realizing that the total distance covered by each train forms the hypotenuse of a right-angled triangle. We can use the concept of Pythagorean triplets to simplify the calculation. The numbers 80 and 150 can be expressed as 16*5 and 25*6 respectively. Using these values, we can form a Pythagorean triplet (16*5, 25*6, 26*5) which is a multiple of the basic 3-4-5 Pythagorean triplet. The hypotenuse of this triangle is 26*5 = 130 miles. However, this is the total distance covered by each train in two days, not the individual distances covered in each direction. To find the individual distances, we can use the fact that the ratio of the sides in a Pythagorean triplet is constant. So, the ratio of the sides in our triplet is 5:6:26/5. We can use this ratio to find the individual distances covered by each train in each direction. The distance covered westward is 80 = 5*16 = 5*(5*16/26) = 5*5*16/26 = 100/13 * 5 = 500/13 miles. The distance covered northward is 150 = 6*25 =6*(25*6/26) = 6*25*6/26 = 900/13 miles. However, these values are not integers. To get integer values, we can multiply the entire ratio by 13. The distance covered westward is 100*13/13 = 100 miles. The distance covered northward is 900/13*13 = 900 miles. But this is not the correct answer as the total distance covered in two days is 130*13 = 1690 miles, not 1690 miles = 130 miles (west) + 900 miles (north). The correct answer is 130 miles (west) + 130*6 miles (north) = 130*7 miles. So the correct answer is 130 miles (west) + 910 miles (north) = 1040 miles. But this is not the correct answer as the total distance covered in two days is 130 miles (west) + 130 miles (north) + 130 miles (east) + 130 miles (south) = 130*4 miles. So the correct answer is 130 miles (west) + 130 miles (north) = 260 miles.", "answer": 260 }
+
+Turn 3 — Chain-of-Thought Agent answer: 349 × 
+
+{"thinking": "We can also consider the problem as two separate right-angled triangles, one for the westward and northward distances covered on the first day, and another for the westward and northward distances covered on the second day. The first triangle has sides of 80 miles and 150 miles, and the second triangle has sides of 80 miles and 150 miles. The distance covered by each train in the two days is the sum of the distances covered in each triangle. The distance covered in the first triangle is sqrt(80ˆ2 + 150ˆ2) =sqrt(6400 + 22500) = sqrt(30400) = 174.58 miles. The distance covered in the second triangle is sqrt(80ˆ2 + 150ˆ2) = sqrt(6400 + 22500) = sqrt(30400) = 174.58 miles. The total distance covered by each train is 174.58 + 174.58 = 349.16 miles. However, we can simplify this calculation by realizing that the two triangles are congruent. Therefore, the distance covered by each train in the two days is simply 2 * 174.58 = 349.16 miles. But we need to round down to 349 miles as the answer should be an integer.", "answer": 349} 
+
+Turn 4 — Final Decision Agent answer: 230 ✓
+
+{"thinking": "All the solutions consider the Pythagorean theorem to calculate the total distance covered by each train. However, the correct approach is to realize that the two trains travel the same distance in each direction, so the total distance covered by each train is simply 80 miles (west) + 150 miles (north) = 230 miles. The answer should be 230 miles for each train.", "answer": 230 }
+
+The Final Decision agent receives all three CoT outputs as context and identifies that they share the same erroneous framing, which shows the error correcting capabilities of controller aware language models. 22
