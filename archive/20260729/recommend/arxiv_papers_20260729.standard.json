@@ -1,0 +1,137 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-07-29T21:08:08.084787+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 2,
+    "deep_cap": 6,
+    "deep_selected": 2,
+    "quick_candidates": 1,
+    "quick_skim_target": 11,
+    "quick_selected": 1
+  },
+  "deep_dive": [
+    {
+      "id": "2607.22098v1",
+      "source": "arxiv",
+      "title": "Reasoning Denoiser: Denoising Reasoning Traces for Hallucination Detection in Large Reasoning Models",
+      "abstract": "Large reasoning models (LRMs) generate long reasoning traces before producing final answers. While these traces may contain useful signals for hallucination detection, harnessing them is non-trivial because long trajectories often include noisy steps that obscure the cues relevant to truthfulness assessment. In this paper, we identify two prevalent forms of reasoning noises, i.e., irrelevant steps and repetitive steps, and show that both substantially degrade hallucination detection performance. Existing confidence-based scores and naive embedding-based filtering fail to reliably separate noisy from informative steps. To address this challenge, we propose REDE, a novel learning framework for denoising reasoning traces for hallucination detection. Specifically, REDE leverages final-answer attention as an automatic supervision signal to shape the step-level representation space, yielding refined embeddings in which noisy steps can be reliably identified and filtered. REDE can be readily plugged into diverse hallucination detectors by operating on the filtered reasoning trajectory after removing noisy steps. Extensive experiments on multiple reasoning benchmarks show that REDE consistently improves detection performance over competitive baselines.",
+      "authors": [
+        "Junlin Fang",
+        "Do Nguyen-Thanh",
+        "Xiaogang Xu",
+        "Zhen Fang",
+        "Sean Du"
+      ],
+      "primary_category": "cs.AI",
+      "categories": [
+        "cs.AI",
+        "cs.LG"
+      ],
+      "published": "2026-07-24T08:48:17+00:00",
+      "link": "https://arxiv.org/pdf/2607.22098v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "directly addresses reasoning traces in large reasoning models, closely related to CoT",
+      "llm_evidence_cn": "直接研究大型推理模型的推理痕迹去噪，与思维链密切相关",
+      "llm_evidence": "直接研究大型推理模型的推理痕迹去噪，与思维链密切相关",
+      "canonical_evidence": "直接研究大型推理模型的推理痕迹去噪，与思维链密切相关",
+      "llm_tldr_en": "REDE denoises reasoning traces in LRMs to improve hallucination detection by identifying and removing irrelevant and repetitive steps.",
+      "llm_tldr_cn": "大型推理模型（LRM）生成的长推理痕迹包含大量噪声步骤，干扰幻觉检测。本文识别了两种主要噪声：无关步骤和重复步骤，并证明它们严重降低检测性能。为此提出REDE框架，通过学习去噪推理痕迹，保留对真实性评估有用的信号。实验结果表明REDE显著提升了基于推理轨迹的幻觉检测准确率。该工作揭示了利用推理痕迹进行可靠性评估的关键。",
+      "llm_tldr": "大型推理模型（LRM）生成的长推理痕迹包含大量噪声步骤，干扰幻觉检测。本文识别了两种主要噪声：无关步骤和重复步骤，并证明它们严重降低检测性能。为此提出REDE框架，通过学习去噪推理痕迹，保留对真实性评估有用的信号。实验结果表明REDE显著提升了基于推理轨迹的幻觉检测准确率。该工作揭示了利用推理痕迹进行可靠性评估的关键。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.24015v1",
+      "source": "arxiv",
+      "title": "Mosaic: A Fleet of User Embedding Specialists for Recommendation at Meta",
+      "abstract": "User representation is one of the highest-leverage modeling problems in industrial recommendation systems: a single advancement in how users are encoded can propagate across retrieval, ranking, and integrity tasks at platform scale. Prior industrial user representation work builds either a single user model that emits one or more embedding vectors or a shared backbone with task-specific adaptation. In this paper, we present Mosaic, a foundational user modeling platform that employs a fleet of specialists to learn user embeddings. The fleet comprises four architecturally diverse model families - memorization-driven, dense-heavy, sequential-based, and CoTrain models - each focusing on a distinct facet of user behavior. We developed MRM (Multi-task Relations Mining) and CRL (Cosine Redundancy Loss) techniques to maximize the marginal information contribution of each new specialist. We also introduce CoEval and User Tower Zero-Out, new logging-free embedding evaluation framework that improves development velocity while preserving downstream-aligned accuracy. Our hybrid CPU/GPU, online-and-offline serving stack allows each specialist to choose the adequate serving strategy to meet the freshness, latency, and computational requirements. Mosaic delivers consistent and significant offline NE improvements in addition to online gains.",
+      "authors": [
+        "John Zhiyuan Zheng",
+        "Xian Sun",
+        "Xiangyang Mou",
+        "Yujunrong Ma",
+        "Christina You",
+        "Michael Jiayuan He",
+        "Hrishikesh Paranjape",
+        "Aakarsha Agarwal",
+        "Hong Li"
+      ],
+      "primary_category": "cs.IR",
+      "categories": [
+        "cs.IR"
+      ],
+      "published": "2026-07-27T05:25:50+00:00",
+      "link": "https://arxiv.org/pdf/2607.24015v1",
+      "tags": [
+        "keyword:vlm-cot",
+        "query:vlm-cot"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "large-scale system from Meta (big tech)",
+      "llm_evidence_cn": "来自Meta（大型科技公司）的大规模系统",
+      "llm_evidence": "来自Meta（大型科技公司）的大规模系统",
+      "canonical_evidence": "来自Meta（大型科技公司）的大规模系统",
+      "llm_tldr_en": "Mosaic from Meta uses a fleet of specialist models to learn user embeddings, deployed at scale for recommendation.",
+      "llm_tldr_cn": "工业推荐系统中用户表示是关键，但单一模型或共享主干难以捕捉多面用户行为。Meta提出Mosaic平台，采用记忆驱动、密集型、序列型和CoTrain四类专业模型协同学习用户嵌入，并引入MRM多任务关系建模。该系统在Meta大规模推荐中取得收益。这项工作展示了大型科技公司如何通过模型组合实现工程落地。",
+      "llm_tldr": "工业推荐系统中用户表示是关键，但单一模型或共享主干难以捕捉多面用户行为。Meta提出Mosaic平台，采用记忆驱动、密集型、序列型和CoTrain四类专业模型协同学习用户嵌入，并引入MRM多任务关系建模。该系统在Meta大规模推荐中取得收益。这项工作展示了大型科技公司如何通过模型组合实现工程落地。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "large model by big tech companies",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2607.21722v1",
+      "source": "arxiv",
+      "title": "Be Consistent! Enhancing Robust Visual Reasoning in LVLMs with Consistency Constraints",
+      "abstract": "While Large Vision-Language Models (LVLMs) exhibit strong perceptual capabilities, they remain vulnerable in visual reasoning tasks. Existing benchmarks largely focus on symbolic mathematical or scientific problems and simple vision-centric tasks, offering limited assessment of complex visual reasoning and logical consistency, a critical requirement for reliable reasoning systems. We introduce ConVBench, a complex vision-centric reasoning benchmark in which each image is paired with two logically equivalent questions across six categories: action and state, complex counting, spatial reasoning, causal and intent understanding, commonsense reasoning, and temporal perception. To complement this benchmark, we define two evaluation metrics, logical consistency and robust accuracy, that jointly assess both the correctness and consistency of model responses. We further present ConVLM, which improves LVLM reasoning through Group Relative Policy Optimization (GRPO)-based reinforcement learning with a novel consistency reward. This method leverages automatically generated logically equivalent question-answer pairs and a dual-reward design combining accuracy- and consistency-based signals, encouraging agreement between paired responses. The framework functions effectively with or without strict answer supervision.",
+      "authors": [
+        "Liqiang Jing",
+        "Xiong Zhou",
+        "Siddharth Varia",
+        "Neha Anna John",
+        "Xinya Du",
+        "Vassilis N. Ioannidis"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-07-23T18:04:51+00:00",
+      "link": "https://arxiv.org/pdf/2607.21722v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "visual reasoning consistency for LVLMs, relevant to chain-of-thought reasoning",
+      "llm_evidence_cn": "视觉语言模型一致性推理，与链式思维推理相关",
+      "llm_evidence": "视觉语言模型一致性推理，与链式思维推理相关",
+      "canonical_evidence": "视觉语言模型一致性推理，与链式思维推理相关",
+      "llm_tldr_en": "ConVBench benchmark and consistency constraints enhance robust visual reasoning in LVLMs, addressing logical consistency across equivalent questions.",
+      "llm_tldr_cn": "现有视觉语言模型在复杂视觉推理中缺乏逻辑一致性评估。ConVBench构建了涵盖六类推理的基准，每张图配两个逻辑等价问题；同时定义一致性指标，揭示了当前模型在保持推理一致性方面的不足，为提升鲁棒视觉推理提供了重要工具。",
+      "llm_tldr": "现有视觉语言模型在复杂视觉推理中缺乏逻辑一致性评估。ConVBench构建了涵盖六类推理的基准，每张图配两个逻辑等价问题；同时定义一致性指标，揭示了当前模型在保持推理一致性方面的不足，为提升鲁棒视觉推理提供了重要工具。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    }
+  ]
+}

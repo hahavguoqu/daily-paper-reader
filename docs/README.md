@@ -6,46 +6,31 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-28
-- 运行时间：2026-07-28 20:28:15 UTC
+- 最新运行日期：2026-07-29
+- 运行时间：2026-07-29 21:10:37 UTC
 - 运行状态：成功
-- 本次总论文数：8
-- 精读区：4
-- 速读区：4
+- 本次总论文数：3
+- 精读区：2
+- 速读区：1
 
 ### 今日简报（AI）
-今日推荐8篇论文，聚焦LLM推理与推荐系统，精读两篇高分解码思维链局限与逻辑编程补丁。
-最值得关注：LLM推理中思维链并非完全可见，归纳逻辑编程可有效修补上下文推理漏洞。
-建议进一步探索思维链可视化与逻辑推理结合的方法，同时留意生成式推荐中的潜在推理应用。
-- 详情：[/202607/28/README](/202607/28/README)
+今日聚焦大模型推理去噪检测幻觉、Meta多专家嵌入推荐与视觉推理一致性三大方向。  
+精读中，《Mosaic》与《Reasoning Denoiser》分别从工业级用户嵌入和推理去噪角度提供新思路，值得细读。  
+建议尝试将去噪方法用于长链推理场景，并关注用户嵌入在推荐系统中的可解释性落地。
+- 详情：[/202607/29/README](/202607/29/README)
 
 ### 精读区论文标签
-1. [Not All LLM Reasoning is Visible in the Chain-of-Thought](/202607/28/2607.22925v1-not-all-llm-reasoning-is-visible-in-the-chain-of-thought)  
-   标签：评分：9.0/10、query:vlm-cot
-   evidence：直接研究链式思维中的不可见推理
-2. [Reason Popper-ly: Patching In-Context Reasoning with Inductive Logic Programming](/202607/28/2607.23019v1-reason-popper-ly-patching-in-context-reasoning-with-inductive-logic-programming)  
-   标签：评分：9.0/10、query:vlm-cot
-   evidence：用归纳逻辑编程改进CoT推理
-3. [Training Language Models to Cooperate with Inference-Time Controllers](/202607/28/2607.23771v1-training-language-models-to-cooperate-with-inference-time-controllers)  
-   标签：评分：9.0/10、query:vlm-cot
-   evidence：训练大语言模型与CoT等推理控制器协作
-4. [Be Consistent! Enhancing Robust Visual Reasoning in LVLMs with Consistency Constraints](/202607/28/2607.21722v1-be-consistent-enhancing-robust-visual-reasoning-in-lvlms-with-consistency-constraints)  
+1. [Reasoning Denoiser: Denoising Reasoning Traces for Hallucination Detection in Large Reasoning Models](/202607/29/2607.22098v1-reasoning-denoiser-denoising-reasoning-traces-for-hallucination-detection-in-large-reasoning-models)  
    标签：评分：8.0/10、query:vlm-cot
-   evidence：视觉推理一致性基准
+   evidence：直接研究大型推理模型的推理痕迹去噪，与思维链密切相关
+2. [Mosaic: A Fleet of User Embedding Specialists for Recommendation at Meta](/202607/29/2607.24015v1-mosaic-a-fleet-of-user-embedding-specialists-for-recommendation-at-meta)  
+   标签：评分：8.0/10、query:vlm-cot
+   evidence：来自Meta（大型科技公司）的大规模系统
 
 ### 速读区论文标签
-1. [LaRec: Unleashing LLM-based Latent Reasoning for Generative Recommendation](/202607/28/2607.24617v1-larec-unleashing-llm-based-latent-reasoning-for-generative-recommendation)  
+1. [Be Consistent! Enhancing Robust Visual Reasoning in LVLMs with Consistency Constraints](/202607/29/2607.21722v1-be-consistent-enhancing-robust-visual-reasoning-in-lvlms-with-consistency-constraints)  
    标签：评分：7.0/10、query:vlm-cot
-   evidence：提出潜在推理替代显式思维链用于基于LLM的推荐
-2. [DeLIVeR: Decomposed Learning for Information-grounded Veracity Recognition via Reinforced Knowledge Graph Exploration](/202607/28/2607.17935v1-deliver-decomposed-learning-for-information-grounded-veracity-recognition-via-reinforced-knowledge-graph-exploration)  
-   标签：评分：6.0/10、query:vlm-cot
-   evidence：使用规划器大模型分解复杂声明进行事实核查，与链式推理相关
-3. [Personalized Recommendation Tool Learning via Autonomous Language Agents](/202607/28/2607.19739v1-personalized-recommendation-tool-learning-via-autonomous-language-agents)  
-   标签：评分：6.0/10、query:vlm-cot
-   evidence：使用LLM作为中央规划器进行高层面推理，与推理方法相关
-4. [Semiotic logical hexagon theory for LLM logical reasoning](/202607/28/2607.21933v1-semiotic-logical-hexagon-theory-for-llm-logical-reasoning)  
-   标签：评分：6.0/10、query:vlm-cot
-   evidence：大语言模型推理的语义组织
+   evidence：视觉语言模型一致性推理，与链式思维推理相关
 
 
 <div class="dpr-home-promo-card">
