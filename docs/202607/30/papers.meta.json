@@ -1,0 +1,39 @@
+{
+  "label": "2026-07-30",
+  "date": "2026-07-30",
+  "generated_at": "2026-07-30T20:43:38",
+  "count": 2,
+  "papers": [
+    {
+      "paper_id": "202607/30/2607.20833v2-refact-adaptive-fact-restatement-for-compact-and-faithful-chain-of-thought-reasoning",
+      "section": "deep",
+      "title_en": "REFACT: Adaptive Fact Restatement for Compact and Faithful Chain-of-Thought Reasoning",
+      "authors": "Zhensheng Jin, Xin Dai, Zhenghao Liu, Chaojun Xiao, Huiyuan Xie, Yu Gu, Ge Yu, Maosong Sun",
+      "date": "2026-07-23",
+      "pdf": "https://arxiv.org/pdf/2607.20833v2",
+      "score": "9.0",
+      "evidence": "REFACT直接针对思维链推理，提出自适应事实重述",
+      "tldr": "大型语言模型在长推理中易偏离上下文，现有方法未确保引用信息足以支持推理。本文提出REFACT，自适应判断何时需要上下文并选择性复述源事实。通过教师模型构建高质量引用感知轨迹，再经两阶段SFT-to-RL优化学生模型。在多个基准上提升忠实性并减少推理token，实现更简洁可靠的推理。",
+      "tags": "query:vlm-cot",
+      "abstract_en": "Large Language Models (LLMs) increasingly leverage long-form reasoning to solve complex tasks, yet their reasoning processes can deviate from the provided context when evidence is incomplete, noisy, or conflicts with parametric knowledge. Existing grounding approaches either append citations after generation or encourage LLMs to retrieve evidence during reasoning, but they often fail to ensure that cited information is sufficient to support intermediate inferences and final answers. To address this limitation, we propose REFACT, an adaptive fact-restatement citation framework that enables LLMs to determine when contextual grounding is needed and selectively restate source facts at appropriate levels of detail for reliable reasoning. To facilitate adaptive citation during reasoning, REFACT first leverages a teacher LLM to construct high-quality citation-aware reasoning trajectories under diverse context conditions with varying evidence lengths, and then optimizes the student LLM through a two-stage SFT-to-RL framework. Experiments on LongBench, LV-Eval, and ConFiQA demonstrate that REFACT improves long-context question answering and counterfactual faithfulness while substantially reducing the number of reasoning tokens. Further analysis reveals that REFACT achieves higher evidence density by preserving more answer-relevant facts with fewer restatements, producing reasoning traces that are more concise yet better grounded. All code and data will be released via https://github.com/NEUIR/REFACT.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "paper_id": "202607/30/2607.26621v1-whisperrec-latent-reasoning-for-efficient-foundation-recommendation-models",
+      "section": "deep",
+      "title_en": "WhisperRec: Latent Reasoning for Efficient Foundation Recommendation Models",
+      "authors": "Hao Jiang, Peiru Du, Pengfei Yao, Mengting Li, Siyuan Lou, Kuo Cai, Sheng Yu, Qiang Luo, Jian Liang, Ruiming Tang, Fei Pan, Peng Jiang, Wenwu Ou",
+      "date": "2026-07-29",
+      "pdf": "https://arxiv.org/pdf/2607.26621v1",
+      "score": "8.0",
+      "evidence": "WhisperRec提出使用潜在推理和思维链压缩的推荐模型",
+      "tldr": "现有基于大语言模型的推荐系统采用显式思维链（CoT）推理，但生成冗长理由带来高开销，且固定模板难以建模动态用户兴趣。本文提出WhisperRec，一种隐式推理框架，将教师CoT压缩为可学习的隐式推理token，实现隐式推理后再回答，避免显式生成理由。该方法通过多视角自适应CoT（MV-ACoT）构建高质量监督，并采用三阶段隐式推理对齐逐步内化推理知识。在工业级快手数据集上，WhisperRec相比显式CoT方法在SID@64上提升17.44%和9.33%，在线推理吞吐量提升超过10倍。该贡献首次将隐式推理应用于基础推荐模型，实现高效推理与性能兼得。",
+      "tags": "query:vlm-cot",
+      "abstract_en": "Large language models (LLMs) have demonstrated strong reasoning capabilities, motivating their adoption as backbones for foundation recommendation models (FRMs). Existing approaches typically enhance recommendation with explicit Chain-of-Thought (CoT) under the Think-then-Answer paradigm. However, generating lengthy rationales introduces substantial inference overhead, while fixed CoT templates struggle to model diverse, dynamic, and context-dependent user interests. We propose WhisperRec, an efficient latent reasoning framework for FRMs. WhisperRec compresses teacher-generated CoT into learnable latent reasoning tokens, enabling a Latent-Reason-then-Answer paradigm that performs reasoning in latent space without producing verbose rationales. This design retains decision-relevant reasoning information while avoiding the latency bottleneck of autoregressive rationale generation. Specifically, it first introduces Multi-View Adaptive CoT (MV-ACoT) to construct diverse, high-quality supervision from complementary perspectives on user interests. MV-ACoT also adapts reasoning complexity to each instance, applying lightweight analysis to clear cases and targeted multi-factor reasoning to challenging ones. Building on a pre-trained FRM, WhisperRec then employs a three-stage Latent Reasoning Alignment procedure to progressively internalize teacher CoT into latent representations. Finally, curriculum-based post-training activates latent-token reasoning for downstream recommendation while preserving standard recommendation capability. Experiments on an industrial-scale Kuaishou dataset and the public Kuaishou LLM-Rec benchmark show that WhisperRec consistently outperforms explicit-CoT methods and conventional baselines. Compared with explicit CoT Think and No-Think variants, WhisperRec improves SID@64 by 17.44% and 9.33%, respectively, and achieves over 10x higher online inference throughput.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "errors": []
+}

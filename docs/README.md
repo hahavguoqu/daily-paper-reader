@@ -6,31 +6,27 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-29
-- 运行时间：2026-07-29 21:10:37 UTC
+- 最新运行日期：2026-07-30
+- 运行时间：2026-07-30 20:43:31 UTC
 - 运行状态：成功
-- 本次总论文数：3
+- 本次总论文数：2
 - 精读区：2
-- 速读区：1
+- 速读区：0
 
 ### 今日简报（AI）
-今日聚焦大模型推理去噪检测幻觉、Meta多专家嵌入推荐与视觉推理一致性三大方向。  
-精读中，《Mosaic》与《Reasoning Denoiser》分别从工业级用户嵌入和推理去噪角度提供新思路，值得细读。  
-建议尝试将去噪方法用于长链推理场景，并关注用户嵌入在推荐系统中的可解释性落地。
-- 详情：[/202607/29/README](/202607/29/README)
+今天精读两篇论文，分别聚焦于思维链的紧凑忠实推理与推荐系统的高效潜在推理。最值得关注的是REFACT通过自适应事实重述，在保证忠实度的同时压缩推理链长度，而WhisperRec则利用潜在推理提升推荐模型效率。建议优先阅读REFACT，了解其如何平衡简洁性与准确性，并结合WhisperRec的思路，探索将潜在推理引入更多复杂任务。
+- 详情：[/202607/30/README](/202607/30/README)
 
 ### 精读区论文标签
-1. [Reasoning Denoiser: Denoising Reasoning Traces for Hallucination Detection in Large Reasoning Models](/202607/29/2607.22098v1-reasoning-denoiser-denoising-reasoning-traces-for-hallucination-detection-in-large-reasoning-models)  
+1. [REFACT: Adaptive Fact Restatement for Compact and Faithful Chain-of-Thought Reasoning](/202607/30/2607.20833v2-refact-adaptive-fact-restatement-for-compact-and-faithful-chain-of-thought-reasoning)  
+   标签：评分：9.0/10、query:vlm-cot
+   evidence：REFACT直接针对思维链推理，提出自适应事实重述
+2. [WhisperRec: Latent Reasoning for Efficient Foundation Recommendation Models](/202607/30/2607.26621v1-whisperrec-latent-reasoning-for-efficient-foundation-recommendation-models)  
    标签：评分：8.0/10、query:vlm-cot
-   evidence：直接研究大型推理模型的推理痕迹去噪，与思维链密切相关
-2. [Mosaic: A Fleet of User Embedding Specialists for Recommendation at Meta](/202607/29/2607.24015v1-mosaic-a-fleet-of-user-embedding-specialists-for-recommendation-at-meta)  
-   标签：评分：8.0/10、query:vlm-cot
-   evidence：来自Meta（大型科技公司）的大规模系统
+   evidence：WhisperRec提出使用潜在推理和思维链压缩的推荐模型
 
 ### 速读区论文标签
-1. [Be Consistent! Enhancing Robust Visual Reasoning in LVLMs with Consistency Constraints](/202607/29/2607.21722v1-be-consistent-enhancing-robust-visual-reasoning-in-lvlms-with-consistency-constraints)  
-   标签：评分：7.0/10、query:vlm-cot
-   evidence：视觉语言模型一致性推理，与链式思维推理相关
+- 本次无速读推荐。
 
 
 <div class="dpr-home-promo-card">
