@@ -1,0 +1,449 @@
+Title: Dual-Path LLM Reasoning for Multimodal Few-Shot Knowledge Graph Completion
+
+URL Source: https://arxiv.org/pdf/2607.26909v1
+
+Published Time: Thu, 30 Jul 2026 00:57:01 GMT
+
+Number of Pages: 10
+
+Markdown Content:
+# Dual-Path LLM Reasoning for Multimodal Few-Shot Knowledge Graph Completion 
+
+## Jinlan Liu 1, Zhiying Tu 1,2,3 ∗, Yongchao Xing 1, Yicheng Liu 1,Bolin Zhang 1,2,3 , Dianbo Sui 1,2 , Dianhui Chu 1,2 , Hongliang Sun 1,2,3 ∗
+
+> 1
+
+Harbin Institute of Technology (Weihai), Weihai 264209, China 
+
+> 2
+
+Shandong Provincial Key Laboratory of Digital Service Computing Technology and Systems, Weihai 264200, China 
+
+> 3
+
+Harbin Institute of Technology Qingdao Research Institute, Qingdao 266400, China 26B903083@stu.hit.edu.cn, tzy_hit@hit.edu.cn, {22B903085, 25B903075}@stu.hit.edu.cn {bolin, suidianbo, chudh, sunhl}@hit.edu.cn 
+
+Abstract 
+
+Knowledge graph completion (KGC) aims to infer missing facts in knowledge graphs (KGs), thereby improving their completeness and supporting downstream intelligent applica-tions. However, emerging entities and relations in real-world deployments make inductive KGC difficult, especially un-der few-shot and zero-shot settings. Multimodal information and Large Language Model (LLM)-derived priors can enrich sparse relational contexts, but they may also introduce noisy or hallucinated evidence. To address these issues, we pro-pose DuPLeR, a Du al-Path LLM Reasoning framework for multimodal few-shot KGC. DuPLeR builds a calibrated rela-tion graph by combining multimodal LLM-derived type priors with factual support structures, and performs dual-level struc-tural reasoning over the refined relation topology. Moreover, a dual-pathway multimodal enhancement module regulates message passing with query-relevant multimodal signals and supplements entity representations after graph propagation. Experiments on eight inductive variants of two multimodal KG (MMKG) benchmarks show that DuPLeR achieves robust performance in data-scarce KGC scenarios. 
+
+## 1 Introduction 
+
+KGC, also known as link prediction, aims to infer missing facts in a KG, playing a critical role in maintaining the cov-erage and reliability of KGs (Yuan et al. 2025). Fact triples extracted automatically from massive logs, customer inter-actions, and so on are often incomplete, leaving potential re-lationships between entities unlinked (Hu et al. 2024). This limits the effectiveness of KGs in enabling downstream tasks. By performing KGC, missing links can be inferred and the KGs can be enriched, thereby enhancing their completeness and utility. Most existing KGC methods operate in a transductive set-ting, where all entities and relations are observed during training and the goal is to predict missing links among them. However, the real world continuously witnesses the emer-gence of new entities that are incrementally added to the ex-isting KG as new knowledge (Zhang et al. 2023). Traditional transductive KGC methods fail to update the knowledge rep-resentations of these newly added entities in a timely manner, 
+
+> ∗
+
+Corresponding author. 
+
+requiring link prediction on unseen entities—known as in-ductive KGC (Zhang et al. 2024b). This capability is crucial for scalable intelligence and reducing annotation costs. Nev-ertheless, inductive KGC is fundamentally constrained by the scarcity of reliable contextual evidence for emerging en-tities, as emerging entities often provide only limited local neighborhoods and, in some cases, only a handful of support triples. Multimodal information, such as textual descriptions and associated images of real-world items, can serve as auxiliary evidence to supplement the missing contextual information in sparse triples. By providing richer semantic signals beyond structural triples alone, multimodal cues enable models to better capture latent relationships between entities, thereby enhancing KGC performance. Existing multimodal KGC methods have explored adaptive fusion mechanisms to se-lectively integrate heterogeneous modality-specific evidence (Chen et al. 2022; Shang et al. 2024; Wei et al. 2024), with some further incorporating multimodal neighborhood infor-mation to enrich entity or relation representations (Shang et al. 2024; Wei et al. 2024). However, multimodal inte-gration inevitably introduces cross-modal heterogeneity and noise, which can compromise the reliability of relational rea-soning (Yang et al. 2025; Kim et al. 2025; Zhao et al. 2024). This challenge is further amplified in inductive KGC set-tings. In scenarios involving emerging entities, the few-shot and data-scarce nature of the task means that noisy or mis-aligned modalities, especially visual or operational signals, may have a disproportionate impact on entity representations, distorting the representation space and ultimately degrading link prediction accuracy. Given the scarcity of evidence that constrains inductive KGC, LLMs provide a promising way to enrich sparse rela-tional contexts in low-resource settings, owing to their en-coded world knowledge and strong generalization ability. Existing methods have explored the use of LLMs to extract relational context for KGC reasoning (Wang et al. 2024), but they do not explicitly consider modality-specific reliability or granularity mismatch in MMKGs. In MMKGs, the semantic priors derived from LLMs may also provide complementary high-level cues for bridging heterogeneous modalities and reducing noisy signals. However, directly combining LLM priors with multimodal information is still challenging. Dif-arXiv:2607.26909v1 [cs.CL] 29 Jul 2026 ferent modalities describe relational contexts at different lev-els of granularity, and their reliability may vary significantly under limited supervision (Chen et al. 2024). Therefore, the model should be able to selectively assess which signals are more trustworthy for a given prediction. This motivates a principled adaptive integration mechanism that can align LLM semantic priors with multimodal cues and improve in-ductive link prediction for emerging entities under few-shot and zero-shot conditions. To address these challenges, we propose DuPLeR, a novel framework for inductive multimodal KGC in few-shot and zero-shot settings. First, we leverage LLMs for relation se-mantic enrichment to alleviate resource scarcity in few-shot scenarios. To mitigate model hallucination, we design a topology refinement module that utilizes factual knowl-edge to denoise and enrich the LLM-expanded information, thereby generating a calibrated relation graph for down-stream reasoning. Subsequently, DuPLeR introduces a dual-pathway multimodal enhancement module, which leverages query-relevant and query-irrelevant multimodal information to inject multimodal cues during and after the message pass-ing process, respectively, thereby selectively utilizing multi-modal information to enhance entity representations. Finally, DuPLeR performs dual-level structural reasoning to simulta-neously capture inter-relation patterns and entity-level struc-tural evidence. We conduct extensive experiments on two public MMKG benchmarks, and the results demonstrate that DuPLeR effectively combines multimodal LLM-derived re-lational priors with multimodal signals to achieve more pre-cise link prediction. In summary, our paper makes the fol-lowing contributions: 
+
+• We propose DuPLeR, which integrates multimodal LLM-derived relational priors with structural reasoning to mit-igate representation distortion caused by sparse and noisy supervision, thereby improving inductive KGC. 
+
+• We design a dual-pathway multimodal enhancement mechanism that injects query-relevant multimodal evi-dence during message passing and incorporates query-independent multimodal semantics after propagation, en-abling more robust multimodal fusion. 
+
+• Extensive experiments on eight variants of two MMKG benchmarks show that DuPLeR consistently improves in-ductive generalization and robustness. 
+
+## 2 Related Work 
+
+2.1 Inductive KGC 
+
+Inductive KGC aims to generalize link prediction to un-seen entities and relations by learning transferable struc-tural patterns. NBFNet captures relation-aware paths through graph message passing (Zhu et al. 2021), while InGram and ULTRA construct relation graphs to model transfer-able inter-relation dependencies (Lee, Chung, and Whang 2023; Galkin et al. 2023). Recent methods further introduce semantic knowledge to alleviate sparse structural evidence. ProLINK uses LLM-derived type priors to augment rela-tion graphs for low-resource reasoning (Wang et al. 2024), whereas SEMMA combines LLM-enriched relation seman-tics with structural relation graphs in fully inductive set-tings (Arun et al. 2025). However, these methods mainly focus on relation-level textual semantics. DuPLeR instead constructs a factually calibrated relation topology from mul-timodal type priors and further incorporates entity-level mul-timodal evidence. 
+
+2.2 Multimodal KGC 
+
+Multimodal KGC improves entity representations by com-bining structural, textual, and visual information. LAFA jointly models link-aware modality fusion and neighbor-hood aggregation (Shang et al. 2024), while MCKGC cap-tures heterogeneous multimodal patterns in mixed-curvature spaces (Gao et al. 2025). Recent approaches increas-ingly consider modality-specific reliability: NativE adopts relation-guided adaptive fusion to address modality imbal-ance (Zhang et al. 2024c), and MMSN combines multimodal neighborhood aggregation with meta-learning for few-shot KGC (Wei et al. 2024). In particular, multimodal LLMs are prone to being overly influenced by a single modality dur-ing content generation (Zhu et al. 2026b). Different from representation-level fusion, DuPLeR instead separates mul-timodal integration into query-conditioned regulation during structural message passing and holistic supplementation after graph propagation. 
+
+## 3 Problem Definition 
+
+We study few-shot multimodal KGC under inductive settings. Let G = ( E, R, S) denote an MMKG, where S ⊆ E × R × E is the set of observed triples. Each entity e ∈ E 
+
+is associated with multimodal side information, including a textual description t and a set of images {vk}Kk=1 . It is worth noting that under the settings of this paper, entities and relations appearing at test time are disjoint from those seen during training. For a target relation r ∈ R , only a small support set Sr = {(hi, r, t i)}Ni=1 with N ≪ |S| (or 
+
+N = 0 ) is available. Given a query request (q, r, ?) , the goal is to retrieve the appropriate tail entity by leveraging limited support triples. 
+
+## 4 Methodology 
+
+In this section, we propose DuPLeR (Figure 1), a framework that leverages multimodal LLM-derived priors and entity-level multimodal features to improve KGC under scarce triplet resources. Given a query relation, DuPLeR constructs a relation-aware context from sparse KGs and captures trans-ferable relation–entity patterns through dual-level structural reasoning (Section 4.1). This process is enhanced by mul-timodal LLM-derived relational priors, which provide se-mantic cues for relation topology construction and calibra-tion (Section 4.2). A dual-pathway multimodal module then injects entity-level multimodal information to refine repre-sentations and support robust entity matching (Section 4.3). Finally, DuPLeR is pretrained on multiple MMKGs and gen-eralizes to unseen graphs without retraining (Section 4.4). Relation -only    
+
+> Triple -only
+> Fusion
+> Prompts
+> Head
+> Types
+> Semantic & Instance Graph Constr uction
+> Text Features &
+> Image Features
+> Low -rank
+> Fusion
+> Image Max
+> Pooling
+> Relation -aware Multimodal Regulator
+> MAP Net
+> CCoRGE
+> h-t
+> h-h
+> Structural Reasoning
+> Relation Topology Calibration
+> LLM/VLM
+> LMF -Max Fusion
+> Multimodal Enhancement Prior Knowledge Injection
+> Relation Textual
+> Descr iptions
+> Entity Images
+> (Optional)
+> Sparse Triples
+> Support Facts Prediction
+> MLP Module Link Prediction
+> Query Relation
+> Low Rank
+> Attention Gating Tail
+> Types
+> LLM/VLM Type Prediction
+> Modulation Signals
+> Calibrated Relation Structure
+
+ins Gori GRGori ins ( ) ( ) ( ) n v E v E v= − Relation 
+
+> Embeddings out
+
+z          
+
+> Fused
+> Embedding
+> Message Passing over
+> Candidate Entities
+> (Relation Graph Reasoning)
+> (Entity -Level Reasoning)
+> (Process Injection Path)
+> (Post Injection Path)
+
+Figure 1: The overall framework of DuPLeR. It leverages multimodal LLM-derived relational priors for structural reasoning and employs a dual-path mechanism to inject multimodal signals, ultimately refining entity representations for link prediction. 
+
+4.1 Dual-level Structural Reasoning 
+
+In few-shot scenarios, each observed triple provides critical structural evidence. To effectively exploit such limited super-vision, we perform dual-level structural reasoning over rela-tions and entities. At the relation level, context-enhanced co-occurrence relation graph encoder (CCoRGE) constructs a high-order relation graph and performs graph propagation to capture transferable interaction patterns among relations. At the entity level, multimodal-aware prediction network (MAP-Net) uses the resulting relation embeddings to guide message passing over the KG, enabling the model to identify relation-aware structural paths and score candidate entities for link prediction. The two reasoning levels are complementary: the relation graph captures transferable interaction patterns that are less dependent on specific entity identities, whereas the entity graph grounds these patterns in query-specific factual paths. 
+
+CCoRGE The high-order relation graph is denoted as 
+
+GR = ( VR, ER), where the node set VR corresponds to the set of relations R in G. The edges in GR capture the topolog-ical co-occurrence regularities between relations. We define four distinct edge types, T = {h-h, h -t, t -h, t -t}, represent-ing how two relations interact via shared entities. Formally, for a, b ∈ { h, t }, a directed edge (ri, r j , a -b) ∈ E R exists if the same entity appears at position a in a triple involving 
+
+ri and at position b in a triple involving rj . For example, an edge (ri, r j ) of type h-t exists if there exists an entity e ∈ E 
+
+such that: 
+
+(e, r i, x i) ∈ S ∧ (xj , r j , e ) ∈ S . (1) During pre-training, GR is constructed from G. At reasoning time, it is augmented with semantic connections derived from the LLM-predicted head- and tail-entity types, as detailed in Section 4.2. Finally, multi-layer GNN is employed to learn relation representations over GR.
+
+MAPNet To ground transferable relation patterns in query-specific evidence while avoiding indiscriminate multimodal fusion, MAPNet performs relation-aware propagation over the entity graph and incorporates the two multimodal repre-sentations at complementary stages. During entity encoding, the initial representation of the source entity is obtained by fusing the CCoRGE representation of the query relation with the relation-aware multimodal representation of the source entity. All other entity states are initialized to zero. The CCoRGE representations of all relations are further projected into layer-specific edge features for entity propagation. For-mally, at the l-th layer, MAPNet constructs a relation-aware message for each neighbor v ∈ N (e) by concatenating its previous-layer representation h(l−1)  
+
+> v
+
+with the corresponding relation embedding r(l)
+
+> v,e
+
+, followed by a linear transforma-tion parameterized by W(l) 
+
+> M
+
+. These messages are summed over all neighbors to obtain the neighborhood representa-tion a(l) 
+
+> e
+
+. The previous-layer state h(l−1)  
+
+> e
+
+and the aggregated neighborhood representation a(l) 
+
+> e
+
+are first structurally fused, after which the resulting representation is modulated by the multimodal context h(e)mult :
+
+h(l) 
+
+> e
+
+= ϕ(l)mult 
+
+
+
+ϕ(l)str 
+
+
+
+h(l−1)  
+
+> e
+
+, a(l)
+
+> e
+
+
+
+, h(e)mult 
+
+
+
+, (2) where ϕ(l)str (·) and ϕ(l)mult (·) denote the structural fusion and multimodal residual modulation at the l-th layer, respectively. After L layers of structural propagation, the final score s(e)
+
+of entity e is computed by concatenating the hidden states from all GNN layers with the query-agnostic multimodal embedding z(e)out :
+
+s(e) = MLP 
+
+ MLl=0 h(l)
+
+> e
+
+
+
+∥ z(e)out 
+
+
+
+, (3) where L denotes feature-wise concatenation across layers. The detailed constructions of h(e)mult and z(e)out are provided in Section 4.3. Finally, we optimize the model using the standard binary cross-entropy (BCE) loss; its detailed for-mulation is provided in Appendix A. 
+
+4.2 Prior Knowledge Injection 
+
+Multimodal LLM-based Type Predictor Relation mod-eling is pivotal to KGC. Under few-shot settings, the scarcity of relation-associated triples makes it difficult to learn reli-able relation representations (Zhang et al. 2019). This chal-lenge becomes more pronounced in zero-shot scenarios, where conventional methods are often unable to infer mean-ingful representations for unseen relations without support triples (Chen et al. 2023). To address this issue, we leverage carefully constructed prompts—augmented by sparse rela-tional information—to infer the plausible types of head and tail entities, thereby enriching the relational graph and obtain-ing reliable relational representations. The detailed prompts and output schema used for multimodal LLMs are illustrated in Figure 2. Specifically, entity images are treated as optional evidence rather than uniformly reliable cues. Since images may contain abundant details that are irrelevant to the target relation, the prompt instructs the multimodal LLM to use visual information only when it is relevant to the relation and consistent with the accompanying textual context, and to otherwise ignore it, thereby reducing visual noise. For pure-text LLMs, the visual inputs are omitted while the remaining prompt structure is retained. To regularize type inference, we constrain the outputs using a generic entity type list un-der three progressively relaxed settings: Mandatory, Guided, and Unrestricted. For each relation, the model returns a list of plausible types for the head entities and another list for the tail entities. We further provide relational context in three formats—Relation-only, Triple-only, and Fusion—to exam-ine the trade-off between type inference quality and prompt-ing overhead. The predicted head- and tail-type sets of each relation are used to construct Gsem based on type-set overlap, following the positional connectivity scheme of CCoRGE (Section 4.1). Overall, this prompting strategy aims to en-rich sparse relational contexts and provide reliable semantic priors for downstream inductive KGC. 
+
+Relational Topology Refinement To mitigate hallucina-tions in multimodal LLMs, we introduce a factual-triple-based refinement step that filters potentially spurious outputs and enriches them with reliable information. We begin by constructing a structural relation graph Gins for the target re-lation rq based on the support triples and the background KG, following Section 4.1. We then merge Gsem and Gins to obtain the preliminary relation graph Gori . To reduce noisy relation neighbors introduced during graph augmentation, we apply an indirect noise filtering strategy to the first-order neighbors of rq in Gori . For each neighbor v ∈ N ori (rq ), we measure its noise degree by comparing its non-target connections in the merged graph and the structural graph: 
+
+n(v) = ¯Eori (v) − ¯Eins (v) , (4) where ¯Eori (v) and ¯Eins (v) denote the sets of edges incident to 
+
+v in Gori and Gins , respectively, excluding the edge connecting 
+
+v to the target relation rq . Given a predefined noise threshold Below are visual references for the entities: [Visual Info], [Visual Info] , ...       
+
+> Based on the visual references above (if relevant) and the following text
+> information (please prioritize the text if the images appear irrelevant or
+> conflicting):
+> The dictionary rel_dict includes brief information of partial relationships in a
+> knowledge graph. Please analyze the possible entity types of each
+> relationship's head and tail entities. [Type Limits] .rel_dict =[Relation Info] .
+
+Visual Info  
+
+> Image of [entity name]: [entity image] .
+
+Type Limits 
+
+> Mandatory : The candidate
+> entity types are strictly fixed in
+> [Entity Type List].
+> Guided : The candidate entity
+> types are not limited to [Entity
+> Type List].
+> Unrestricted : NULL
+
+Relation Info  
+
+> Relation -only : {{"relation name"}:
+> { "description": "music artist origin"}}
+> Triple -only : {{"relation name"}: {"head
+> entity": "entity name", "tail entity": "entity
+> name"}}
+> Fusion : {{"relation name"}: {"description":
+> "music artist origin", "head entity": "entity
+> name", "tail entity": "entity name"}}
+> Output: { " relation_1 ": { "head": [" type_1 ", " type_2 "], "tail": [" type_3 "]} }
+
+Figure 2: Multimodal LLM Prompts 
+
+τ , the edges connecting rq to neighbors with n(v) ≥ τ are collected into the noisy-edge set: 
+
+Enoise = {(rq , v ) ∈ E ori | v ∈ N ori (rq ), n (v) ≥ τ } . (5) The final denoised relation graph GR is obtained by removing these edges from the merged relation graph: 
+
+GR = ( Vori , Eori \ E noise ) . (6) A larger τ retains more auxiliary semantic connections, whereas a smaller τ results in more aggressive noise sup-pression. 
+
+4.3 Dual-pathway Multimodal Enhancement 
+
+While relation graphs inferred by multimodal LLMs offer rich relational context, they remain unreliable as standalone evidence and must be anchored by structural message pass-ing (Zhu et al. 2026a). To complement this LLM-derived relational context with grounded entity-level semantics, mul-timodal information is essential; however, indiscriminate fu-sion may introduce substantial query-irrelevant noise and distort structural message passing (Zhang et al. 2024a; Chen et al. 2024). Injecting query-specific multimodal information during message passing can suppress modality cues irrele-vant to the current relation, but such relation-conditioned filtering may discard global semantics useful for entity iden-tification. Conversely, query-agnostic fusion preserves com-prehensive entity-level semantics, yet directly introducing these unfiltered features into message passing may inter-fere with relation-specific structural paths. Neither path-way alone can simultaneously maintain relation-aware struc-tural reasoning and preserve complete entity-level seman-tics. Therefore, DuPLeR employs two complementary path-ways: Query-Specific Regulation provides controlled multi-modal guidance during structural propagation, while Query-Agnostic LMF-Max compensates for the semantic loss in-duced by relation-conditioned filtering by restoring compre-hensive entity-level semantics after propagation. Query-Specific Regulation To instantiate the relation-aware regulation, we dynamically fuse text and visual fea-tures conditioned on the query relation. After projecting nor-malized features into a shared space, we obtain a unified visual representation hvis via relation-guided low-rank atten-tion. The k-th image attention weight is: 
+
+αk = softmax k
+
+ (Wq q)⊤(Wv fvk ) , (7) where Wq and Wv are low-rank projection matrices. To pre-cisely control modality contributions, we deploy modality-specific low-rank gates, gt and gv , which are parameterized by the query relation: 
+
+hfused = ht ⊙ gt + hvis ⊙ gv + ht. (8) Unlike standard gating mechanisms, our relation-aware gat-ing coupled with a residual text connection is specifically de-signed to alleviate modality imbalance. We then apply layer normalization and dropout to hfused to obtain the relation-guided multimodal embedding hmult . Rather than directly appending multimodal features, which may dilute graph-topological information, we use hmult as a soft regulator to modulate the structurally updated entity representation at each layer, as formulated in Equation (2). This customized modulation ensures that structural reasoning remains domi-nant while being smoothly guided by query-relevant multi-modal cues. A formal proof is provided in the supplementary material. 
+
+Query-Agnostic LMF-Max To compensate for the afore-mentioned information bottleneck, our post-fusion pathway captures salient visual evidence while excluding invalid im-age inputs. Specifically, invalid image positions indicated by the validity mask are filled with a large negative value before dimension-wise max pooling, while entities with no valid images are assigned a zero visual representation, yielding ˜fv .We then project the textual feature and ˜fv into a low-rank space, obtaining T, V ∈ RR×d. Unlike vanilla LMF, which treats all low-rank components equally during aggregation, LMF-Max regards each rank as a distinct semantic subspace and assigns it a learnable weight w ∈ RR:
+
+z = XRr=1 wr (T[r] ⊙ V[r]) + b. (9) Masked max pooling preserves the most salient valid vi-sual signals, while rank-wise weighting selectively empha-sizes informative cross-modal interactions. This pathway re-mains query-agnostic, providing complementary entity-level semantics that are incorporated into the final prediction as formulated in Equation (3). 
+
+4.4 Pre-training and Inference 
+
+During pre-training, DuPLeR is jointly optimized across multiple multimodal knowledge graphs, with all trainable components fully shared across graphs. In addition, to bal-ance the varying difficulty levels across graphs, DuPLeR adopts a loss-guided dynamic dataset weighting strategy, as detailed in Appendix B. During inference, DuPLeR derives representations of un-seen relations based on the outputs of multimodal LLMs. These relation representations are subsequently injected into the knowledge graph to obtain representations of unseen enti-ties. Consequently, DuPLeR requires no retraining on the tar-get graph, thereby enabling more precise and context-aware link prediction under data-scarce conditions. 
+
+## 5 Experiment 
+
+5.1 Experiment Settings 
+
+Datasets To evaluate DuPLeR, we use five MMKG datasets: FB15K-IMG-R, DB15K-EMB-R, and YAGO15K-EMB-R derived from MMKB (García-Durán and Niepert 2018; Oñoro-Rubio et al. 2019); OpenBG-IMG-R from the OpenBG benchmarks (Deng et al. 2023); and CoDEx-IMG-R, which we construct from the publicly available CoDEx dataset (Safavi and Koutra 2020). Here, the suffix “EMB” denotes datasets in which the original images are represented by pre-extracted visual embeddings, whereas “IMG” denotes datasets that provide the raw image files. DB15K-EMB-R, YAGO15K-EMB-R, and CoDEx-IMG-R are used for pre-training with standard transductive splits. FB15K-IMG-R and OpenBG-IMG-R are used for few-shot link prediction. Following InGram (Lee, Chung, and Whang 2023), we create four variants for each dataset according to the proportions of triples involving new relations in the inference graph, with ratios of 0.25, 0.50, 0.75, and 1.00. For each variant, three random seeds are used to generate 0-shot, 1-shot, and 3-shot settings, resulting in 72 few-shot datasets for evaluation. 
+
+Baselines To evaluate DuPLeR, we compare it with three groups of baselines: (1) Traditional KG Embedding meth-ods : DistMult (Yang et al. 2014), which uses diagonal re-lation matrices for bilinear scoring, and RotatE (Sun et al. 2019), which represents relations as rotations in complex space. (2) Unimodal models : InGram (Lee, Chung, and Whang 2023), which learns relation and entity representa-tions by aggregating neighborhood information over relation-weighted KG structures, and ULTRA (Galkin et al. 2023), which builds relation graphs from triples to capture inter-relation dependencies, and ProLINK (Wang et al. 2024), which extends ULTRA with LLM-derived priors for few-shot reasoning. (3) Multimodal models : MMSN (Wei et al. 2024), which combines multimodal neighbor aggregation with meta-learning-based cross-modal interaction modeling. 
+
+Experimental Settings In the comparative experiments, we followed the original settings of the baseline models and adapted them for the few-shot dataset setup. DuPLeR is implemented with a three-layer DistMult-based GNN for relation encoding and a six-layer RotatE-based GNN for en-tity encoding. The low-rank fusion rank, bottleneck dimen-sion, and embedding dimension are set to 2, 64, and 64, respectively. The model is trained with AdamW using an initial learning rate of 0.003 and a cosine annealing sched-uler. For evaluation, we use three LLMs, Llama2-7B (Tou-vron et al. 2023), Qwen3-8B (Team 2025), and DeepSeek-V3.2 (DeepSeek-AI 2025), along with the VLM Qwen3-VL-8B-Instruct (Team 2025), abbreviated as Qwen3-VL-8B in Dataset Model v1 v2 v3 v4 1s 3s 1s 3s 1s 3s 1s 3s FB15K-IMG-R DistMult 0.07 0.04 1.00 1.80 0.71 1.77 2.00 3.38 RotatE 2.19 6.00 1.69 2.23 1.15 2.50 2.74 2.96 InGram 14.72 17.48 6.11 7.32 17.86 19.33 13.47 14.23 ULTRA(3g) 27.00 27.10 10.10 11.13 12.70 10.30 6.63 6.70 MMSN 14.70 22.20 45.00 39.90 21.90 29.33 21.70 27.90 ProLINK – Llama2-7B 53.80 59.00 51.50 53.30 50.00 51.40 41.40 42.20 ProLINK – Qwen3-8B 61.40 62.83 49.87 52.23 50.80 51.77 41.70 42.23 ProLINK – DeepSeek-V3.2 61.20 62.27 50.13 51.80 52.70 52.30 41.87 43.10 
+
+DuPLeR – Llama2-7B 69.73 72.20 58.43 60.10 64.57 66.17 47.60 48.47 DuPLeR – Qwen3-8B 71.63 73.20 57.97 59.93 64.90 65.90 47.60 48.40 
+
+DuPLeR – Qwen3-VL-8B 71.67 73.13 58.40 60.03 65.20 66.03 47.97 48.37 
+
+DuPLeR – DeepSeek-V3.2 71.77 73.00 58.23 60.00 65.17 66.07 47.50 48.47 
+
+OpenBG-IMG-R DistMult 0.00 0.02 0.73 1.06 0.98 1.92 0.88 1.77 RotatE 0.00 0.00 0.02 0.68 0.01 0.94 0.02 0.84 InGram 5.37 6.07 2.22 3.23 8.09 9.58 0.45 1.42 ULTRA(3g) 6.37 6.70 3.53 3.13 1.70 1.17 2.13 2.43 MMSN 11.17 9.13 5.10 1.63 16.90 20.50 22.60 14.60 ProLINK – Llama2-7B 20.50 23.30 14.40 16.43 14.00 18.50 18.90 24.00 ProLINK – Qwen3-8B 22.37 25.67 10.20 14.37 11.47 17.50 17.03 23.40 ProLINK – DeepSeek-V3.2 22.60 27.03 15.27 21.83 12.97 18.03 17.63 23.43 
+
+DuPLeR – Llama2-7B 17.33 20.97 18.07 23.30 19.13 28.17 23.07 29.70 
+
+DuPLeR – Qwen3-8B 25.73 30.13 17.03 22.90 21.10 27.53 22.93 29.37 
+
+DuPLeR – Qwen3-VL-8B 17.40 21.03 18.17 23.30 19.07 28.17 22.83 29.70 
+
+DuPLeR – DeepSeek-V3.2 17.53 21.37 17.53 23.00 20.27 27.97 23.07 30.00 
+
+Table 1: Few-shot Hits@10 results (%) on FB15K-IMG-R and OpenBG-IMG-R, where 1s and 3s denote the 1-shot and 3-shot settings. Bold and underline indicate the best overall and best baseline results, respectively. subsequent tables. We use Hits@10 as the evaluation met-ric, which measures the proportion of test queries whose ground-truth tail entity appears among the top 10 predicted entities. 
+
+5.2 Main Results 
+
+We conducted experiments under the aforementioned set-tings, and the results are presented in Table 1. It should be noted that, for traditional KG Embedding models, we em-ployed the OpenKE toolkit (Han et al. 2018). All results re-ported in the table are averaged over three runs with different random seeds on the few-shot datasets. The following conclusions can be drawn from the ta-ble: (1) Superiority of LLM Integration: ProLINK and Du-PLeR significantly outperform traditional baselines across most settings. For instance, on FB15K-IMG-R v1, DuPLeR achieves 71.77% compared to ULTRA’s 27%, validating that LLM-injected prior knowledge effectively enriches sparse context for KGC. (2) Effectiveness of Dual-Path Enhance-ment: DuPLeR generally surpasses ProLINK, demonstrating that the dual-path multimodal enhancement module success-fully leverages entity-level multimodal information to com-plement the relational context provided by LLMs. (3) Model robustness and backbone diversity: Peak performance varies across different LLM backbones (e.g., DeepSeek-V3.2 leads in only specific cases). This diversity reflects differences in pre-training corpora and highlights DuPLeR’s robustness; it maintains high Hits@10 performance via multimodal cues even when LLM-derived relational context is insufficient, thereby validating the effectiveness of the dual-path multi-modal enhancement module. 
+
+5.3 Zero-Shot Performance 
+
+The motivation behind incorporating multimodal LLMs is to alleviate information scarcity and provide high-quality relational representations—an effect that becomes partic-ularly pronounced in a zero-shot setting. To demonstrate the generalizability of these representations across broad world knowledge, we evaluated the zero-shot performance on FB15K-IMG-R. The results comparing several baseline models alongside DuPLeR are presented in Table 2. It is worth noting that, under this specific setting, the prompts provided to all models consisted solely of textual informa-tion containing the relation descriptions. The zero-shot experimental results corroborate the conclu-sions of the main experiments—namely, that incorporating LLM prior knowledge effectively mitigates the problem of information sparsity. Notably, DuPLeR shows a clear im-provement over ProLINK, which also utilizes LLMs, with the enhancement being particularly pronounced for the rela-tively weaker Llama2-7B model. Furthermore, in the v1 ver-sion, the performance achieved using the compact Qwen3-8B model surpassed that of the full-scale DeepSeek-V3.2 model. This suggests that DuPLeR’s dual-path multimodal informa-tion injection module effectively complements the relational context enriched by LLMs, thereby further mitigating the FB15K-IMG-R 
+
+Model v1 v2 v3 v4 InGram 13.56 3.41 16.02 12.90 ULTRA(3g) 25.90 13.90 21.10 9.60 MMSN 0.30 38.10 11.60 24.80 ProLINK – Llama2-7B 27.90 12.70 10.50 7.80 – Qwen3-8B 58.50 33.10 37.00 25.90 – DeepSeek-V3.2 57.90 36.20 43.30 29.70 
+
+DuPLeR – Llama2-7B 61.40 35.60 37.50 25.30 
+
+– Qwen3-8B 64.30 39.90 44.10 32.10 
+
+– Qwen3-VL-8B 62.60 39.80 52.70 30.10 
+
+– DeepSeek-V3.2 64.00 42.70 56.40 34.70 
+
+Table 2: 0-shot evaluation results on FB15K-IMG-R (%). Bold numbers indicate the best overall performance; under-lined numbers indicate the best among baseline models. issue of information scarcity within a zero-shot setting and enabling more precise predictions. 
+
+5.4 Ablation Study 
+
+Model OpenBG-IMG-R V1 
+
+0-shot 1-shot 3-shot 
+
+DuPLeR 3.90 17.40 21.03 
+
+w/o - multimodal LLM 2.80 16.23 20.10 w/o - Message Passing 0.80 12.80 17.50 w/o - LMF-Max 2.70 12.80 17.97 Table 3: Ablation evaluation results on the OpenBG-IMG-R V1 dataset (%) with Qwen3-VL-8B. Constrained by page limits, we conduct our ablation stud-ies exclusively on OpenBG-IMG-R V1 using Hits@10 under 0-shot, 1-shot, and 3-shot settings. Three DuPLeR variants are evaluated: w/o multimodal LLM, which removes mul-timodal LLM prompting during evaluation; w/o Message Passing, which disables multimodal process injection during pre-training; and w/o LMF-Max, which disables multimodal post-injection during pre-training. These variants examine the contribution of large-model relational knowledge and multimodal injection strategies. As shown in Table 3, all modules contribute to DuPLeR. Removing the multimodal LLM prior causes a ∼ 28 .2% relative performance drop in zero-shot setting, highlighting its vital role in enriching rela-tional context without reference examples. This drop dimin-ishes in few-shot scenarios, where explicit empirical demon-strations partially replace the LLM’s semantic prior, leading to a diminishing marginal effect. Notably, this degradation is less severe than ablating the Dual-pathway Multimodal En-hancement module. This suggests robust multimodal entity representations can partially offset limited relational context, underscoring the dual-path injection’s importance in captur-ing multimodal signals. 1 2 4 8         
+
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 1-shot H@10
+> (a) Rank
+> 16 32 64 128
+> (b) Bottleneck
+> 236
+> 0.0
+> 0.2
+> 0.4
+> 0.6
+> 1-shot H@10
+> (c) CCoRGE Depth
+> 68
+> (d) MAPNet Depth
+> 0.0005 0.001 0.005
+> (e) LR
+> FB15K-IMG-R OpenBG-IMG-R
+
+Figure 3: Hyperparameter sensitivity analysis. We analyze 1-shot Hits@10 performance on FB15K-IMG-R V1 and OpenBG-IMG-R V1 while varying one hyperparameter at a time (low-rank rank, bottleneck dimension, CCoRGE depth, MAPNet depth, learning rate). 
+
+5.5 Hyperparameter Analysis 
+
+To systematically evaluate the impact of hyperparameter variations on DuPLeR, we analyze four architecture-related hyperparameters—bottleneck dimension, low-rank decom-position rank, CCoRGE depth, and MAPNet depth—as well as the training hyperparameter learning rate. In our analysis, we select the FB15K-IMG-R V1 and OpenBG-IMG-R V1 datasets and report performance under the 1-shot setting us-ing the Hits@10 metric, as 1-shot is more sensitive compared to 0-shot and 3-shot. The results are shown in Figure 3. As shown in the figure, adjusting the learning rate has min-imal impact on FB15K but substantially improves OpenBG performance, indicating that a larger learning rate can en-hance generalization. Increasing the bottleneck dimension also improves performance, while too small a dimension (e.g., 16) excessively compresses multimodal semantics, weakening relation-aware gating and structural reasoning. The rank of low-rank interaction affects few-shot general-ization: lower rank constrains cross-modal interactions and introduces stronger structural bias, whereas excessively large rank may cause overfitting. CCoRGE depth is critical for modeling relational context; shallow networks fail to capture sufficient context, while overly deep networks may overfit on simpler datasets. MAPNet depth has a smaller but con-sistently positive effect, expanding the structural receptive field and enabling richer path reasoning for more precise link predictions. 
+
+## 6 Conclusion 
+
+This paper proposes DuPLeR, a novel framework for few-shot MMKG completion. DuPLeR combines multimodal LLM-derived relational priors, topology-refined structural reasoning, and dual-path multimodal enhancement to im-prove link prediction under data-scarce settings. Extensive experiments demonstrate that LLM-derived priors provide useful relational context, while relation-aware process injec-tion and LMF-Max post fusion further enhance entity repre-sentations. Future work will explore higher-quality MMKG construction and more domain-adaptive multimodal LLM selection and prompting strategies. 
+
+## References 
+
+Arun, A.; Kumar, S.; Nayyeri, M.; Xiong, B.; Kumaraguru, P.; Vergari, A.; and Staab, S. 2025. SEMMA: A semantic aware knowledge graph foundation model. In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing , 31813–31836. Chen, M.; Zhang, W.; Geng, Y.; Xu, Z.; Z. Pan, J.; and Chen, H. 2023. Generalizing to Unseen Elements: A Survey on Knowledge Extrapolation for Knowledge Graphs. In Elkind, E., ed., Proceedings of the Thirty-Second International Joint Conference on Artificial Intelligence, IJCAI-23 , 6574–6582. Survey Track. Chen, X.; Zhang, N.; Li, L.; Deng, S.; Tan, C.; Xu, C.; Huang, F.; Si, L.; and Chen, H. 2022. Hybrid Transformer with Multi-level Fusion for Multimodal Knowledge Graph Completion. In SIGIR ’22: The 45th International ACM SIGIR Confer-ence on Research and Development in Information Retrieval, Madrid, Spain, July 11 - 15, 2022 , 904–915. ACM. Chen, Z.; Zhang, Y.; Fang, Y.; Geng, Y.; Guo, L.; Chen, X.; Li, Q.; Zhang, W.; Chen, J.; Zhu, Y.; Li, J.; Liu, X.; Pan, J. Z.; Zhang, N.; and Chen, H. 2024. Knowledge Graphs Meet Multi-Modal Learning: A Comprehensive Survey. CoRR ,abs/2402.05391. DeepSeek-AI. 2025. DeepSeek-V3.2: Pushing the Frontier of Open Large Language Models. Deng, S.; Wang, C.; Li, Z.; Zhang, N.; Dai, Z.; Chen, H.; Xiong, F.; Yan, M.; Chen, Q.; Chen, M.; Chen, J.; Pan, J. Z.; Hooi, B.; and Chen, H. 2023. Construction and Applications of Billion-Scale Pre-trained Multimodal Business Knowl-edge Graph. In ICDE . IEEE. Galkin, M.; Yuan, X.; Mostafa, H.; Tang, J.; and Zhu, Z. 2023. Towards Foundation Models for Knowledge Graph Reasoning. In International Conference on Learning Repre-sentations . arXiv. Gao, Y.; Zhang, F.; Zhang, Z.; Min, X.; and Zhuang, F. 2025. Mixed-curvature multi-modal knowledge graph com-pletion. In Proceedings of the Thirty-Ninth AAAI Confer-ence on Artificial Intelligence and Thirty-Seventh Conference on Innovative Applications of Artificial Intelligence and Fif-teenth Symposium on Educational Advances in Artificial In-telligence , AAAI’25/IAAI’25/EAAI’25. AAAI Press. ISBN 978-1-57735-897-8. García-Durán, A.; and Niepert, M. 2018. KBlrn: End-to-End Learning of Knowledge Base Representations with Latent, Relational, and Numerical Features. In Proceedings of the Thirty-Fourth Conference on Uncertainty in Artificial Intel-ligence, UAI , 372–381. AUAI Press. Han, X.; Cao, S.; Xin, L.; Lin, Y.; Liu, Z.; Sun, M.; and Li, J. 2018. OpenKE: An Open Toolkit for Knowledge Embedding. In Proceedings of EMNLP .Hu, J.; Yang, H.; Teng, F.; Du, S.; and Li, T. 2024. Aknowledge graph completion model based on triple level interaction and contrastive learning. Pattern Recognition ,156: 110783. Kim, J.; Lee, G.; Kim, T.; and Shin, K. 2025. KGMEL: Knowledge Graph-Enhanced Multimodal Entity Linking. In 
+
+Proceedings of the 48th International ACM SIGIR Confer-ence on Research and Development in Information Retrieval ,3015–3019. Lee, J.; Chung, C.; and Whang, J. J. 2023. InGram: Inductive Knowledge Graph Embedding via Relation Graphs. In Pro-ceedings of the 40th International Conference on Machine Learning , 18796–18809. Oñoro-Rubio, D.; Niepert, M.; García-Durán, A.; Gonzalez-Sanchez, R.; and López-Sastre, R. J. 2019. Answer-ing Visual-Relational Queries in Web-Extracted Knowledge Graphs. In AKBC .Safavi, T.; and Koutra, D. 2020. CoDEx: A Comprehensive Knowledge Graph Completion Benchmark. In Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing (EMNLP) , 8328–8350. misc: Associ-ation for Computational Linguistics. Shang, B.; Zhao, Y.; Liu, J.; and Wang, D. 2024. LAFA: Multimodal Knowledge Graph Completion with Link Aware Fusion and Aggregation. 38: 8957–8965. Sun, Z.; Deng, Z.-H.; Nie, J.-Y.; and Tang, J. 2019. Ro-tatE: Knowledge Graph Embedding by Relational Rotation in Complex Space. In International Conference on Learning Representations .Team, Q. 2025. Qwen3 Technical Report. arXiv:2505.09388. Touvron, H.; et al. 2023. Llama 2: Open Foundation and Fine-Tuned Chat Models. ArXiv , abs/2307.09288. Wang, K.; Xu, Y.; Wu, Z.; and Luo, S. 2024. LLM as Prompter: Low-resource Inductive Reasoning on Arbitrary Knowledge Graphs. In Findings of the Association for Computational Linguistics ACL 2024 , 3742–3759. Bangkok, Thailand and virtual meeting: Association for Computational Linguistics. Wei, Y.; Chen, W.; Zhang, X.; Zhao, P.; Qu, J.; and Zhao, L. 2024. Multi-Modal Siamese Network for Few-Shot Knowl-edge Graph Completion. In 2024 IEEE 40th International Conference on Data Engineering (ICDE) , 719–732. Yang, B.; tau Yih, W.; He, X.; Gao, J.; and Deng, L. 2014. Embedding Entities and Relations for Learning and Infer-ence in Knowledge Bases. In International Conference on Learning Representations .Yang, S.; Yang, J.; Jiang, X.; Gao, Y.; Yang, L. T.; Luo, R.; and Yang, J. 2025. Towards Multimodal Inductive Learning: Adaptively Embedding MMKG via Prototypes. In Proceed-ings of the ACM on Web Conference 2025 , 109–118. Yuan, D.; Zhou, S.; Chen, X.; Wang, D.; Liang, K.; Liu, X.; and Huang, J. 2025. Knowledge graph completion with relation-aware anchor enhancement. In Proceedings of the Thirty-Ninth AAAI Conference on Artificial Intel-ligence and Thirty-Seventh Conference on Innovative Ap-plications of Artificial Intelligence and Fifteenth Sympo-sium on Educational Advances in Artificial Intelligence ,AAAI’25/IAAI’25/EAAI’25. AAAI Press. ISBN 978-1-57735-897-8. Zhang, C.; Yao, H.; Huang, C.; Jiang, M.; Li, Z.; and Chawla, N. V. 2019. Few-Shot Knowledge Graph Com-pletion. arXiv:1911.11298. Zhang, Q.; Wei, Y.; Han, Z.; Fu, H.; Peng, X.; Deng, C.; Hu, Q.; Xu, C.; Wen, J.; Hu, D.; and Zhang, C. 2024a. Multi-modal Fusion on Low-quality Data: A Comprehensive Sur-vey. arXiv:2404.18947. Zhang, W.; Yao, Z.; Chen, M.; Huang, Z.; and Chen, H. 2023. NeuralKG-ind: A Python Library for Inductive Knowledge Graph Representation Learning. arXiv:2304.14678. Zhang, Y.; Chen, W.; Chen, X.; Ma, Q.; and Zhao, L. 2024b. Inductive Link Prediction for Sequential-emerging Knowl-edge Graph. In 2024 IEEE 40th International Conference on Data Engineering (ICDE) , 5753–5766. IEEE. Zhang, Y.; Chen, Z.; Guo, L.; Xu, Y.; Hu, B.; Liu, Z.; Zhang, W.; and Chen, H. 2024c. Native: Multi-modal knowledge graph completion in the wild. In Proceedings of the 47th international ACM SIGIR conference on research and devel-opment in information retrieval , 91–101. Zhao, Y.; Zhang, Y.; Zhou, B.; Qian, X.; Song, K.; and Cai, X. 2024. Contrast then memorize: Semantic neighbor retrieval-enhanced inductive multimodal knowledge graph comple-tion. In Proceedings of the 47th international ACM SIGIR conference on research and development in information re-trieval , 102–111. Zhu, X.; Yang, C.; Wang, Q.; Guo, Z.; Wang, Y.; Liu, Z.; Wang, C.; and Shi, C. 2026a. Graph4LLM: A Systematic Sur-vey of Graph-Enhanced Large Language Models. TechRxiv ,2026(0213). Zhu, Z.; Liang, J.; Jiang, S.; Fu, J.; Liu, M.; Sun, G.; Ng, S.-K.; and Qin, B. 2026b. Analyzing Reasoning Consistency in Large Multimodal Models under Cross-Modal Conflicts. arXiv:2601.04073. Zhu, Z.; Zhang, Z.; Xhonneux, L.-P.; and Tang, J. 2021. Neu-ral bellman-ford networks: A general graph neural network framework for link prediction. Advances in Neural Informa-tion Processing Systems , 34. 
+
+## A Training Objective 
+
+The model is trained using the binary cross-entropy loss: 
+
+L = − 1
+
+|S t|
+
+X
+
+> (q,r,e )∈S t
+
+h
+
+ye log( σ(s(e))) + (1 − ye) log(1 − σ(s(e))) 
+
+i
+
+,
+
+(10) where St denotes the training set, ye ∈ { 0, 1} indicates whether entity e is the ground-truth tail entity, s(e) is its prediction score, and σ(·) denotes the sigmoid function. 
+
+## B Loss-Guided Dynamic Graph Sampling 
+
+DuPLeR is jointly pre-trained on multiple MMKGs with dif-ferent scales and learning difficulties. Uniform graph sam-pling may allocate insufficient training effort to difficult graphs, whereas sampling directly according to instanta-neous losses may produce unstable distributions or overem-phasize a small subset of graphs. We therefore adopt a loss-guided dynamic sampling strategy that adaptively allocates training steps while preserving a minimum sampling proba-bility for every graph. For each pre-training graph Gi, we maintain an exponential moving average (EMA) of its training loss. After a training step produces a loss ℓi on Gi, the corresponding estimate is updated as ¯Li ← α ¯Li + (1 − α)ℓi, (11) where α ∈ [0 , 1) denotes the EMA smoothing coefficient. Consequently, graphs that remain more difficult to opti-mize receive higher estimated losses. The preliminary graph sampling probability is obtained by applying a temperature-scaled softmax to the EMA loss estimates: 
+
+˜pi = exp   ¯L ∗ i/τ P ∗j = 1 G exp   ¯Lj /τ  , (12) where G is the number of pre-training graphs and τ > 0
+
+controls the concentration of the sampling distribution. A smaller τ assigns a larger proportion of training steps to graphs with higher estimated losses. To prevent low-loss graphs from being under-sampled, we impose a minimum sampling probability: 
+
+pi = (1 − Gp min ) ˜ p ∗ i + p ∗ min , (13) where pmin denotes the minimum sampling probability as-signed to each graph. This formulation guarantees that 
+
+pi ≥ pmin and PGi=1 pi = 1 , provided that pmin ≤ 1/G .During the initial training steps, the EMA estimates may not yet provide a reliable measure of graph difficulty. We there-fore adopt uniform graph sampling during a warm-up phase and activate the loss-guided sampling distribution once the estimates become sufficiently stable. We pre-train DuPLeR on three MMKGs and set τ = 0 .6,
+
+α = 0 .8, and pmin = 0 .2 in all experiments. 
+
+## C Effect-Size Analysis 
+
+We conduct exact one-sided paired Wilcoxon signed-rank tests using results obtained with the same three random seeds to assess whether DuPLeR consistently improves over Pro-LINK. Because only three paired runs are available, the tests have limited statistical power; with three nonzero paired dif-ferences, the smallest attainable exact one-sided p-value is 0.125. We therefore report the tests together with descrip-tive effect-size estimates. We report additional multi-seed results for two 1-shot settings, OpenBG-IMG-R V2 and V4, as shown in Table 4. Across OpenBG-IMG-R V2 and V4 under the 1-shot set-ting, DuPLeR yields absolute improvements of 6.77 and 3.37 Hits@10 percentage points over ProLINK, respectively. The exact one-sided paired Wilcoxon signed-rank tests yield 
+
+W + = 6 .0 and p = 0 .125 in both settings and therefore do not establish statistical significance at α = 0 .05 . Nev-ertheless, all three paired differences are positive in both settings. The observed paired effect sizes are large, with Co-hen’s dz = 4 .71 for V2 and dz = 10 .47 for V4. Dataset Model Run 1 Run 2 Run 3 Mean ± SD V2 ProLINK 12.4 11.4 10.6 11.47 ± 0.90 DuPLeR 18.1 17.6 19.0 18.23 ± 0.71 V4 ProLINK 23.5 22.0 21.6 22.37 ± 1.00 DuPLeR 26.5 25.5 25.2 25.73 ± 0.68 
+
+Table 4: Per-seed Hits@10 results (%) of DuPLeR and Pro-LINK with Qwen3-8B on OpenBG-IMG-R under the 1-shot setting. Mean and sample standard deviation are computed over three random seeds. NoFilt Avg τ=1 τ=3 τ=5                                      
+
+> Calibration
+> rel + man
+> rel + gui
+> rel + unr
+> tri + man
+> tri + gui
+> tri + unr
+> fus + man
+> fus + gui
+> fus + unr
+> Prompt
+> 16.13 17.37 16.13 16.00 16.00
+> 16.17 17.33 16.23 16.23 16.23
+> 16.23 17.33 16.33 16.33 16.33
+> 16.07 17.33 16.37 16.37 16.37
+> 16.07 17.33 16.37 16.37 16.37
+> 16.23 17.33 17.33 17.33 17.33
+> 16.17 17.33 17.33 17.33 17.33
+> 16.23 17.33 17.33 17.33 17.33
+> 16.23 17.33 17.33 17.33 17.33 15.75
+> 16.00
+> 16.25
+> 16.50
+> 16.75
+> 17.00
+> 17.25
+> 17.50
+> Hits@10 (×100)
+
+Figure 4: Prompt-configuration and calibration analysis for DuPLeR with Qwen3-VL-8B-Instruct on OpenBG-IMG-R V4 under the 1-shot setting. The prompt abbreviations follow the definitions provided in the main paper. 
+
+## D Prompt Settings and Calibration Analysis 
+
+To analyze the impact of different prompt formulations and filtering thresholds on performance, we evaluated DuPLeR with the Qwen3-VL-8B-Instruct model on the OpenBG-IMG-R V4 dataset under the 1-shot setting using various combinations of prompt formulations and filtering thresh-olds. Specifically, there are nine prompt configurations formed by combining three relation-information formats (Relation-only, Triple-only, and Fusion) with three entity-type constraints (Mandatory, Guided, and Unrestricted). As shown in Figure 4, the Avg calibration strategy yields consistently strong performance across all prompt configura-tions, with Hits@10 ranging from 17.33 to 17.37. Although Relation-only with the Mandatory constraint obtains the highest individual result of 17.37, its margin over the other configurations is only 0.04 points. More importantly, the Fusion prompt exhibits the strongest robustness under fixed-threshold filtering: all three type-constraint variants achieve 17.33 for τ = 1 , 3, and 5. In comparison, Relation-only prompts remain between 16.00 and 16.33, while Triple-only prompts reach 17.33 only under the Unrestricted constraint. These results suggest that combining a relation description with an example triple provides the VLM with complemen-tary semantic and structural cues, enabling it to generate richer and more discriminative relation context. The results also show that performance is largely insen-sitive to the exact value of the fixed threshold once filter-ing is applied, as most configurations produce identical re-sults across τ ∈ { 1, 3, 5}. Moreover, the differences among Mandatory, Guided, and Unrestricted constraints become negligible when the Fusion prompt is used, indicating that sufficiently informative relation context reduces sensitivity to the type-constraint formulation. By contrast, stricter con-straints may limit the usefulness of the generated context when only relation descriptions or example triples are pro-vided. Overall, the results show that both prompt composition and calibration affect downstream KGC performance when VLMs are used for relation-context enrichment. Among the evaluated configurations, Fusion provides the most stable performance across different filtering thresholds and type constraints.

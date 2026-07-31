@@ -1,0 +1,519 @@
+Title: CCFormer: Efficient Cross-Field Interaction and Hierarchical Sequence Compression for Industrial Recommendation at Tencent
+
+URL Source: https://arxiv.org/pdf/2607.28070v1
+
+Published Time: Fri, 31 Jul 2026 00:56:21 GMT
+
+Number of Pages: 10
+
+Markdown Content:
+# CCFormer: Efficient Cross-Field Interaction and Hierarchical Sequence Compression for Industrial Recommendation at Tencent 
+
+## Yunlong Wang ∗
+
+aloyswang@tencent.com Platform and Content Group, Tencent 
+
+## Huizhe Zhang ∗
+
+huizhezhang@tencent.com Platform and Content Group, Tencent 
+
+## Haonan Hu ∗
+
+haonanhu@tencent.com Platform and Content Group, Tencent 
+
+## Yudong Li †
+
+elsonli@tencent.com Platform and Content Group, Tencent 
+
+## Bing Wen 
+
+Platform and Content Group, Tencent 
+
+## Jianchao Tu 
+
+Platform and Content Group, Tencent 
+
+## Chengxiang Zhuo 
+
+Platform and Content Group, Tencent 
+
+## Zang Li 
+
+Platform and Content Group, Tencent 
+
+## Abstract 
+
+Recent studies in industrial recommendation systems have demon-strated that sequential recommendation models built upon self-attention can benefit from predictable scaling laws by increasing sequence length and model capacity. However, practical recom-mender systems impose strict latency and resource constraints, making it challenging to balance computational overhead with fine-grained feature interaction. In this paper, we propose CCFormer ,an efficient Transformer backbone that unifies cross-field feature interaction and compressed long-sequence modeling for industrial recommendation. Specifically, CCFormer combines feature-field separated cross attention with long-sequence subspace token mix-ing to exploit long-term preference signals across heterogeneous feature domains. A hierarchical sequence compression strategy with progressively expanded receptive fields enables efficient long-sequence modeling with reduced information loss. Extensive ex-periments on two public benchmarks and a large-scale industrial dataset demonstrate that CCFormer consistently outperforms state-of-the-art baselines. Online A/B tests in a video recommendation scenario and an advertising ranking scenario at Tencent further validate its industrial practicality, yielding a 3.57% CTR gain and a 1.71% advertising revenue lift, respectively, while accelerating model training by 2.21 × over the strong HSTU baseline. CCFormer has been fully deployed in Tencent’s production recommendation system, serving the main traffic of both scenarios. 
+
+## CCS Concepts 
+
+• Information systems → Recommender systems . 
+
+> ∗Equal contribution.
+> †Corresponding author. Permission to make digital or hard copies of all or part of this work for personal or classroom use is granted without fee provided that copies are not made or distributed for profit or commercial advantage and that copies bear this notice and the full citation on the first page. Copyrights for components of this work owned by others than the author(s) must be honored. Abstracting with credit is permitted. To copy otherwise, or republish, to post on servers or to redistribute to lists, requires prior specific permission and/or a fee. Request permissions from permissions@acm.org.
+> KDD ’27, San Jose, CA, USA
+> ©2027 Copyright held by the owner/author(s). Publication rights licensed to ACM. ACM ISBN 978-1-4503-XXXX-X/2027/08 https://doi.org/XXXXXXX.XXXXXXX
+
+## Keywords 
+
+Recommender System, Scaling Law, Long-Sequence Modeling 
+
+ACM Reference Format: 
+
+Yunlong Wang, Huizhe Zhang, Haonan Hu, Yudong Li, Bing Wen, Jianchao Tu, Chengxiang Zhuo, and Zang Li. 2027. CCFormer: Efficient Cross-Field Interaction and Hierarchical Sequence Compression for Industrial Recom-mendation at Tencent. In Proceedings of The 33rd ACM SIGKDD Conference on Knowledge Discovery and Data Mining (KDD ’27). ACM, New York, NY, USA, 10 pages. https://doi.org/XXXXXXX.XXXXXXX 
+
+## 1 Introduction 
+
+Sequential recommendation models (SRs), which naturally capture long-term sequential behaviors, have become prevalent in vari-ous industrial applications such as online advertising, e-commerce, news feeds and short-video platforms [ 35 , 41 ]. The traditional col-laborative filtering-based or content-based recommendation models mainly focus on shallow interactions between users and items. SRs aim to infer users’ evolving preferences and predict their future responses by modeling historical interaction sequences. Recent studies have increasingly shifted toward long-sequence modeling, where richer historical behaviors are leveraged to capture more comprehensive, diverse and dynamic user interests [18, 20, 28]. Due to the strong expressive power over user behavior sequences, Transformer-based models have become a dominant architecture [2 , 8, 29 ]. This line of models built upon self-attention can adaptively identify informative historical interactions and capture high-order interactions between past behaviors and the target item. Moreover, recent studies suggest that recommendation models can also benefit from scaling up, including increasing the model size, extending the sequence length and allocating more computational budget [ 38 , 40 ]. Such scaling trends make it possible to exploit long-term user his-tories more thoroughly, thereby improving the expressiveness of sequential user representations. However, Transformer-based se-quential models are difficult to deploy in practical recommendation systems. The self-attention mechanism incurs quadratic computa-tional and memory complexity with respect to the sequence length, which becomes prohibitively expensive when modeling long user behavior sequences [11]. This challenge is especially critical in in-dustrial ranking scenarios, where models must process massive arXiv:2607.28070v1 [cs.IR] 30 Jul 2026 KDD ’27, August 2027, San Jose, CA, USA Yunlong Wang et al. Sequential  
+
+> Features
+> Non-Seq
+> Features
+> Multi-task Tower
+> Sequential
+> Features
+> Target
+> Features
+> Multi-task Tower
+> Sequence Modeling
+> Block
+> Sequential
+> Features
+> Non-Seq
+> Features
+> Multi-task Tower
+> Feature Interaction Block
+> Tokenizer
+> Sequence
+> Compression
+> Cross-field
+> Feature
+> Interaction Sequence
+> Interaction
+> Tokenizer
+> Feature Interaction & Sequence
+> Modeling
+> (Self-Attention)
+> User
+> Features
+
+Figure 1: Architectural comparison. 
+
+traffic under strict latency and resource constraints. Consequently, directly extending the input sequence length or increasing model capacity often incurs unacceptable training and inference costs, making Transformer-based sequential models difficult to scale in practical systems. To alleviate the efficiency bottleneck of long-sequence modeling, existing long-sequence recommendation methods usually adopt two representative paradigms, compressed sequence representa-tion or sequence truncation [ 19 , 23 , 34 ]. As shown in Figure 1, some conventional approaches compress long behavior sequences into compact sequence representations before feature interaction. Although such sequence compression reduces the computational cost, it may lose fine-grained behavioral signals and weaken the subsequent interaction between historical behaviors and target items. In recent years, some emerging methods retrieve or truncate a target-relevant subsequence and preserve token-level modeling within the limited window [ 3 , 25 ], or adopt sparse attention to reduce the cost of long-sequence modeling [ 31 , 37 ]. However, se-quence truncation inevitably discards potentially useful long-term interests, while full self-attention within the retained sequence still introduces non-negligible computational overhead. Therefore, a key challenge remains underexplored: how to achieve sufficient and efficient feature interactions within long user behavior sequences for industrial recommendation . Insufficient sequence-level feature crossing may weaken the model’s ability to uncover fine-grained preference patterns, while exhaustive self-attention is too expensive for long sequences [ 6, 22 ]. This motivates the need for a new model-ing framework that can preserve rich sequence feature interactions while maintaining practical efficiency. To address these challenges, we propose CCFormer , an efficient Transformer that unifies deep cross-field feature interaction and sequence compression for long-sequence recommendation. Specifi-cally, CCFormer introduces a feature-field separated cross attention, enabling sequential and cross-domain feature interaction. It enables tokens from different domains (e.g., User Profile, Item Feature) to explicitly interact with the entire behavior sequence and capture long-term preference signals from rich historical contexts. Besides, CCFormer introduces a long-sequence subspace token mixing mod-ule to effectively capture target-relevant preference signals from long behavior histories. Finally, the hierarchical sequence compres-sion strategy preserves access to the full sequence via expanded receptive fields, thereby alleviating information loss while substan-tially reducing the computational cost for long-sequence modeling. Our contributions are summarized as follows: 
+
+• We propose a new interaction paradigm for long-sequence recommendation: feature-field separated cross attention en-ables efficient early fusion among heterogeneous domain tokens, while subspace-level relative temporal-positional encoding injects recency-aware order information into the behavior sequence. 
+
+• To the best of our knowledge, this is the first attempt to extend token mixing from unified feature tokens to full-length user behavior sequences in industrial ranking models, coupled with a tailored hierarchical sequence compression. This paradigm preserves rich long-sequence information while substantially reducing the computational overhead, achieving up to a 2.21 × training speedup. 
+
+• We conduct comprehensive experiments on both public bench-marks and industrial datasets against advanced industrial baselines. The scaling law analysis and online A/B testing in two real-world Tencent recommendation scenarios demon-strate the effectiveness, scalability and practicality of CC-Former. 
+
+## 2 Related Work 
+
+Conventional Deep Learning Recommendation Models. Conven-tional deep learning recommendation models (DLRMs) [ 38 ] strive to learn effective representations from high-dimensional sparse categorical features and dense numerical features [ 5 , 10 ]. A com-mon paradigm is to project sparse features into low-dimensional embedding spaces, and then combine them with dense features for prediction. These models design different feature interaction mech-anisms to improve the expressiveness of recommendation models. For example, Wide & Deep [ 7] jointly memorizes low-order feature co-occurrence patterns and generalizes through deep neural net-works. DeepFM [ 13 ] integrates factorization machines with deep networks to capture both low-order and high-order feature interac-tions. However, conventional DLRMs usually treat user historical behaviors as aggregated or short-range features, rather than explic-itly modeling long-term sequential dependencies. Simply relying on static feature crossing or pooled behavior representations may neglect important sequential signals. 
+
+Token Mixing-based Recommendation Models. Instead of relying on heterogeneous handcrafted feature-crossing modules, emerg-ing methods construct sequentialized unified features to exploit the scaling law of industrial-scale recommendation systems with large and non-stationary vocabularies [ 38 ]. Derived from the MLP-driven alternatives to Vision Transformers [ 30 ], a line of recent work replaces quadratic self-attention with lightweight token mix-ing operators. These methods exchange information across tokens by mixing subspace vectors across tokens for global feature in-teractions [ 4 , 14 , 16 ]. For example, RankMixer [ 42 ] combines a multi-head token mixing module with per-token Feed-Forward Networks (FFNs) to model heterogeneous feature subspaces effi-ciently. TokenMixer-Large [ 17 ] further improves this paradigm by redesigning the residual pathway with a mixing-and-reverting op-eration. However, existing token mixing-based recommendation models are mainly designed for unified feature tokens rather than full-length user behavior sequences. Unlike these methods, our work aims to deploy the token mixing paradigm directly on the full behavior sequence for long sequence modeling. CCFormer: Efficient Cross-Field Interaction and Sequence Compression KDD ’27, August 2027, San Jose, CA, USA 
+
+Attention-based Recommendation Models. Early sequential mod-els tend to adopt recurrent neural networks, convolutional networks or attention mechanisms to encode historical behaviors [ 18 , 26 , 33 ]. These methods significantly improve the expressiveness of user behavior modeling and have been widely explored in both retrieval and ranking scenarios. Recent studies further extend attention-based architectures to industrial-scale recommendation by jointly modeling behavior sequences, item features and user profiles within scalable frameworks [ 12 , 15 , 19 , 40 ]. These works suggest that scal-ing up sequence length, model capacity and feature-interaction modules can consistently improve recommendation performance, especially when user interests are distributed across diverse his-torical behaviors and feature fields [ 9 , 21 ]. Vanilla self-attention introduces quadratic computational and memory costs in practical recommendation systems. Besides, many efficient attention variants mainly focus on reducing sequence modeling overhead, making them less effective at capturing cross-domain feature interactions. Therefore, how to achieve efficient yet adequate cross-domain fea-ture interaction remains a key challenge for attention-based mod-els. 
+
+## 3 Methods 
+
+This section details the architecture of the proposed CCFormer. As depicted in Figure 2, CCFormer adopts a decoupled architectural paradigm. It explicitly partitions the input feature space into three distinct semantic fields: user profiles, historical behavior sequences, and target items. A fundamental limitation of existing Transformer-based models is the prohibitive quadratic computational complexity incurred by applying global self-attention across all concatenated tokens. To overcome this bottleneck, CCFormer disentangles the feature interaction process into two orthogonal components: cross-field interaction and intra-sequence token interaction. This design enables the model to effectively distill target-aware user interests from extensive behavior histories while avoiding the quadratic cost of exhaustive self-attention over the full token set. Formally, let U(0) ∈ R𝐵 ×𝐿 𝑢 ×𝑑 , S(0) ∈ R𝐵 ×𝐿 𝑠 ×𝑑 , and T(0) ∈
+
+R𝐵 ×𝐿 𝑡 ×𝑑 denote the initial tokenized representations for the user, behavior sequence, and target item fields, respectively. Here, 𝐵 
+
+represents the batch size, 𝑑 is the hidden dimensionality, and 𝐿 𝑢 ,
+
+𝐿 𝑠 , and 𝐿 𝑡 denote the number of tokens in the respective fields. Specifically, heterogeneous user-side features are projected into a compact set of user tokens, whereas each historical behavior and target item is embedded as a fine-grained item-level token. The core of CCFormer consists of 𝐿 stacked interaction blocks. Each block iteratively refines the representations of the three fields through the aforementioned decoupled interactions: 
+
+(U(ℓ+1) , S(ℓ+1) , T(ℓ+1) ) = CCFormerBlock ℓ (U(ℓ ) , S(ℓ ) , T(ℓ ) ), (1) After 𝐿 layers of deep feature extraction, the final normalized rep-resentations from the three fields are aggregated and fed into task-specific prediction heads for multi-task learning. 
+
+## 3.1 Feature-Field Separated Cross Attention 
+
+CTR prediction involves heterogeneous feature interactions, such as user-to-history preference retrieval, target-to-history relevance matching, and target-to-user compatibility modeling. Applying standard self-attention over all tokens treats different feature fields uniformly, which not only incurs unnecessary computation but may also weaken their semantic roles. To address this issue, CCFormer adopts a feature-field separated cross-attention module that models these interactions through three directed attention flows. Before cross-field interaction, we first apply lightweight token-wise feed-forward networks to the user and target fields: 
+
+¯U(ℓ ) = SwiGLUFFN ℓ𝑢 (U(ℓ ) ), ¯T(ℓ ) = SwiGLUFFN ℓ𝑡 (T(ℓ ) ). (2) The user field generates queries, keys, and values, while the behav-ior sequence only provides keys and values since it is used as the context to be retrieved: 
+
+(Q𝑢 , K𝑢 , V𝑢 ) = RMSNorm ( ¯U(ℓ ) )W𝑄𝐾𝑉 𝑢 (3) 
+
+(K𝑠 , V𝑠 ) = RMSNorm (S(ℓ ) )W𝐾𝑉 𝑠 . (4) Here, W𝑄𝐾𝑉 𝑢 ∈ R𝑑 ×3𝑑 and W𝐾𝑉 𝑠 ∈ R𝑑 ×2𝑑 . We apply RMSNorm [ 39 ]to align the scales of the feature fields. The target field uses two query projections to attend to the behavior and user fields, respectively: 
+
+Q𝑡 →𝑠 = ¯T(ℓ ) W𝑄 𝑡 →𝑠 , Q𝑡 →𝑢 = ¯T(ℓ ) W𝑄 𝑡 →𝑢 . (5) The directed cross-attention is then computed as 
+
+O𝑢 →𝑠 = Attn (Q𝑢 , K𝑠 , V𝑠 ; M),
+
+O𝑡 →𝑠 = Attn (Q𝑡 →𝑠 , K𝑠 , V𝑠 ; M),
+
+O𝑡 →𝑢 = Attn (Q𝑡 →𝑢 , K𝑢 , V𝑢 ),
+
+(6) where 
+
+Attn (Q, K, V; M) = softmax 
+
+ QK ⊤
+
+√𝑑 𝑘 
+
++ M
+
+
+
+V. (7) For each attention head, let 𝑑 𝑘 = 𝑑 /ℎ denote the head dimension. The mask M is omitted when attention is applied without masking, and is used to mask padded behavior positions in sequence-related attention. Finally, the user and target fields are updated by 
+
+ΔU(ℓ ) = O𝑢 →𝑠 W𝑂 𝑢 , ΔT(ℓ ) = [O𝑡 →𝑠 ; O𝑡 →𝑢 ]W𝑂 𝑡 . (8) In this way, the user field selectively retrieves historical behaviors, while the target field jointly captures target-history relevance and target-user compatibility. 
+
+## 3.2 Relative Temporal-Positional Encoding in Token Subspaces 
+
+Temporal and positional cues in user behavior sequences are piv-otal for capturing evolving preferences. Recent studies [ 19 , 36 , 38 ]show that joint temporal-positional modeling significantly boosts recommendation accuracy. The 𝑂 (𝐿 2 
+
+> 𝑠
+
+) complexity of conventional self-attention introduces prohibitive latency, hindering real-world long-horizon recommendations. To encode temporal-positional in-formation efficiently, we apply relative temporal-positional encod-ing within local behavior subspaces, reducing the computational complexity to 𝑂 (𝐿 𝑠 𝑚 ).Given the sequence representation S ∈ R𝐵 ×𝐿 𝑠 ×𝑑 , we partition S
+
+along the sequence dimension 𝐿 𝑠 into groups of size 𝑚 , where each group contains 𝑚 behaviors. For the 𝑖 -th and 𝑗 -th behaviors in the KDD ’27, August 2027, San Jose, CA, USA Yunlong Wang et al. +
+
++           
+
+> target item
+> tokens user tokens sequence tokens
+> SwiGLUFFN
+> Subspace Interaction
+> Res &
+> RMSNorm
+> Res &
+> RMSNorm Convolutional Compression
+> compressed sequence tokens
+> target item
+> tokens user tokens
+> Output Layer Pooling Layer Pooling Layer
+> CCFormer Output
+> CCFormer Block ×L
+> Click Like Share
+
+# ...         
+
+> SwiGLUFFN
+> Dual
+> Cross Attention Cross Attention
+> Subspace Relative Time
+> and Position Encoding
+> QVKVKQVK
+> S1
+> S2
+> Concat
+> Per-channel
+> FFN
+> St,p
+> Convolutional Compression
+> Subspace Relative Time and Position Encoding
+> Subspace Interaction
+> m
+> m
+> �2
+> 푝�  �2
+> 푡푖  
+> �1
+> 푝�  �1
+> 푡푖  
+> Matrix
+> Multiplication
+> d
+> subspace
+> mixing
+> Ls
+> d
+> Conv1D
+> Compression
+> sequence grouping
+> feature grouping
+> m
+> n
+> subspace
+> revert
+> Kernel
+> Size
+> Stride
+> d
+> ℓ < Ls
+> Ls
+
+Figure 2: The overview of CCFormer. 
+
+𝑝 -th sequence group, the relative temporal-positional encoding is defined as follows: 
+
+Wtime  
+
+> 𝑝,𝑖,𝑗
+
+= 𝛼 · 𝛽 |𝑡 𝑝,𝑖 −𝑡 𝑝,𝑗 |𝛾 
+
+, (9) where 𝛼 and 𝛾 are positive learnable parameters, 𝛽 ∈ ( 0, 1) is a time-decay parameter, and 𝑡 𝑝,𝑖 is the 𝑖 -th behavior timestamp in the 𝑝 -th group. We construct a relative temporal encoding ma-trix Wtime  
+
+> 𝑝
+
+∈ R𝑚 ×𝑚 for the 𝑝 -th group. Since 𝛽 ∈ ( 0, 1), the weight 
+
+Wtime  
+
+> 𝑝,𝑖,𝑗
+
+decreases monotonically as the temporal gap |𝑡 𝑝,𝑖 −𝑡 𝑝,𝑗 | grows, thereby assigning larger weights to temporally proximate behav-iors. In addition to temporal information, we introduce a learnable relative positional bias Wpos _origin ∈ R2𝑚 −1 to capture positional re-lationships among different behaviors within each sequence group. Given the 𝑖 -th and 𝑗 -th behaviors in the 𝑝 -th sequence group, the relative positional encoding is obtained as: 
+
+Wpos  
+
+> 𝑝,𝑖,𝑗
+
+= Wpos _origin [𝑖 − 𝑗 + 𝑚 − 1] . (10) We construct a relative positional matrix Wpos  
+
+> 𝑝
+
+∈ R𝑚 ×𝑚 for the 𝑝 -th group. Finally, we incorporate temporal-positional information into the sequence S:
+
+St,p = Concat 
+
+
+
+St,p1 , St,p2 , . . . , St,p 
+
+> 𝐿 𝑠 /𝑚
+
+
+
+,
+
+St,p 
+
+> 𝑝
+
+=
+
+
+
+Wtime  
+
+> 𝑝
+
++ Wpos 
+
+> 𝑝
+
+
+
+S[( 𝑝 − 1) · 𝑚 : 𝑝 · 𝑚 ].
+
+(11) 
+
+## 3.3 Long-Sequence Subspace Token Mixing 
+
+Following the cross-field interaction, it is crucial to capture intra-sequence dependencies among historical behaviors. However, stan-dard self-attention mechanisms suffer from a quadratic computa-tional bottleneck O( 𝐿 2 
+
+> 𝑠
+
+) with respect to the sequence length 𝐿 𝑠 . To circumvent this limitation, CCFormer introduces a Subspace Token Mixing module. Instead of computing dense pairwise attention, we partition the behavior sequence into compact token subspaces and process them via a Per-channel Feed-Forward Network (PFFN). Formally, the input sequence representation S ∈ R𝐵 ×𝐿 𝑠 ×𝑑 is first reshaped into a subspace tensor: 
+
+X = Reshape (S) ∈ R𝐵 × 𝐿𝑠 𝑚 × 𝑑 𝑛 ×𝑚𝑛 , (12) In this formulation, each subspace vector X𝑏,𝑝,𝑐 ∈ R𝑚𝑛 jointly encapsulates 𝑚 adjacent behavior tokens and 𝑛 hidden dimensions. This structural reorganization is pivotal: it forces fine-grained token-level and channel-level signals to interact directly within a localized, compact representation. Subsequently, we apply the PFFN to each channel group inde-pendently to extract subspace-specific patterns. The PFFN is instan-tiated as a gated feed-forward architecture to enhance non-linear expressiveness: 
+
+PFFN 𝑐 (x) = W𝑜 𝑐 
+
+ 𝜙 (xW 𝑔 𝑐 ) ⊙ ( xW 𝑣 𝑐 ) , (13) where 𝜙 (·) denotes a smooth non-linear activation function, ⊙ is the element-wise multiplication, and W𝑔 𝑐 , W𝑣 𝑐 , and W𝑜 𝑐 are learn-able weight matrices specific to the 𝑐 -th channel group. For each subspace, the transformation is computed as: 
+
+Z𝑏,𝑝,𝑐 = PFFN 𝑐 (X𝑏,𝑝,𝑐 ). (14) By utilizing independent parameters across different channel groups, the model can capture diverse and heterogeneous behavior patterns in parallel. The output tensor Z maintains the subspace topology of X and is subsequently restored to the original sequence layout: 
+
+ˆS = Restore (Z) ∈ R𝐵 ×𝐿 𝑠 ×𝑑 . (15) Overall, this subspace-based mixing mechanism provides a fa-vorable balance between expressive power and computational effi-ciency. By explicitly mixing multiple behavior tokens and hidden dimensions within localized subspaces, it effectively captures intra-sequence dependencies. CCFormer: Efficient Cross-Field Interaction and Sequence Compression KDD ’27, August 2027, San Jose, CA, USA Input Sequence Tokens                                  
+
+> Receptive Field
+> 3
+> 10 11 12 13 14 15 16 pad 123456789
+> Layer 1 12345678pad
+> Layer 2 1234pad
+> Layer 3 12pad
+> Layer 4 1
+> Receptive Field
+> 7
+> Receptive Field
+> 31
+> Receptive Field
+> 15
+
+Figure 3: Change in sequence token receptive field with in-creasing model layers. 
+
+## 3.4 Hierarchical Long-Sequence Token Compression 
+
+While subspace token mixing mitigates the cost of intra-sequence interactions, processing the full behavior sequence remains com-putationally prohibitive when the sequence length 𝐿 𝑠 is extremely large. Furthermore, long user histories inherently exhibit redun-dancy and local correlations. To address this bottleneck, we intro-duce a Hierarchical Token Compression module to progressively condense the sequence representation across deeper layers. For-mally, following the sequence update in the ℓ-th block, we apply a one-dimensional convolutional downsampling operator along the sequence dimension: 
+
+S(ℓ+1) = Conv1D 𝑘,𝑠 ˆS(ℓ ) (16) where ˆS(ℓ ) denotes the output of the ℓ-th CCFormer block after subspace token mixing, and S(ℓ+1) serves as the input sequence representation of the next block. 𝑘 and 𝑠 denote the convolution kernel size and stride. This operation aggregates local context by fusing adjacent behavior tokens, yielding a shortened sequence for subsequent layers. The compression mechanism naturally complements the sub-space token mixing module. Subspace token mixing captures local interactions within each layer, while convolutional compression merges local information across layers. In Figure 3, as the net-work depth increases, the receptive field of each compressed token expands progressively over the original behavior sequence. This enables multi-granularity user interest modeling: shallow layers capture short-term, fine-grained behavior patterns, while deeper layers extract abstract, long-term preference signals. Crucially, the progressive reduction in sequence length significantly decreases the computational complexity, ensuring the scalability of CCFormer for ultra-long user sequence modeling. 
+
+## 3.5 Training and Deployment Optimization 
+
+CCFormer is built on top of Numerous-Torch, our production-grade training and inference infrastructure for large-scale recommenda-tion models. The role of Numerous-Torch is to bridge flexible model innovation and industrial-scale recommendation deployment. On the modeling side, it keeps a PyTorch-native development experi-ence, allowing researchers to efficiently reuse emerging advances from the rapidly evolving LLM community. On the system side, it provides the infrastructure required by production recommendation workloads, including distributed data ingestion, large-scale sparse feature processing, sparse-dense joint training, checkpoint recov-ery, model export, and continual training on fresh user-feedback logs. In the following, we describe several key optimizations that we have adopted in industrial production scenarios. 
+
+Mixed precision training. We adopt mixed precision training (BF16 or FP16) for the main model computation. In practice, this strategy reduces memory overhead by more than 35%, enabling larger batches or larger model parameters under the same training budget. 
+
+Sparse parameters compression. For large-scale recommen-dation models, sparse user and item ID features account for the majority of sparse model parameters. We store the embedding-table parameters of these ID features using INT8 symmetric linear quan-tization, which achieves approximately 70% compression compared with full-precision storage. In addition, we apply a double-hashing strategy [ 27 ] to reduce the size of ID-feature embedding tables, fur-ther decreasing the sparse parameter size by around 50%. By com-bining these two techniques, we substantially reduce the memory footprint and communication cost during model training without degrading training effectiveness. 
+
+Parallel prediction of candidate items. In CCFormer blocks, target tokens are only used as queries and never attend to each other. This design avoids cross-target information leakage and allows multiple candidate items from the same user request to be scored in parallel. During online serving, all candidate targets in a request are packed into the target field and forwarded only once. Since user field and sequence field modeling is shared across candidates, CCFormer produces multi-task scores for all targets in a single pass, avoiding repeated user sequence computation and improving serving throughput. Compared with the pointwise per-candidate inference of the DLRM baseline, this parallel prediction scheme enables CCFormer to increase the online peak QPS by 30% under the same inference resources, even though its computational complexity is 20 × higher. 
+
+Table 1: Dataset Statistics. Datasets #Users #Items #Samples 
+
+Taobao 987,994 4,162,024 100,150,807 KuaiRec 7,176 10,728 12,530,806 Industry >30M >10M >4B 
+
+## 4 Experiments 
+
+Datasets. We conduct comparison experiments on two bench-marks (Taobao 1 and KuaiRec 2) and an internal industry dataset. The dataset statistics are listed in Table 1. We utilize users’ clicked items as behavior sequences and predict whether the user will click the target item [ 24 ]. The KuaiRec dataset is a short-video recom-mendation dataset, providing rich user-item interaction records. We use the provided big matrix data and treat an interaction as positive if its watch ratio is greater than or equal to 2. For both public datasets, the behavior sequence is truncated at length 200  
+
+> 1https://tianchi.aliyun.com/dataset/649
+> 2https://kuairec.com/ KDD ’27, August 2027, San Jose, CA, USA Yunlong Wang et al.
+
+Table 2: Performance comparison on public datasets. The DIN model serves as the base model for computing ΔAUC. Datasets Metric DIN DeepFM SASRec MIMN HSTU OneTrans STCA CCFormer 
+
+Taobao AUC (%) 88.33 ±0.22 89.06 ±0.42 88.52 ±0.65 91.79 ±0.32 91.40 ±0.25 91.35 ±0.61 92.81 ±0.50 93.67 ±0.32 
+
+ΔAUC (%) 0.00 1.90 0.50 9.03 8.01 7.88 11.69 13.93 
+
+KuaiRec AUC (%) 80.22 ±0.58 80.14 ±0.51 79.83 ±0.70 81.79 ±0.81 82.62 ±0.39 82.76 ±0.59 82.18 ±0.16 83.35 ±0.29 
+
+ΔAUC (%) 0.00 -0.26 -1.29 5.20 7.94 8.41 6.49 10.36 Table 3: Performance comparison on the industrial dataset. The HSTU baseline serves as the base model for computing 
+
+ΔAUC and ΔGAUC. Models AUC (%) ΔAUC (%) GAUC (%) ΔGAUC (%) 
+
+HSTU 77.66 0.00 70.86 0.00 OneTrans 77.69 0.11 70.90 0.19 STCA 77.73 0.25 70.95 0.43 CCFormer 77.94 1.01 71.36 2.40 
+
+unless otherwise specified. The industry dataset is collected from the online logs and real user feedback of a Tencent recommenda-tion system. It contains one month of production data, comprising more than 4 billion samples, over 30 million users and 10 million recommended contents. For this industry dataset, the user behavior sequence length is set to 1000. 
+
+Baselines. For the public datasets, we compare CCFormer with four representative baselines under the conventional DLRM par-adigm (DIN [ 41 ], DeepFM [ 13 ], SASRec [ 18 ] and MIMN [ 24 ]) and three attention-based sequential recommendation models (HSTU [ 38 ], OneTrans [ 40 ] and STCA [ 12 ]). We repeat each experiment 5 times to report AUC and the corresponding relative improve-ment. On the industrial dataset, we further compare CCFormer with strong production-oriented baselines (HSTU, OneTrans and STCA) using both AUC and Group AUC (GAUC) as evaluation metrics. Following [ 32 ], ΔAUC and ΔGAUC represent the relative improvements in AUC and GAUC. The relative improvement is calculated as RelaImpr =
+
+ Metric (measured model ) − 0.5Metric (base model ) − 0.5 − 1
+
+
+
+× 100% . We adopt Tree-structured Parzen Estimator (TPE)-based hyperparame-ter search [ 1] to choose the optimal configuration for each method. 
+
+Implementation Details. Unless otherwise stated, for all industrial experiments, we set the feature-token dimensionality to 𝑑 = 256 
+
+and stack 8 CCFormer blocks. The subspace group size and channel group size are set to 𝑚 = 8 and 𝑛 = 16 , respectively. The convolu-tional compression module uses a kernel size of 𝑘 = 3 and stride of 
+
+𝑠 = 2. All models are optimized using Adam with a learning rate of 
+
+1 × 10 −4 and a batch size of 4096 . To ensure a fair comparison, all experiments are conducted using the same hardware and software configuration on a cluster of 16 NVIDIA H20 GPUs. 
+
+## 4.1 Overall Performance 
+
+We evaluate CCFormer on two public benchmarks and one large-scale industrial dataset, as reported in Tables 2 and 3. The results 200 500 1000 
+
+> Sequence Length
+> 82.0
+> 82.5
+> 83.0
+> 83.5
+> 84.0
+> AUC (%)
+> HSTU
+> OneTrans
+> STCA
+> CCFormer
+
+Figure 4: AUC comparison of four sequential recommenda-tion models under increasing sequence lengths on KuaiRec. 
+
+demonstrate that CCFormer consistently achieves the best per-formance on both public and industrial datasets. On Taobao and KuaiRec, CCFormer achieves the best AUC of 93.67% and 83.35%. It outperforms the strongest sequential baseline on each dataset (STCA on Taobao and OneTrans on KuaiRec) by 0.86 and 0.59 per-centage points, respectively. We further compare four advanced se-quential recommendation models under different sequence lengths (200, 500 and 1000), as shown in Figure 4. CCFormer consistently outperforms HSTU, OneTrans, and STCA across all sequence-length settings, demonstrating its stable advantage in modeling user be-havior sequences. The advantage of CCFormer is also verified on the industrial dataset. CCFormer improves over HSTU by 0.28 AUC points and 0.50 GAUC points, corresponding to 1.01% and 2.40% rel-ative improvements. Compared with the strongest baseline STCA, CCFormer further achieves gains of 0.21 AUC points and 0.41 GAUC points. These improvements suggest that CCFormer effectively models cross-field interactions among the user, target item, and be-havior sequence while capturing fine-grained intra-sequence token interactions. The consistent gains on public benchmarks and the industrial dataset further demonstrate that CCFormer is an effective and practical solution for scalable long-sequence CTR prediction. 
+
+## 4.2 Scaling Analysis of CCFormer 
+
+In this section, we investigate whether CCFormer exhibits pre-dictable scaling behavior. We focus on two factors, sequence length and model size, which are crucial for sequential recommendation models. All experiments are conducted under the same hardware and software stack. In addition to performance metrics, we report the corresponding GFLOPs of each model. CCFormer: Efficient Cross-Field Interaction and Sequence Compression KDD ’27, August 2027, San Jose, CA, USA 
+
+Table 4: Effect of the model size. The HSTU baseline serves as the base model. Models Feature Dimensionality AUC (%) ΔAUC (%) GAUC (%) ΔGAUC (%) GFLOPs/Sample 
+
+HSTU 128 77.42 0.00 70.55 0.00 28.87 CCFormer 128 77.65 0.84 70.76 1.02 9.34 HSTU 256 77.66 0.00 70.86 0.00 38.37 CCFormer 256 77.94 1.01 71.36 2.40 18.28 HSTU 512 77.79 0.00 71.02 0.00 63.47 CCFormer 512 78.13 1.22 71.52 2.38 36.14 0.5k 1k 2k   
+
+> Sequence Length
+> 77.6
+> 77.8
+> 78.0
+> 78.2
+> AUC (%)
+> HSTU
+> CCFormer
+> 0.5k 1k 2k
+> Sequence Length
+> 70.8
+> 71.0
+> 71.2
+> 71.4
+> 71.6
+> GAUC (%)
+> HSTU
+> CCFormer
+
+Figure 5: Scaling law with sequence length. We vary the se-quence length (500, 1000, 2000) to evaluate the performance in terms of AUC and GAUC. 
+
+Sequence Length Scaling. We first investigate whether CCFormer can effectively scale to longer user behavior sequences on the in-dustrial dataset. As shown in Figure 5, CCFormer consistently outperforms HSTU under different sequence lengths. As the sequence length increases, CCFormer shows predictable scaling behavior, with AUC steadily improving from 77.72% to 78.17% and GAUC increasing from 70.95% to 71.57%. Compared with HSTU, CCFormer achieves average relative improvements of 1.08% in AUC and 2.37% in GAUC across different sequence-length settings. CC-Former with only 0.5k behavior tokens already matches the AUC and surpasses the GAUC of HSTU with 2k behavior tokens. Notably, the relative gain becomes larger with longer se-quences. Long-sequence subspace token mixing captures expressive patterns from full behavior histories, while sequence compression preserves a large receptive field at substantially lower cost. 
+
+Model Size Scaling. The effect of model size on the industrial dataset is reported in Table 4, where we vary the feature dimension-ality to control model capacity. With larger feature dimensionality, CCFormer follows a predictable scaling law, with AUC increasing from 77.65% to 78.13% and GAUC increasing from 70.76% to 71.52%. Compared with HSTU under the same feature dimensionality set-tings, CCFormer achieves average relative improvements of 1.02% in AUC and 1.93% in GAUC. Meanwhile, CCFormer consistently re-quires fewer GFLOPs per sample than HSTU. The scaling analyses show that CCFormer offers a more favorable effectiveness-efficiency trade-off, making it a practical and scalable solu-tion for industrial long-sequence recommendation. 2 3 4 5 6 7      
+
+> Kernel Size k
+> 77.6
+> 77.7
+> 77.8
+> 77.9
+> 78.0
+> AUC (%)
+> CCFormer HSTU
+> 4816 32
+> Sequence Group Size m
+> 77.6
+> 77.7
+> 77.8
+> 77.9
+> 78.0
+> AUC (%)
+> n=4
+> n=8
+> n=16
+> n=32
+> HSTU
+
+Figure 6: Parameter sensitivity of the kernel size and group size in CCFormer. 
+
+## 4.3 Effect of Long-Sequence Modeling Hyperparameters 
+
+To assess the robustness of CCFormer, we investigate two types of hyperparameters related to long-sequence modeling. Specifically, the kernel size 𝑘 in the sequence compression module controls the receptive field over neighboring behavior tokens. The group size is used in long-sequence subspace token mixing, where the sequence group size 𝑚 partitions behavior tokens along the sequence dimen-sion and the channel group size 𝑛 partitions token embeddings along the feature dimension. 
+
+Kernel Size. As shown in Figure 6, increasing the kernel size slightly improves AUC, while the overall performance remains sta-ble. When the kernel size increases from 2 to 7, AUC changes from 77.92% to 77.95%. Moreover, CCFormer consistently outperforms HSTU by a clear margin under different kernel sizes. This indicates that the hierarchical compression module can effectively remove redundant information in long behavior sequences while preserv-ing key preference signals. In the industrial experiments, we set the stride 𝑠 to 2 to maintain competitive performance while reducing the sequence length for efficient long-sequence modeling. 
+
+Group Size. We then study the key hyperparameters, the se-quence group size 𝑚 and channel group size 𝑛 , in the long-sequence subspace token mixing module. As shown in Figure 6, CCFormer remains stable under different combinations of 𝑚 and 𝑛 and all con-figurations consistently outperform the HSTU baseline. Although smaller group sizes can slightly improve AUC in some cases, the overall variation is limited. This shows that subspace token mixing captures latent dependencies robustly without careful tuning. KDD ’27, August 2027, San Jose, CA, USA Yunlong Wang et al. 
+
+Table 5: Results of ablation study. The HSTU baseline serves as the base model. Models Note Training Speedup AUC (%) ΔAUC (%) GAUC (%) ΔGAUC (%) 
+
+HSTU - 1 77.66 0.00 70.86 0.00 CCFormer - 2.21 77.94 1.01 71.36 2.40 
+
+Remove relative temporal position encoding 2.35 77.85 0.69 71.13 1.29 Long-sequence token mixing → self-attention 1.41 77.96 1.08 71.21 1.68 Remove long-sequence token mixing 2.40 77.73 0.25 71.02 0.77 Remove sequence compression 1.29 77.96 1.08 71.25 1.87 Table 6: Online A/B gains of CCFormer. Scenario 1 Metric CTR UCTR 3-day Activeness Video View Unique Viewer Page View Watch Time Ad revenue Scenario 2 Metric Ad view Ad revenue 
+
+Lift (%) 3.57 1.93 1.93 3.47 2.61 3.86 1.29 1.64 Lift (%) 1.43 1.71 
+
+## 4.4 Ablation Study 
+
+We conduct ablation studies on the industrial dataset to analyze the contribution of each key component in CCFormer. For a fair comparison, all ablated variants are evaluated under an identical hardware and software stack using the same training and evaluation protocol. As shown in Table 5, we construct four ablated variants to examine the core designs of CCFormer, covering the relative temporal-positional encoding, the long-sequence subspace token mixing and the hierarchical sequence compression. We measure training speed by the training throughput, defined as the number of samples processed per unit time. To provide a more intuitive comparison of training efficiency, we define the training speedup metric as the relative training throughput compared to HSTU. In Table 5, removing the relative temporal position encoding decreases AUC from 77.94% to 77.85% and GAUC from 71.36% to 71.13%. Since user interests are highly time-sensitive, relative temporal-positional encoding helps CCFormer distinguish recent behaviors from outdated ones and better capture recency-aware preference patterns. Removing sequence token mixing leads to the largest degradation, with AUC and GAUC dropping to 77.73% and 71.02%. Besides, replacing token mixing with standard self-attention slightly improves AUC to 77.96%, but decreases GAUC to 71.21% and reduces the training speedup from 2.21 × to 1.41 ×. Subspace token mixing provides a lightweight alternative that incurs only a slight accuracy loss while substantially improving training effi-ciency. It should be noted that removing sequence compression yields 77.96% AUC and 71.25% GAUC. More importantly, the train-ing speedup decreases from 2.21 × to 1.29 ×, showing that sequence compression is the key component for training efficiency. 
+
+## 4.5 Online A/B Results 
+
+We report the online A/B testing results on two practical Tencent commercial recommendation scenarios: video recommendation (Scenario 1) and advertisement ranking (Scenario 2). The online baselines in the two scenarios are a long-standing, iteratively op-timized DLRM and a deployed HSTU model. Each online exper-imental group receives over one million exposed users per day, and the experiments are conducted over a two-week period. In Ta-ble 6, CCFormer achieves consistent improvements across multiple business metrics in both scenarios. In scenario 1, the largest gain is observed on Page View, with a relative improvement of 3.86%. CCFormer also achieves 3.57%, 3.47% and 2.61% rela-tive improvements in CTR, Video View and Unique Viewer, respectively. User Click-Through Rate (UCTR) and user 3-day Ac-tiveness are both improved by 1.93%. CCFormer not only enhances immediate user responses but also benefits user engagement and short-term retention. CCFormer achieves 1.64% and 1.71% im-provements on advertising revenue for two scenarios . As the key advertising-side business metric, it shows the practical value of CCFormer for industrial monetization. All reported online gains are statistically significant (two-sample 𝑡 -test, 𝑝 < 0.05 ), confirming the reliability of the improvements in the production environment. Following the A/B tests, CCFormer has been fully launched in both scenarios and now serves the entire production traffic, with the online gains remaining stable after full deployment. 
+
+## 5 Conclusion 
+
+We presented CCFormer, which unifies feature-field separated cross attention with subspace token mixing and hierarchical compression for efficient long-sequence ranking. CCFormer consistently outper-forms strong baselines offline, and has been fully deployed in Ten-cent’s production recommendation system, delivering significant online gains in both a video recommendation and an advertising ranking scenario at comparable or lower computational cost. In fu-ture work, we plan to extend CCFormer to lifelong-scale sequences and explore compression-aware modeling for the retrieval stage. 
+
+## References   
+
+> [1] James Bergstra, Rémi Bardenet, Yoshua Bengio, and Balázs Kégl. 2011. Algorithms for Hyper-Parameter Optimization. In Advances in Neural Information Processing Systems , J. Shawe-Taylor, R. Zemel, P. Bartlett, F. Pereira, and K. Weinberger
+
+CCFormer: Efficient Cross-Field Interaction and Sequence Compression KDD ’27, August 2027, San Jose, CA, USA 
+
+(Eds.), Vol. 24. Curran Associates, Inc. https://proceedings.neurips.cc/paper_ files/paper/2011/file/86e8f7ab32cfd12577bc2619bc635690-Paper.pdf [2] Zheng Chai, Qin Ren, Xijun Xiao, Huizhi Yang, Bo Han, Sijun Zhang, Di Chen, Hui Lu, Wenlin Zhao, Lele Yu, et al . 2025. Longer: Scaling up long sequence modeling in industrial recommenders. In Proceedings of the Nineteenth ACM Conference on Recommender Systems . 247–256. [3] Jianxin Chang, Chenbin Zhang, Zhiyi Fu, Xiaoxue Zang, Lin Guan, Jing Lu, Yiqun Hui, Dewei Leng, Yanan Niu, Yang Song, and Kun Gai. 2023. TWIN: TWo-stage Interest Network for Lifelong User Behavior Modeling in CTR Prediction at Kuaishou. In Proceedings of the 29th ACM SIGKDD Conference on Knowledge Discovery and Data Mining . 3785–3794. [4] Jin Chen, Shangyu Zhang, Bin Hu, Chao Zhou, Junwei Pan, Gengsheng Xue, Wentao Ning, Gengyu Weng, Wang Zheng, Shaohua Liu, et al . 2026. RankUp: Towards High-rank Representations for Large Scale Advertising Recommender Systems. arXiv preprint arXiv:2604.17878 (2026). [5] Qiwei Chen, Huan Zhao, Wei Li, Pipei Huang, and Wenwu Ou. 2019. Behavior sequence transformer for e-commerce recommendation in alibaba. In Proceedings of the 1st international workshop on deep learning practice for high-dimensional sparse data . 1–4. [6] Xiangyi Chen, Kousik Rajesh, Matthew Lawhon, Zelun Wang, Hanyu Li, Haomiao Li, Saurabh Vishwas Joshi, Pong Eksombatchai, Jaewon Yang, Yi-Ping Hsu, et al .2025. Pinfm: foundation model for user activity sequences at a billion-scale visual discovery platform. In Proceedings of the Nineteenth ACM Conference on Recommender Systems . 381–390. [7] Heng-Tze Cheng, Levent Koc, Jeremiah Harmsen, Tal Shaked, Tushar Chandra, Hrishi Aradhye, Glen Anderson, Greg Corrado, Wei Chai, Mustafa Ispir, et al .2016. Wide & deep learning for recommender systems. In Proceedings of the 1st workshop on deep learning for recommender systems . 7–10. [8] Sunhao Dai, Jiakai Tang, Jiahua Wu, Kun Wang, Yuxuan Zhu, Bingjun Chen, Bangyang Hong, Yu Zhao, Cong Fu, Kangle Wu, et al . 2025. Onepiece: Bringing context engineering and reasoning to industrial cascade ranking system. arXiv preprint arXiv:2509.18091 (2025). [9] Qin Ding, Kevin Course, Linjian Ma, Jianhui Sun, Ruochen Liu, Zhao Zhu, Chunx-ing Yin, Wei Li, Dai Li, Yu Shi, et al . 2026. Bending the scaling law curve in large-scale recommendation systems. arXiv preprint arXiv:2602.16986 (2026). [10] Yufei Feng, Fuyu Lv, Weichen Shen, Menghan Wang, Fei Sun, Yu Zhu, and Keping Yang. 2019. Deep session interest network for click-through rate prediction. 
+
+arXiv preprint arXiv:1905.06482 (2019). [11] Yulong Gu, Lixin Zou, and Chenliang Li. 2026. Deep Learning to Rank in Industrial Search Engines, Recommender Systems, and Online Advertising: An Overview and New Perspectives. ACM Transactions on Information Systems 44, 4 (2026), 1–52. [12] Lin Guan, Jia-Qi Yang, Zhishan Zhao, Beichuan Zhang, Bo Sun, Xuanyuan Luo, Jinan Ni, Xiaowen Li, Yuhang Qi, Zhifang Fan, et al . 2026. Make it long, keep it fast: End-to-end 10k-sequence modeling at billion scale on Douyin Recommendation. In Proceedings of the ACM Web Conference 2026 . 7989–7998. [13] Huifeng Guo, Ruiming Tang, Yunming Ye, Zhenguo Li, and Xiuqiang He. 2017. DeepFM: a factorization-machine based neural network for CTR prediction. arXiv preprint arXiv:1703.04247 (2017). [14] Mingming Ha, Guanchen Wang, Linxun Chen, Xuan Rao, Yuexin Shi, Tianbao Ma, Zhaojie Liu, Yunqian Fan, Zilong Lu, Yanan Niu, et al . 2026. UniMixer: A Unified Architecture for Scaling Laws in Recommendation Systems. arXiv preprint arXiv:2604.00590 (2026). [15] Ruidong Han, Bin Yin, Shangyu Chen, et al . 2025. MTGR: Industrial-Scale Gener-ative Recommendation Framework in Meituan. arXiv preprint arXiv:2505.18654 
+
+(2025). [16] Xu Huang, Hao Zhang, Zhifang Fan, Yunwen Huang, Zhuoxing Wei, Zheng Chai, Jinan Ni, Yuchao Zheng, and Qiwei Chen. 2026. MixFormer: Co-Scaling Up Dense and Sequence in Industrial Recommenders. arXiv preprint arXiv:2602.14110 
+
+(2026). [17] Yuchen Jiang, Jie Zhu, Xintian Han, Hui Lu, Kunmin Bai, Mingyu Yang, Shikang Wu, Ruihao Zhang, Wenlin Zhao, Shipeng Bai, et al . 2026. TokenMixer-Large: Scaling Up Large Ranking Models in Industrial Recommenders. arXiv preprint arXiv:2602.06563 (2026). [18] Wang-Cheng Kang and Julian McAuley. 2018. Self-attentive sequential recom-mendation. In 2018 IEEE international conference on data mining (ICDM) . IEEE, 197–206. [19] Weijiang Lai, Beihong Jin, Di Zhang, Siru Chen, Jiongyan Zhang, Yuhang Gou, Jian Dong, and Xingxing Wang. 2026. Unleashing the Potential of Sparse Atten-tion on Long-term Behaviors for CTR Prediction. In Proceedings of the ACM Web Conference 2026 . 8041–8050. [20] Yang Li, Tong Chen, Peng-Fei Zhang, and Hongzhi Yin. 2021. Lightweight self-attentive sequential recommendation. In Proceedings of the 30th ACM international conference on information & knowledge management . 967–977. [21] Guanyu Lin, Jinwei Luo, Yinfeng Li, Chen Gao, Qun Luo, and Depeng Jin. 2025. Iterative sparse attention for long-sequence recommendation. In Proceedings of the AAAI Conference on Artificial Intelligence , Vol. 39. 12147–12155. [22] Mingyang Liu, Yong Bai, Zhangming Chan, Sishuo Chen, Xiang-Rong Sheng, Han Zhu, Jian Xu, and Xinyang Chen. 2026. EST: Towards Efficient Scaling Laws in Click-Through Rate Prediction via Unified Modeling. arXiv preprint arXiv:2602.10811 (2026). [23] Mengyang Ma, Xiaopeng Li, Wanyu Wang, Zhaocheng Du, Jingtong Gao, Pengyue Jia, Yuyang Ye, Yiqi Wang, Yunpeng Weng, Weihong Luo, et al . 2026. Blossomrec: Block-level fused sparse attention mechanism for sequential recom-mendations. In Proceedings of the ACM Web Conference 2026 . 6389–6399. [24] Qi Pi, Weijie Bian, Guorui Zhou, Xiaoqiang Zhu, and Kun Gai. 2019. Practice on long sequential user behavior modeling for click-through rate prediction. In Proceedings of the 25th ACM SIGKDD international conference on knowledge discovery & data mining . 2671–2679. [25] Qi Pi, Guorui Zhou, Yujing Zhang, Zhe Wang, Lejian Ren, Ying Fan, Xiaoqiang Zhu, and Kun Gai. 2020. Search-based User Interest Modeling with Lifelong Sequential Behavior Data for Click-Through Rate Prediction. In Proceedings of the 29th ACM International Conference on Information & Knowledge Management .2685–2692. [26] Fei Sun, Jun Liu, Jian Wu, Changhua Pei, Xiao Lin, Wenwu Ou, and Peng Jiang. 2019. BERT4Rec: Sequential recommendation with bidirectional encoder rep-resentations from transformer. In Proceedings of the 28th ACM international conference on information and knowledge management . 1441–1450. [27] Dan Svenstrup, Jonas Meinertz Hansen, and Ole Winther. 2017. Hash Embeddings for Efficient Word Representations. In Advances in Neural Information Processing Systems 30: Annual Conference on Neural Information Processing Systems 2017, December 4-9, 2017, Long Beach, CA, USA , Isabelle Guyon, Ulrike von Luxburg, Samy Bengio, Hanna M. Wallach, Rob Fergus, S. V. N. Vishwanathan, and Roman Garnett (Eds.). 4928–4936. https://proceedings.neurips.cc/paper/2017/hash/ f0f6ba4b5e0000340312d33c212c3ae8-Abstract.html [28] Qiaoyu Tan, Jianwei Zhang, Jiangchao Yao, Ninghao Liu, Jingren Zhou, Hongxia Yang, and Xia Hu. 2021. Sparse-interest network for sequential recommendation. In Proceedings of the 14th ACM international conference on web search and data mining . 598–606. [29] Jiakai Tang, Sunhao Dai, Teng Shi, Jun Xu, Xu Chen, Wen Chen, Jian Wu, and Yuning Jiang. 2026. Think before recommend: Unleashing the latent reasoning power for sequential recommendation. IEEE Transactions on Knowledge and Data Engineering (2026). [30] Ilya O Tolstikhin, Neil Houlsby, Alexander Kolesnikov, Lucas Beyer, Xiaohua Zhai, Thomas Unterthiner, Jessica Yung, Andreas Steiner, Daniel Keysers, Jakob Uszkoreit, et al . 2021. Mlp-mixer: An all-mlp architecture for vision. Advances in neural information processing systems 34 (2021), 24261–24272. [31] Yifei Xia, Suhan Ling, Fangcheng Fu, Yujie Wang, Huixia Li, Xuefeng Xiao, and Bin Cui. 2025. Training-free and adaptive sparse attention for efficient long video generation. In Proceedings of the IEEE/CVF International Conference on Computer Vision . 15982–15993. [32] Weinan Xu, Hengxu He, Minshi Tan, Yunming Li, Jun Lang, and Dongbai Guo. 2020. Deep interest with hierarchical attention network for click-through rate prediction. In Proceedings of the 43rd international ACM SIGIR conference on research and development in information retrieval . 1905–1908. [33] Bencheng Yan, Yuejie Lei, Zhiyuan Zeng, Di Wang, Kaiyi Lin, Pengjie Wang, Jian Xu, and Bo Zheng. 2025. From Scaling to Structured Expressivity: Rethinking Transformers for CTR Prediction. arXiv preprint arXiv:2511.12081 (2025). [34] Yuhao Yang, Zhi Ji, Zhaopeng Li, Yi Li, Zhonglin Mo, Yue Ding, Kai Chen, Zijian Zhang, Jie Li, LIU LIN, et al . 2026. Sparse meets dense: Unified generative recommendations with cascaded sparse-dense representations. Advances in Neural Information Processing Systems 38 (2026), 93746–93770. [35] Yanwu Yang and Panyu Zhai. 2022. Click-through rate prediction in online advertising: A literature review. Information Processing & Management 59, 2 (2022), 102853. [36] Dezhi Yi, Wei Guo, Wenyang Cui, Wenxuan He, Huifeng Guo, Yong Liu, Zhen-hua Dong, and Ye Lu. 2026. FuXi-𝛾 : Efficient Sequential Recommendation with Exponential-Power Temporal Encoder and Diagonal-Sparse Positional Mecha-nism. In Proceedings of the 32nd ACM SIGKDD Conference on Knowledge Discovery and Data Mining V. 1 . 1797–1808. [37] Jingyang Yuan, Huazuo Gao, Damai Dai, Junyu Luo, Liang Zhao, Zhengyan Zhang, Zhenda Xie, Yuxing Wei, Lean Wang, Zhiping Xiao, et al . 2025. Native sparse attention: Hardware-aligned and natively trainable sparse attention. In 
+
+Proceedings of the 63rd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) . 23078–23097. [38] Jiaqi Zhai, Lucy Liao, Xing Liu, Yueming Wang, Rui Li, Xuan Cao, Leon Gao, Zhao-jie Gong, Fangda Gu, Michael He, et al . 2024. Actions speak louder than words: Trillion-parameter sequential transducers for generative recommendations. arXiv preprint arXiv:2402.17152 (2024). [39] Biao Zhang and Rico Sennrich. 2019. Root Mean Square Layer Normaliza-tion. In Advances in Neural Information Processing Systems 32: Annual Con-ference on Neural Information Processing Systems 2019, NeurIPS 2019, Decem-ber 8-14, 2019, Vancouver, BC, Canada , Hanna M. Wallach, Hugo Larochelle, Alina Beygelzimer, Florence d’Alché-Buc, Emily B. Fox, and Roman Gar-nett (Eds.). 12360–12371. https://proceedings.neurips.cc/paper/2019/hash/ KDD ’27, August 2027, San Jose, CA, USA Yunlong Wang et al. 
+
+1e8a19426224ca89e83cef47f1e7f53b-Abstract.html [40] Zhaoqi Zhang, Haolei Pei, Jun Guo, Tianyu Wang, Yufei Feng, Hui Sun, Shaowei Liu, and Aixin Sun. 2026. Onetrans: Unified feature interaction and sequence modeling with one transformer in industrial recommender. In Proceedings of the ACM Web Conference 2026 . 8162–8170. [41] Guorui Zhou, Xiaoqiang Zhu, Chenru Song, Ying Fan, Han Zhu, Xiao Ma, Yanghui Yan, Junqi Jin, Han Li, and Kun Gai. 2018. Deep interest network for click-through rate prediction. In Proceedings of the 24th ACM SIGKDD international conference on knowledge discovery & data mining . 1059–1068. [42] Jie Zhu, Zhifang Fan, Xiaoxie Zhu, Yuchen Jiang, Hangyu Wang, Xintian Han, Haoran Ding, Xinmin Wang, Wenlin Zhao, Zhen Gong, et al . 2025. Rankmixer: Scaling up ranking models in industrial recommenders. In Proceedings of the 34th ACM International Conference on Information and Knowledge Management .6309–6316.

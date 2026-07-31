@@ -1,0 +1,571 @@
+Title: Beyond Exact Match: How Evaluation Methodology Dominates Model Choice in LLM-Based Product Attribute Extraction
+
+URL Source: https://arxiv.org/pdf/2607.22949v1
+
+Published Time: Tue, 28 Jul 2026 00:18:30 GMT
+
+Number of Pages: 9
+
+Markdown Content:
+> 1
+
+# Beyond Exact Match: How Evaluation Methodology Dominates Model Choice in LLM-Based Product Attribute Extraction 
+
+Ayush Dwivedi and Ashvi Soni 
+
+Abstract —LLMs have become a default choice for structured product attribute extraction in e-commerce pipelines, with prac-titioners reporting widely varying performance across models, datasets, and prompting strategies. Despite the practical impor-tance of this task, two critical methodological questions remain unaddressed: how much of the reported performance variance is attributable to evaluation methodology rather than genuine model capability, and how reliable are public benchmark ground truth annotations against modern LLM outputs? This paper presents a controlled empirical study comparing four prompting strategies—zero-shot, few-shot, schema-guided, and definition-augmented—across two production-grade LLMs (GPT-4o-mini and Gemini 2.5 Flash) on the MAVE benchmark. We evaluate 6,400 attribute-level predictions using both exact and fuzzy string matching, and conduct a rigorous noise audit of the ground truth labels. We formally decompose F1 variance across four experimental factors and find that evaluation methodology pro-duces variance approximately five times larger than model choice (∆F1 = 0 .121 vs 0.005 ) and four times larger than prompting strategy ( ∆F1 = 0 .024 ). We further establish that the MAVE benchmark exhibits a 23.2% ground truth noise rate against modern LLM outputs, formalized as the conditional probability 
+
+P (semantically correct | exact-match failure ) = 0 .232 . Paired permutation tests ( B = 10 ,000 ) confirm that the inter-protocol F1 gap is highly significant ( p < 0.0001 ) and Cohen’s kappa 
+
+κ = 0 .769 between protocols indicates substantial agreement. The inter-model gap under fuzzy matching is marginally signif-icant ( p = 0 .047 ) but practically equivalent given overlapping confidence intervals. We conclude that for production attribute extraction pipelines, evaluation methodology and data quality dominate the impact of model selection and prompt engineering, and recommend fuzzy matching as a standard evaluation protocol for LLM-based extraction tasks. 
+
+Index Terms —Product attribute extraction, large language models, evaluation methodology, fuzzy matching, prompting strategies, MAVE benchmark, e-commerce NLP, ground truth noise. 
+
+I. I NTRODUCTION 
+
+# STRUCTURED product attribute extraction—identifying values such as brand, color, size, and material from unstructured product text—is a foundational capability for e-commerce platforms operating at scale. Accurate attribute data drives product search, recommendation, catalog quality, customer service automation, and pricing intelligence. Histori-cally, this task required supervised models trained on category-specific labeled data, with annotation cost and category spar-sity as persistent bottlenecks. The emergence of general-purpose large language models capable of in-context learning has fundamentally shifted the 
+
+Manuscript submitted as a preprint to arXiv, July 2026. 
+
+landscape. Practitioners can now adapt extraction behavior to a new attribute or category through prompt modification alone, without fine-tuning or category-specific training data. This flexibility has driven rapid adoption of LLM-based extraction in production e-commerce systems. Despite this practical appeal, the literature on LLM-based product attribute extraction reports widely varying perfor-mance figures. ExtractGPT [5] reports F1 scores near 0.91 using GPT-4 with semantic example selection. Brinkmann et al. [4] report scores in similar ranges using GPT-3.5 and GPT-4 with few-shot demonstrations. Yet our own initial ex-periments on the MAVE benchmark using current-generation cost-efficient models (GPT-4o-mini and Gemini 2.5 Flash) produced F1 scores near 0.50—a gap large enough to call either set of numbers into question. This paper investigates two methodological hypotheses that may explain such gaps: 
+
+H1: Evaluation methodology accounts for a substantial por-tion of reported performance variance. The choice be-tween exact string matching and fuzzy matching can produce dramatically different F1 scores even on iden-tical predictions, particularly when LLMs return more complete or differently-formatted values than benchmark labels. 
+
+H2: Public benchmark ground truth contains meaningful noise relative to modern LLM outputs. Ground truth anno-tations in product attribute datasets, often constructed via semi-automated annotation pipelines, may classify a model’s output as “wrong” when the model has in fact extracted a valid value present in the product text— a value that simply differs in format, completeness, or wording from the labeled answer. To test these hypotheses, we conduct a controlled empirical study on the MAVE benchmark using two production-grade LLMs and four prompting strategies, evaluated under two matching protocols. We then perform a noise audit by checking whether predictions classified as “wrong” by exact matching are actually grounded in the source product text. Our contributions are: 1) A formal variance decomposition quantifying the rela-tive impact of evaluation methodology, model choice, prompting strategy, and data characteristics on reported F1. 2) A rigorous probabilistic noise audit of the MAVE benchmark, formalized as a conditional probability and arXiv:2607.22949v1 [cs.IR] 24 Jul 2026 2
+
+validated with 95% bootstrap confidence intervals. 3) An empirical demonstration with statistical significance testing that evaluation methodology dominates model and prompt choice for the product attribute extraction task. Exact-to-fuzzy matching produces F1 improve-ments of 12.1 percentage points for GPT-4o-mini and 10.9 percentage points for Gemini 2.5 Flash, both sta-tistically significant at p < 0.0001 .4) A practitioner decision framework showing that, given the dominance of evaluation methodology and data quality, prompt engineering and model selection produce only marginal gains for the cost-efficient model tier. The remainder of this paper proceeds as follows. Section II reviews related work. Section III formalizes the task and evaluation protocols. Section IV describes the experimental methodology. Section V presents results with statistical tests. Section VI discusses implications, and Section VII concludes. II. R ELATED WORK 
+
+A. Product Attribute Extraction with LLMs 
+
+Product attribute extraction has been studied as a spe-cialized information extraction task for over a decade. Pre-LLM approaches, including OpenTag [2] and AVEQA [3], framed the task as sequence labeling or machine reading comprehension, requiring substantial category-specific training data. More recent multi-task formulations such as QPAVE [7] have explored question-answering frameworks for fine-grained extraction. MAVE [1] introduced a large-scale benchmark of 2.2 million products and 3 million attribute-value annotations spanning 1,257 categories, providing the most comprehensive public resource for the task. The release of capable instruction-tuned LLMs has enabled a new generation of extraction methods that bypass category-specific training entirely. Brinkmann et al. [4] demonstrated that GPT-3.5 and GPT-4 with semantic example selection achieve competitive performance on OA-Mine and AE-110k benchmarks. ExtractGPT [5] systematically compared prompt-ing configurations, finding that demonstrations outperform example values and that open-source Llama-3-70B achieves F1 within 3% of GPT-4. Liu et al. [18] showed that example selection quality significantly affects in-context learning per-formance, with variance across example choices sometimes ex-ceeding 10 percentage points. Self-refinement strategies have been explored for iterative correction of extraction outputs [6]. This body of work has established LLM-based extraction as viable, but has primarily evaluated frontier closed-source models (GPT-3.5, GPT-4) on OA-Mine or AE-110k rather than the larger and more diverse MAVE benchmark. The cost-efficient production models that practitioners actually deploy at scale—GPT-4o-mini, Gemini Flash variants—have not been systematically evaluated. 
+
+B. Evaluation Methodology in Information Extraction 
+
+A separate body of work has examined the limitations of exact-match evaluation in information extraction. The chal-lenge is well-recognized: when ground truth says “Fiji” and a model returns “Fiji Natural Artesian Water,” exact matching scores this as wrong, despite the model output being arguably more informative and entirely grounded in the source text. This problem becomes more acute with generative LLMs, which tend to produce verbose, descriptive outputs rather than the minimal labels often used in benchmarks. Several alternative evaluation strategies have been proposed, including fuzzy string matching [13], [14], BERTScore-based semantic similarity [11], and LLM-as-judge protocols [12]. However, the practical impact of switching evaluation method-ology on reported model rankings has not been systematically quantified for the product attribute extraction task. 
+
+C. Ground Truth Quality in Public Benchmarks 
+
+The reliability of benchmark ground truth has emerged as a recurring concern in NLP evaluation. Honovich et al. [20] demonstrated that factual consistency evaluation itself is unreliable when reference annotations are incomplete or noisy, a finding that extends naturally to information ex-traction benchmarks. Where ground truth is constructed via semi-automated annotation pipelines—common for large-scale datasets including MAVE—annotators may capture only a single canonical value per attribute, missing valid alternatives present in the source text. As LLMs increasingly produce outputs that are correct but differ from benchmark labels in format, completeness, or phrasing, the gap between “labeled correct” and “actually correct” widens. No prior work has, to our knowledge, conducted a rigorous noise audit of the MAVE benchmark using modern LLM outputs as a probe. 
+
+D. Gap Addressed 
+
+Three gaps remain in the literature. First, no systematic evaluation of cost-efficient production LLMs on the MAVE benchmark exists. Second, the practical impact of evaluation methodology choice has not been quantified for this task with statistical rigor. Third, MAVE has not been audited for ground truth noise against modern LLM outputs. This paper addresses all three. III. F ORMAL PROBLEM DEFINITION 
+
+A. Task Formulation 
+
+Let P = {p1, p 2, . . . , p N } denote a corpus of N products, each represented by an unstructured text description ti ∈ Σ∗
+
+over a finite alphabet Σ. Let A = {a1, a 2, . . . , a K } denote a set of K target attributes (in our setting, K = 4 : brand, color, size, material). For each product pi and attribute ak, the ground truth is a string yi,k ∈ Σ∗∪{⊥} , where ⊥ denotes a null value indicating the attribute is not present in the product. An extraction model 
+
+M is a function 
+
+M : Σ ∗ × A K → (Σ ∗ ∪ {⊥} )K (1) producing predicted attribute values ˆyi,k = M (ti)k for each target attribute. 3
+
+The objective is to maximize agreement between predictions 
+
+ˆyi,k and ground truth yi,k under some evaluation protocol 
+
+ϕ : (Σ ∗ ∪ {⊥} )2 → { 0, 1}, where ϕ(ˆ y, y ) = 1 indicates the prediction is judged correct. 
+
+B. Evaluation Protocols 
+
+We formalize two evaluation protocols. 
+
+Exact Match Protocol ϕEM . Let norm (s) denote a normal-ization function applying lowercasing and whitespace strip-ping: 
+
+ϕEM (ˆ y, y ) = 
+
+
+
+1 if norm (ˆ y) = norm (y)1 if ˆy = ⊥ ∧ y = ⊥
+
+0 otherwise (2) 
+
+Fuzzy Match Protocol ϕ(τ ) 
+
+> FM
+
+. Let L(s1, s 2) denote the Levenshtein edit distance between strings s1 and s2, and define the partial ratio similarity score: sim (s1, s 2) = max 
+
+> s′
+> 2∈S (s2,|s1|)
+
+
+
+1 − L(s1, s ′
+
+> 2
+
+)
+
+|s1|
+
+
+
+· 100 (3) where |s1| denotes the length of s1 and S(s2, n ) is the set of contiguous substrings of s2 of length n. This formulation handles cases where one string is a substring of the other (e.g., “Fiji” matching “Fiji Natural Artesian Water” yields sim =100 ). The fuzzy match protocol with threshold τ is: 
+
+ϕ(τ ) 
+
+> FM
+
+(ˆ y, y ) = 
+
+
+
+1 if ˆy = ⊥ ∧ y = ⊥
+
+1 if ˆy̸ = ⊥ ∧ y̸ = ⊥∧ sim (norm (ˆ y), norm (y)) ≥ τ
+
+0 otherwise (4) We use τ = 80 throughout, consistent with standard practice in fuzzy string matching applications. 
+
+C. Performance Metrics 
+
+For a fixed model M , prompting strategy s, attribute ak,and protocol ϕ, we compute precision and recall over the N
+
+products as: Precision M,s,k,ϕ =
+
+PNi=1 ⊮[ˆ yi,k ̸ = ⊥] · ϕ(ˆ yi,k , y i,k )
+
+PNi=1 ⊮[ˆ yi,k ̸ = ⊥] (5) Recall M,s,k,ϕ =
+
+PNi=1 ⊮[yi,k ̸ = ⊥] · ϕ(ˆ yi,k , y i,k )
+
+PNi=1 ⊮[yi,k ̸ = ⊥] (6) The per-attribute F1 score is the harmonic mean: 
+
+F (k)1 = 2 · Precision k · Recall k
+
+Precision k + Recall k
+
+(7) The overall macro F1 score, averaged across the K attributes, is: 
+
+F1M,s,ϕ = 1
+
+K
+
+> K
+
+X
+
+> k=1
+
+F (k)1 M,s,k,ϕ (8) 
+
+D. Noise Rate Formalization 
+
+We define the ground truth noise rate as a conditional prob-ability. Let E denote the event “prediction fails under exact matching” and let S denote the event “prediction succeeds under fuzzy matching.” The noise rate is: 
+
+η = P (S | E) = |F EM ∩ S FM ||F EM | (9) where FEM = {(i, k ) : ϕEM (ˆ yi,k , y i,k ) = 0 } and SFM =
+
+{(i, k ) : ϕ(τ ) 
+
+> FM
+
+(ˆ yi,k , y i,k ) = 1 }. This quantity captures the pro-portion of exact-match failures that represent format-divergent but semantically correct extractions rather than genuine model errors. 
+
+E. Variance Decomposition 
+
+Let XM,s,ϕ,c,k denote the F1 score for a specific combina-tion of model, strategy, protocol, category, and attribute. We decompose the total observed F1 variance by computing the span (max minus min) of mean F1 within each factor while marginalizing over others: 
+
+∆F (factor )1 = max   
+
+> f∈Factor
+
+E[X | f ] − min   
+
+> f∈Factor
+
+E[X | f ] (10) This decomposition bounds the maximum F1 swing achievable by intervening on a single factor while holding others constant. IV. E XPERIMENTAL METHODOLOGY 
+
+A. Research Questions 
+
+This study investigates four research questions: 
+
+RQ1: How does extraction F1 vary across prompting strategies on the MAVE benchmark using cost-efficient production LLMs? 
+
+RQ2: How much does the choice between exact and fuzzy matching affect reported F1, and is the gap statistically significant? 
+
+RQ3: What is the conditional probability η that an exact-match failure is in fact semantically correct? 
+
+RQ4: Which factor—model choice, prompting strategy, or eval-uation methodology—produces the largest controllable variance in reported extraction performance? 
+
+B. Dataset 
+
+We use the MAVE benchmark [1], sampling N = 200 
+
+products stratified across five categories—Electronics, Cloth-ing, Home, Sports, and Food—with 40 products per category. These five categories were selected to represent common e-commerce verticals with diverse attribute expression patterns; however, they cover only 5 of MAVE’s 1,257 total categories (0.4%), and generalization to the full taxonomy remains an open question. A fixed random seed (42) ensures reproducibil-ity. For each product, we extract K = 4 target attributes: brand, color, size, material. An additional 12 products are held out exclusively as few-shot demonstration sources, ensuring no overlap with the evaluation set. The full evaluation produces N × K × | models | × |strategies | = 200 × 4 × 2 × 4 = 6,400 attribute-level 4
+
+predictions. While this sample size is modest relative to the full MAVE corpus (2.2 million products), it is consistent with established practice in prompting research where API-based inference makes full-dataset evaluation cost-prohibitive, and our bootstrap confidence intervals appropriately quantify the resulting sampling uncertainty. 
+
+C. Models 
+
+We evaluate two production-grade, cost-efficient LLMs: GPT-4o-mini (OpenAI) and Gemini 2.5 Flash (Google). Both models support structured JSON output and exhibit strong instruction-following capability. Higher-end frontier models (GPT-4 [9], Gemini 2.5 Pro [10]) are intentionally excluded— our research focus is the cost-efficient tier where practitioners deploy extraction at scale. Both models were accessed via their respective APIs in June 2026; as providers may update model weights without version changes, results may vary with subsequent model snapshots. 
+
+D. Prompting Strategies 
+
+We evaluate four prompting strategies producing JSON outputs with keys brand , color , size , material : 
+
+> •
+
+ZERO_SHOT : Task description and product text only.  
+
+> •
+
+FEW_SHOT : Three labeled product examples prepended.  
+
+> •
+
+SCHEMA_GUIDED : Explicit JSON schema specifying types and null handling.  
+
+> •
+
+DEFINITION_AUGMENTED : Natural-language defini-tions for each target attribute. All prompts use temperature T = 0 and maximum output tokens ≤ 150 .
+
+E. Statistical Testing 
+
+We apply three statistical tests to validate our claims. All tests use a fixed random seed (42) for reproducibility and B =10 ,000 iterations. 
+
+Paired permutation test for F1 difference. For two eval-uation conditions producing per-prediction correctness vectors 
+
+vA, vB ∈ { 0, 1}N K , we test the null hypothesis H0 : F1A =
+
+F1B by randomly permuting condition labels within each prediction pair and computing the proportion of permutations producing an F1 difference at least as extreme as observed: 
+
+p-value = 1
+
+B
+
+> B
+
+X
+
+> b=1
+
+⊮
+
+h
+
+F1(b) 
+
+> A
+
+− F1(b) 
+
+> B
+
+≥ F1A − F1B
+
+i
+
+(11) 
+
+Bootstrap 95% confidence intervals. For each F1 estimate 
+
+ˆF1, we compute a percentile-based 95% confidence interval by resampling the N products with replacement: CI 95% ( ˆF1) = 
+
+h ˆF1(2 .5%) 
+
+, ˆF1(97 .5%) i
+
+(12) where ˆF1(q)
+
+denotes the q-th percentile of the bootstrap distribution [17]. 
+
+Cohen’s kappa for inter-protocol agreement. To quan-tify agreement between exact and fuzzy protocols beyond chance [16], we compute: 
+
+κ = po − pe
+
+1 − pe
+
+(13) where po is the observed agreement rate and pe =P 
+
+> c∈{ 0,1}
+
+P (ϕEM = c)·P (ϕFM = c) is the agreement expected by chance. 
+
+F. Implementation 
+
+All experiments use the official OpenAI Python SDK and Google Generative AI SDK. Rate limiting follows provider documentation (20 RPM OpenAI, 15 RPM Gem-ini). Failed API calls are retried with exponential backoff (10s, 20s, 30s). Fuzzy matching uses the rapidfuzz li-brary implementing the Levenshtein-based partial ratio de-scribed in Section III. Statistical tests use scipy.stats and 
+
+sklearn.metrics . This study uses only publicly available data and benchmark resources; no proprietary systems or datasets were involved. All code and processed data are publicly available. 1
+
+V. R ESULTS 
+
+A. Overall Performance by Model and Strategy 
+
+Table I presents F1 scores for both matching protocols across all model-strategy combinations, with 95% bootstrap confidence intervals computed via B = 10 ,000 resamples of products with replacement. Bold entries indicate the highest-performing configuration per model. Three patterns are visible. First, fuzzy matching produces substantially higher F1 than exact matching for both models across all strategies. Second, prompting strategy variation is small under both protocols. Third, the two models perform nearly identically under fuzzy matching at the mean level, though within-model strategy effects differ. 
+
+B. Statistical Tests 
+
+We applied paired permutation tests to validate the key F1 differences observed in Table I. 
+
+Test A: Exact vs Fuzzy Matching (Within-Model). Both models show highly significant improvements from exact to fuzzy matching: GPT-4o-mini: ∆F1 = +0 .121 , p < 0.0001 (14) Gemini 2.5 Flash: ∆F1 = +0 .109 , p < 0.0001 (15) Fig. 1 illustrates this inter-protocol gap visually, showing that it is consistent across all strategy-model combinations and substantially larger than any inter-model or inter-strategy difference. 
+
+Test B: Model Comparison Under Fuzzy Matching. 
+
+Gemini 2.5 Flash marginally outperforms GPT-4o-mini: 
+
+∆F1 = +0 .005 , p = 0 .047 (16) While statistically significant at the conventional α = 0 .05 
+
+threshold, the effect size of 0.5 percentage points is practically negligible. The 95% confidence intervals overlap substantially ([0 .593 , 0.641] vs [0 .598 , 0.646] ), suggesting practical equiva-lence between the two models. 5
+
+TABLE I F1 S CORE BY MODEL × STRATEGY × MATCHING PROTOCOL (95% CI IN BRACKETS )
+
+Strategy GPT-4o EM GPT-4o FM Gemini EM Gemini FM 
+
+ZERO_SHOT 0.494 [0.472, 0.515] 0.616 [0.592, 0.640] 0.493 [0.471, 0.514] 0.618 [0.594, 0.642] 
+
+FEW_SHOT 0.495 [0.474, 0.516] 0.618 [0.594, 0.641] 0.556 [0.533, 0.580] 0.639 [0.614, 0.663] 
+
+SCHEMA_GUIDED 0.495 [0.473, 0.516] 0.618 [0.594, 0.641] 0.498 [0.476, 0.519] 0.615 [0.592, 0.639] 
+
+DEF_AUGMENTED 0.500 [0.479, 0.521] 0.616 [0.592, 0.640] 0.505 [0.484, 0.526] 0.618 [0.593, 0.642] 
+
+Mean 0.496 0.617 0.513 0.622 
+
+Fig. 1. Impact of evaluation methodology on reported F1. Switching from exact match (EM) to fuzzy match (FM) produces F1 improvements of +0 .121 
+
+for GPT-4o-mini and +0 .109 for Gemini 2.5 Flash ( p < 0.0001 ), substantially larger than any inter-model or inter-strategy difference. TABLE II PROMPTING STRATEGY EFFECTS (W ITHIN -M ODEL )
+
+GPT-4o-mini Gemini 2.5 Flash 
+
+Best FEW_SHOT (0.618) FEW_SHOT (0.639) Worst ZERO_SHOT (0.616) SCHEMA_GUIDED (0.615) 
+
+∆F1 +0 .001 +0 .024 
+
+p-value 1.0000 0.0031 
+
+Test C: Prompting Strategy Effects (Within-Model). 
+
+Strategy effects differ markedly between models, as shown in Table II. For GPT-4o-mini, prompting strategy has no detectable effect ( p = 1 .0, all strategies within 0.2 percentage points). For Gemini 2.5 Flash, FEW_SHOT significantly outperforms 
+
+SCHEMA_GUIDED by 2.4 percentage points ( p = 0.003 ). This differential sensitivity to prompting strategy is itself a noteworthy finding: the two models respond to demonstrations and schemas differently, even when overall performance is comparable. 
+
+C. Per-Attribute Performance 
+
+Table III reports fuzzy F1 for each attribute, averaged across strategies. Both models achieve perfect Brand extraction ( F1 = 1 .0). As shown in Fig. 2, performance degrades monotonically with 
+
+> 1
+
+https://github.com/a-dwivedi/llm-product-attribute-extraction 
+
+Fig. 2. Per-attribute F1 scores under fuzzy matching. Brand extraction is near-perfect for both models (F1 = 1.0), while Material proves most challenging (F1 ≈ 0.40). The attribute-level gap ( ∆F1 = 0 .614 ) dwarfs the controllable factors of evaluation protocol ( 0.121 ), strategy ( 0.024 ), and model ( 0.005 ). TABLE III PER -A TTRIBUTE F1 (F UZZY MATCHING , A VERAGED ACROSS 
+
+STRATEGIES )
+
+Attribute GPT-4o-mini Gemini 2.5 Flash 
+
+Brand 1.0000 1.0000 Color 0.6400 0.6375 Size 0.4412 0.4288 Material 0.3862 0.4225 6
+
+attribute implicitness: Color ( ∼0.64), Size ( ∼0.44), Material (∼0.40). The performance gap between explicit attributes (Brand) and implicit attributes (Material) exceeds 0.60 F1 points—far larger than any model or strategy effect observed in this study. Material extraction is the weakest attribute for both models, reflecting that material is often stated implicitly or omitted entirely. 
+
+D. Per-Category Performance 
+
+Table IV reports fuzzy F1 by product category, averaged across strategies.                
+
+> TABLE IV PER -C ATEGORY F1 (F UZZY MATCHING , A VERAGED ACROSS
+> STRATEGIES )
+> Category GPT-4o-mini Gemini 2.5 Flash
+> Sports 0.7438 0.7438 Food 0.6750 0.6859 Clothing 0.6750 0.6734 Home 0.5328 0.5500 Electronics 0.4578 0.4578
+
+Sports products achieve the highest extraction F1 (0.74), reflecting standardized terminology. Electronics products per-form worst (0.46), as material composition and size specifi-cations are frequently omitted from descriptions in favor of feature-focused marketing language. 
+
+E. Noise Audit Results 
+
+Applying the formalization from Section III, we compute: 
+
+η = P (ϕ(80)  
+
+> FM
+
+= 1 | ϕEM = 0) = 737 3,172 = 0 .2324 (17) Of the 6,400 total predictions, 3,172 were classified as failures under exact matching. Of these, 737 (23.2%) were classified as successes under fuzzy matching. The conditional probability that an exact-match failure is in fact semantically correct is therefore η = 0 .232 .Cohen’s kappa between exact and fuzzy protocols is: 
+
+κ = 0 .769 (18) This value indicates substantial agreement between proto-cols. Landis and Koch [15] classify κ ∈ [0 .61 , 0.80] as “substantial.” Disaggregated by model, κGPT-4o = 0 .759 and 
+
+κGemini = 0.780 . Disaggregated by attribute, kappa ranges from κBrand = 0 .000 (both protocols agree on every Brand prediction) to κMaterial = 0 .548 (moderate agreement, reflecting that Material is where fuzzy matching contributes the most additional correct classifications). The high overall kappa confirms that fuzzy matching is not randomly relabeling predictions but is capturing genuinely correct semantic variations that exact matching misses. Manual inspection of 50 representative noise cases confirmed semantic correctness in all 50 instances. Examples appear in Table V. As shown in Fig. 3, the failure type distributions differ markedly between models: GPT-4o-mini achieves a higher correct rate with balanced error types, while Gemini 2.5 Flash shows a higher wrong value rate driven by format-divergent extractions that are penalized by exact matching.                                         
+
+> Fig. 3. Failure type distribution by model. GPT-4o-mini achieves a higher correct rate (49.6%) with balanced error types, while Gemini 2.5 Flash shows a higher wrong value rate (72%) driven primarily by format-divergent extractions that are semantically correct but penalized by exact matching. TABLE V REPRESENTATIVE NOISE AUDIT EXAMPLES
+> Ground Truth Prediction ϕEM ϕ(80)
+> FM sim
+> Queen Queen size 01100 Cotton 100% cotton 01100 16.9 oz 16.9 fl oz 0183 65 inches 65-Inch 0186 Mesh Mesh and synthetic 01100 Purple Purple and silver 01100 Fiji Fiji Natural Artesian 01100 Black Matte Black 01100
+
+F. Formal Variance Decomposition 
+
+Applying the decomposition from Section III, Table VI reports ∆F1 for each experimental factor.                
+
+> TABLE VI F1 V ARIANCE DECOMPOSITION ACROSS FACTORS
+> Factor ∆F1Relative
+> Eval. methodology (EM vs FM) 0.1210 1.00 ×
+> Model choice (fuzzy) 0.0053 0.04 ×
+> Prompting strategy (fuzzy) 0.0238 0.20 ×
+> Attribute (fuzzy) 0.6138 5.07 ×
+> Category (fuzzy) 0.2860 2.36 ×
+
+The dominant source of controllable variance is evaluation protocol ( ∆F1 = 0 .121 ). Model choice and prompting strategy each produce variance an order of magnitude smaller. For-mally: 
+
+∆F (protocol )1 > ∆F (strategy )1 > ∆F (model )1 (19) with the ratios: 
+
+∆F (protocol )1
+
+∆F (model )1
+
+= 0.121 0.005 ≈ 22 .8 (20) 
+
+∆F (protocol )1
+
+∆F (strategy )1
+
+= 0.121 0.024 ≈ 5.1 (21) Evaluation methodology produces approximately 23 times more F1 variance than model choice and 5 times more than prompting strategy choice. 7
+
+VI. D ISCUSSION 
+
+A. Evaluation Methodology Dominates Model Choice 
+
+Our results provide direct empirical support for H1. The inter-protocol F1 gap ( ∆F1 = 0 .121 ) is statistically significant at p < 0.0001 and is approximately 23 times larger than the inter-model gap under fuzzy matching ( ∆F1 = 0 .005 ). Even when the inter-model difference is statistically significant ( p =0.047 ), the effect size is practically negligible. Critically, the noise audit results from Section V-E provide direct evidence that this inter-protocol gap reflects genuine semantic correctness rather than evaluation looseness. The 23.2% noise rate ( η = 0 .232 ) establishes a lower bound on the proportion of the inter-protocol F1 improvement attributable to correctly recognizing format-divergent but semantically valid extractions. Combined with the substantial Cohen’s kappa (κ = 0.769 ), which confirms that fuzzy matching is not introducing random noise, we can attribute the variance de-composition findings to a real methodological gap in the field rather than an artifact of threshold permissiveness. In the academic literature, exact-match F1 has remained the default metric for product attribute extraction despite well-known limitations of string-equality evaluation for generative outputs. Our results suggest that a substantial fraction of the variance in reported performance across published methods may be attributable to evaluation protocol differences rather than genuine method differences. In production deployment, the choice between models or prompting strategies is frequently treated as the primary lever for improving extraction accuracy. Our results suggest that for the cost-efficient model tier, this lever produces only marginal gains. Practitioners seeking meaningful improvements should focus first on evaluation methodology—ensuring that their in-ternal accuracy metrics actually reflect deployment success— before optimizing model and prompt choice. 
+
+B. Model-Specific Prompt Sensitivity 
+
+A subtler finding is that the two models respond dif-ferently to prompting strategy. For GPT-4o-mini, no strat-egy difference is detectable (p = 1.0)—the model per-forms equivalently regardless of how the task is framed. For Gemini 2.5 Flash, FEW_SHOT significantly outperforms 
+
+SCHEMA_GUIDED (p = 0 .003 ), with a 2.4 percentage point gap. This differential sensitivity has practical implications: prompt engineering effort yields measurably different returns across model families. For practitioners using GPT-4o-mini, investment in prompt optimization beyond basic zero-shot prompting yields negligible gains. For Gemini 2.5 Flash, prompt strategy choice matters, with few-shot demonstrations providing the strongest performance. This finding aligns with the broader literature observing that different model families respond differently to in-context learning [8], [19], but to our knowledge represents the first systematic demonstration of this effect specifically for product attribute extraction. 
+
+C. Ground Truth Noise as a Structural Limitation 
+
+Our noise audit confirms H2: η = 0 .232 , meaning nearly one-quarter of exact-match failures are predictions that are semantically correct. The substantial inter-protocol Cohen’s kappa ( κ = 0 .769 ) provides additional methodological con-fidence: fuzzy matching is capturing genuine semantic cor-rectness, not adding random noise. This has implications for benchmark design. Public bench-marks constructed via semi-automated annotation pipelines, including MAVE, capture a single canonical value per at-tribute. As generative LLMs produce outputs that are correct but format- or completeness-divergent from canonical labels, exact-match evaluation systematically understates model ca-pability. We do not claim fuzzy matching is the final solution. Fuzzy matching has its own failure modes—accepting partial matches that are semantically incorrect—and threshold selec-tion is somewhat ad hoc. More principled solutions, including BERTScore-based semantic similarity [11] and LLM-as-judge protocols [12], may produce better results. Our findings es-tablish that the current default—exact matching—is materially flawed, and any of these alternatives represents an improve-ment. 
+
+D. Practitioner Decision Framework 
+
+Based on our findings, we propose the practical decision framework shown in Table VII.                          
+
+> TABLE VII PRACTITIONER DECISION FRAMEWORK
+> Decision Recommended Justification
+> Eval. protocol Fuzzy (τ≥80 )or LLM-as-judge
+> ∆F1= 0 .121 ,p <
+> 0.0001
+> Model GPT-4o-mini or Gemini equivalent
+> ∆F1= 0 .005 , over-lapping CIs Prompt (GPT-4o) Any strategy p= 1 .0
+> Prompt (Gem-ini) Few-shot preferred ∆F1= 0 .024 ,p=0.003
+> Attribute Explicit-mention first Brand 1.00 vs Mate-rial 0.40 Category Electronics, Home harder Sports 0.74 vs Elec-tronics 0.46
+
+The dominant insight: invest in evaluation methodology first, data quality second, model and prompt choice last. 
+
+E. Limitations 
+
+Several limitations should be noted. First, our sample of 
+
+N = 200 products across 5 of MAVE’s 1,257 categories limits statistical power for fine-grained subgroup analyses and leaves generalization to the full category taxonomy as an open question; however, all reported confidence intervals appropri-ately quantify sampling uncertainty within our sample frame. Second, we evaluate two cost-efficient production models; conclusions may not hold for frontier models such as GPT-4 or Claude Opus. Third, we use a single fuzzy matching threshold ( τ = 80 ); systematic threshold sensitivity analysis 8
+
+is reserved for future work. Fourth, our noise audit uses fuzzy matching against ground truth, which may admit false positives—predictions that score above threshold but are not semantically correct. Manual inspection of 50 representative cases mitigates this concern but does not eliminate it. Fifth, the marginal statistical significance of the inter-model com-parison ( p = 0 .047 ) should be interpreted cautiously given the practical equivalence of effect sizes. Sixth, both models were accessed via cloud APIs that may receive silent updates; our results reflect model behavior as of June 2026. VII. C ONCLUSION 
+
+This paper investigated the relative impact of model choice, prompting strategy, and evaluation methodology on re-ported performance in LLM-based product attribute extraction. Through a controlled experiment on the MAVE benchmark using 6,400 attribute-level predictions across two production LLMs and four prompting strategies, with rigorous statistical testing, we demonstrated that:  
+
+> •
+
+Evaluation methodology (exact vs fuzzy matching) pro-duces F1 variance approximately 23 times larger than model choice and 5 times larger than prompting strategy choice ( p < 0.0001 , κ = 0 .769 ).  
+
+> •
+
+Two production-grade LLMs achieve practically equiva-lent performance under fuzzy evaluation (F1 = 0.617 vs 0.622), with overlapping 95% confidence intervals.  
+
+> •
+
+The MAVE benchmark exhibits a 23.2% ground truth noise rate, formalized as η = P (semantically correct |
+
+exact-match failure ). 
+
+> •
+
+Prompting strategy sensitivity varies by model: GPT-4o-mini shows no detectable effects ( p = 1 .0), while Gemini 2.5 Flash benefits significantly from few-shot prompting (p = 0 .003 ). These findings reorient the optimization priorities for prac-titioners deploying LLM-based extraction: evaluation method-ology and data quality dominate the gains achievable from model and prompt selection at the cost-efficient model tier. We recommend that future work adopt fuzzy matching or semantic similarity metrics as the default evaluation protocol, and that benchmark designers account for the format diversity of LLM outputs in ground truth construction. 
+
+A. Future Work 
+
+Several directions emerge from this study. First, extending the analysis to frontier model tiers (GPT-4, Claude Opus, Gem-ini Pro) would establish whether the evaluation methodology dominance finding holds at higher capability levels or whether frontier models produce sufficiently precise outputs to reduce the inter-protocol gap. Second, systematic threshold sensitivity analysis—varying τ from 60 to 95—would characterize how fuzzy matching behavior changes with strictness and identify optimal thresholds for different deployment contexts. Third, direct comparison of fuzzy matching against BERTScore-based semantic similarity and LLM-as-judge evaluation proto-cols would establish a more complete picture of the evaluation methodology landscape. Fourth, scaling to additional product categories beyond the five studied here would test the gener-alizability of our findings across MAVE’s full 1,257-category taxonomy. Finally, longitudinal studies tracking model be-havior across API updates would quantify the reproducibility concern identified in our limitations. GENERATIVE AI D ISCLOSURE 
+
+In preparing this manuscript, the authors used LLMs. All experimental design, data collection, model inference, result validation, and scientific conclusions are the sole work of the authors and were independently verified by both authors prior to submission. The AI-assisted writing was reviewed, revised, and approved by the authors, who take full responsibility for all content in this manuscript. No AI tool was used to generate, fabricate, or modify any experimental data or quantitative results. REFERENCES [1] L. Yang, Q. Wang, Z. Yu, et al., “MAVE: A product dataset for multi-source attribute value extraction,” in Proc. WSDM , 2022, pp. 1256–1265. [2] G. Zheng, S. Mukherjee, X. L. Dong, and F. Li, “OpenTag: Open attribute value extraction from product profiles,” in Proc. KDD , 2018, pp. 1049–1058. [3] X. Wang et al., “AVEQA: Learning attribute value extraction as question answering,” in Proc. ACL , 2020. [4] A. Brinkmann, N. Baumann, and C. Bizer, “Using LLMs for the extraction and normalization of product attribute values,” in Advances in Databases and Information Systems , 2024, pp. 217–230. [5] N. Baumann et al., “ExtractGPT: Exploring the potential of large language models for product attribute value extraction,” arXiv preprint arXiv:2310.12537 , 2024. [6] A. Brinkmann et al., “Self-refinement strategies for LLM-based product attribute value extraction,” arXiv preprint arXiv:2501.01237 , 2025. [7] K. Sabeh, M. Kacimi, and J. Gamper, “QPAVE: A multi-task question answering approach for fine-grained product attribute value extraction,” in Big Data Analytics and Knowledge Discovery , 2024, pp. 331–345. [8] T. Brown et al., “Language models are few-shot learners,” in Advances in Neural Information Processing Systems , vol. 33, 2020, pp. 1877–1901. [9] J. Achiam et al., “GPT-4 technical report,” arXiv preprint arXiv:2303.08774 , 2023. [10] G. Team et al., “Gemini: A family of highly capable multimodal models,” arXiv preprint arXiv:2312.11805 , 2024. [11] T. Zhang et al., “BERTScore: Evaluating text generation with BERT,” in Proc. ICLR , 2020. [12] L. Zheng et al., “Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena,” in Advances in Neural Information Processing Systems , vol. 36, 2023. [13] V. I. Levenshtein, “Binary codes capable of correcting deletions, in-sertions, and reversals,” Soviet Physics Doklady , vol. 10, pp. 707–710, 1966. [14] W. E. Winkler, “String comparator metrics and enhanced decision rules in the Fellegi-Sunter model of record linkage,” in Proc. Section on Survey Research Methods , 1990, pp. 354–359. [15] J. R. Landis and G. G. Koch, “The measurement of observer agreement for categorical data,” Biometrics , vol. 33, no. 1, pp. 159–174, 1977. [16] J. Cohen, “A coefficient of agreement for nominal scales,” Educational and Psychological Measurement , vol. 20, no. 1, pp. 37–46, 1960. [17] B. Efron and R. J. Tibshirani, An Introduction to the Bootstrap . Chap-man and Hall/CRC, 1994. [18] J. Liu et al., “What makes good in-context examples for GPT-3?” arXiv preprint arXiv:2101.06804 , 2021. [19] S. Min et al., “Rethinking the role of demonstrations: What makes in-context learning work?” in Proc. EMNLP , 2022. [20] O. Honovich et al., “TRUE: Re-evaluating factual consistency evalua-tion,” in Proc. NAACL , 2022. 9
+
+APPENDIX APROMPT TEMPLATES 
+
+All strategies use the same base task instruction requesting extraction of four attributes (brand, color, size, material) with JSON output. The strategies differ as follows:  
+
+> •
+
+ZERO SHOT: Base instruction + product text only  
+
+> •
+
+FEW SHOT: Base instruction + 3 labeled examples + product text  
+
+> •
+
+SCHEMA GUIDED: Base instruction + explicit JSON schema + product text  
+
+> •
+
+DEFINITION AUGMENTED: Base instruction + at-tribute definitions + product text 
+
+Base Task Instruction: 
+
+“Extract the following attributes from the prod-uct description: brand, color, size, material. Return ONLY a valid JSON object with these exact keys. Use null for missing attributes.” 
+
+Schema (SCHEMA GUIDED): 
+
+{"brand": "string or null", "color": "string or null", "size": "string or null", "material": "string or null"} 
+
+Definitions (DEFINITION AUGMENTED):  
+
+> •
+
+brand: The manufacturer or brand name of the product  
+
+> •
+
+color: The primary color of the product  
+
+> •
+
+size: The dimensions or size designation (e.g., S/M/L, measurements)  
+
+> •
+
+material: The primary material composition of the prod-uct Full prompt templates are available in the code repository at https://github.com/a-dwivedi/llm-product-attribute-extraction. APPENDIX BREPRODUCIBILITY 
+
+All code, prompts, sampled MAVE products, and processed evaluation data are publicly available at: https://github.com/ a-dwivedi/llm-product-attribute-extraction  
+
+> •
+
+Random seed: 42  
+
+> •
+
+Models: gpt-4o-mini (OpenAI), 
+
+gemini-2.5-flash (Google)  
+
+> •
+
+Evaluation: rapidfuzz v3.x  
+
+> •
+
+Statistics: scipy.stats , sklearn.metrics ,
+
+numpy  
+
+> •
+
+Experiments: June, 2026  
+
+> •
+
+Bootstrap/permutation: B = 10 ,000 
+
+APPENDIX CSTATISTICAL TEST IMPLEMENTATION 
+
+Paired permutation test. For each test, we collect per-prediction correctness vectors vA, vB ∈ { 0, 1}N K under two conditions. We compute the observed F1 difference, then randomly swap labels within each pair with probability 0.5,recomputing F1 each iteration. After B = 10 ,000 iterations, the p-value is the proportion of permutations producing an absolute difference at least as extreme as observed. 
+
+Bootstrap confidence intervals. We resample N = 200 
+
+products with replacement, recompute F1, and repeat B =10 ,000 times. The 95% CI is the (2 .5, 97 .5) percentile range. 
+
+Cohen’s kappa. Computed via 
+
+sklearn.metrics.cohen_kappa_score on per-prediction binary correctness vectors under each protocol.

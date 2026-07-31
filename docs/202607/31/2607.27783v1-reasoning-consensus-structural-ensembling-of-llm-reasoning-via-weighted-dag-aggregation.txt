@@ -1,0 +1,845 @@
+Title: Reasoning Consensus: Structural Ensembling of LLM Reasoning via Weighted DAG Aggregation
+
+URL Source: https://arxiv.org/pdf/2607.27783v1
+
+Published Time: Fri, 31 Jul 2026 00:36:09 GMT
+
+Number of Pages: 14
+
+Markdown Content:
+## Reasoning Consensus: Structural Ensembling of LLM Reasoning via Weighted DAG Aggregation 
+
+Amruta Parulekar, Jinu Lee, Dilek Hakkani-Tür, Hari Sundaram 
+
+University of Illinois Urbana-Champaign 
+
+{amp20, jinulee2, dilek, hs1}@illinois.edu 
+
+Abstract 
+
+Large Language Models (LLMs) explore prob-lems through chain-of-thought, but this explo-ration is buried in unstructured prose. On high-stakes tasks, users cannot tell which steps are well-supported, which alternatives were se-riously considered, or how the final conclu-sion compares to those the model discarded. We propose a framework that ensembles the reasoning structure, not just the answers, of multiple LLMs by weighted merging of Di-rected Acyclic Graphs (DAGs) extracted from reasoning chains. We weight each step by how many traces independently attest to it, to return “Consensus Reasoning”. Across six benchmarks spanning statutory interpretation, graduate-level science, narrative multi-hop rea-soning, and first-order logic, our ensemble out-performs a matched-budget majority-vote base-line, with a maximum accuracy gain of 3.1% on MuSR-MM (narrative multi-hop reasoning). On a single model, the framework matches or exceeds self-consistency at the same trace bud-get while additionally exposing an inspectable consensus reasoning graph. Ensemble weights correlate with LLM-judge rankings of reason-ing quality at Spearman ρ = 0 .30 –0.51 , and consensus subgraphs are preferred over alter-natives leading to the majority-vote answer in 54.4–65.4% of head-to-head comparisons across five of six datasets. We observe that our framework can also be used to analyze diverse reasoning perspectives for a problem. 1
+
+1 Introduction 
+
+We propose a framework that ensembles the rea-soning structure of multiple LLMs to surface di-verse, interpretable justifications for complex rea-soning tasks. Complex domain-specific reasoning admits multiple legitimate lines of reasoning, and a thorough analysis must consider each (Yang et al., 2026). These get lost in the unstructured chain-of-thought (Wei et al., 2023) that LLMs return. Users 
+
+> 1Our code is available at this link
+
+see a final answer and a free-form rationale, but can-not tell which steps and conclusions are supported or rejected, or which arguments rely on a single uncertain inference. Smaller models compound this by committing to a single solution path, miss-ing alternative justifications that might be better (Yang et al., 2025b). The result is brittle reasoning (Zeng et al., 2026), that is especially costly in low-resource, high-stakes settings (Dahl et al., 2024) where the model might provide the right answer but a wrong supporting reason, misleading users. Existing strategies for improving Chain-of-Thought (CoT) either constrain reasoning diver-sity or discard the structure that makes reasoning auditable. Self-consistency (Wang et al., 2023) performs majority voting of only the final answer, and does not consider reasoning trace structure. Tree/Graph of Thoughts (Yao et al., 2023; Besta et al., 2024) show more reasoning structure, but remain bounded by the single-model ceiling. Multi-model methods broaden this at the cost of structural auditability: some extend exploration across mod-els but still commit to a single chain (Xu et al., 2025); others aggregate at the level of unstructured prose, making it hard to trace which model con-tributed what (Wang et al., 2024; Chen et al., 2024); and search-based ensembles require trained process reward models and ultimately return a single best chain (Park et al., 2024). Thus, the structure of disagreement and alternative support is lost. Our framework generalises Self-consistency (Wang et al., 2023) from answers to reasoning struc-ture, and from a single model to many. We sample CoT traces from multiple models and ensemble their underlying reasoning graphs. We extract a Directed Acyclic Graph (DAG) from each trace and merge these DAGs while preserving bundles of jointly-supporting premises, so that each merged node carries an “attestation count”. Steps that ap-pear across many traces accumulate weight and steps attested by only one trace are down-weighted arXiv:2607.27783v1 [cs.CL] 30 Jul 2026 automatically, suppressing reasoning step errors. We return the most-supported, inspectable “consen-sus” subgraphs and conclusions with quantification of support received by each, and other possible answers as well as the amount of support for each. We evaluate our framework on six reason-ing benchmarks spanning statutory interpretation (SARA), graduate-level science (GPQA Diamond), narrative multi-hop reasoning (MuSR-MM, MuSR-OP, MuSR-TA), and first-order logical entailment (FOLIO). Our accuracy-weighted 4-model en-semble outperforms a matched-budget 20-trace majority-vote baseline on every dataset, with a max-imum gain of 3.1% on MuSR-MM. On a single model, we match or exceed self-consistency while additionally exposing an inspectable justification graph. Beyond accuracy, consensus subgraphs con-tain better explanations than single model traces, being preferred over alternatives leading to the majority-vote answer in 54.4–65.4% of head-to-head LLM-judge comparisons across five of six datasets. Our subgraph ranking correlates with the judge at Spearman ρ = 0 .30 –0.51 . Qualita-tively, we observe that subgraphs can contain differ-ing problem-solving approaches, confirming that reasoning perspective diversity can be preserved through structural aggregation. Our contributions: 
+
+(1) Structural ensembling of heterogeneous LLM reasoning. We introduce a framework to aggregate reasoning at the DAG level rather than as unstructured prose. This allows users in high-stakes domains to inspect and override individual steps rather than treating the LLM as a black box. 
+
+(2) Attestation-weighted confidence without aux-iliary training. We derive step-level confidence purely from cross-trace agreement across different models. This gives a training-free alternative to Process Reward Models, scaling to low-resource domains where step-level labels are unavailable. 
+
+(3) Accuracy gains with diverse, inspectable al-ternatives. Our framework outperforms majority-vote baselines on all six benchmarks and matches or exceeds self-consistency on single-model trace pools, while simultaneously surfacing most-supported subgraphs and preserving competing conclusions that other traces explored. By retain-ing and not collapsing the disagreement structure, our framework naturally extends to open-ended set-tings like argument generation and creative writing, where the goal is not a single correct answer but a curated set of distinct, well-supported perspectives. 
+
+2 Related Work 
+
+Recent “reasoning-heavy” models like o1 (OpenAI et al., 2024) and DeepSeek-R1 (Guo et al., 2025) have popularised long-form Chain-of-Thought (CoT) traces (Wei et al., 2023). However, linear CoT collapses logical dependencies more naturally modeled as graphs. To enrich the topology of a 
+
+single model’s reasoning, Tree-of-Thoughts (Yao et al., 2023) branched the chain to enable backtrack-ing, and Graph-of-Thoughts (Besta et al., 2024) generalised this to thought graphs with aggrega-tion and feedback. While these approaches show more reasoning structure, their diversity remains bounded by what one isolated model can produce. Subsequent methods expanded exploration at the expense of structural auditability. Trace-level ag-gregation, such as Self-Consistency (Wang et al., 2023), samples CoTs from one model and votes on the final answer. Collaborative Beam Search (Xu et al., 2025) extends this by selecting the best con-tinuation at each step via multi-model consensus. At the response level, Mixture-of-Agents (Wang et al., 2024) and ReConcile (Chen et al., 2024) generate a single response from the critiques of different agents. Finally, structured search meth-ods like LE-MCTS (Park et al., 2024) and MoSA (Yang et al., 2025b) use Monte Carlo tree search over multi-LLM steps, while DER (Hu et al., 2025) trains a router to select the best expert output. These approaches generate diversity, but it ulti-mately collapses at aggregation time. Through vot-ing, prose synthesis, and reward-guided search, the systems force convergence into a single final chain or answer and alternative paths are discarded. A concurrent line of work avoids this compres-sion by preserving disagreement structure rather than discarding it. ARGORA (Jin et al., 2026) organizes multi-expert discussions into argumen-tation graphs to identify causal dependencies be-tween competing claims, but relies on constrained interactive debate and causal interventions to eval-uate argument fragility. Our framework instead extracts and ensembles DAGs from independent, unconstrained CoT traces across models, preserv-ing the full weighted graph of attested reasoning steps via statistical consensus rather than counter-factual intervention. We never force convergence: when models disagree, both conclusions are re-tained with their supporting subgraphs. Consensus emerges naturally from independent reasoners. The resulting structure remains auditable at node level. 3 Methodology 
+
+Our pipeline (Figure 1) operates in five stages— trace extraction (Section 3.1), DAG extraction (Sec-tion 3.2), node merging (Section 3.3), ensemble weighting (Section 3.4), and finding consensus (Section 3.5)—to convert multiple free-form rea-soning chains into a weighted, auditable graph and obtain the consensus reasoning. A query is given to multiple LLMs, which sample numerous rea-soning traces; a Directed Acyclic Graph (DAG) is extracted from each trace, the DAGs are ensembled into a weighted graph and the conclusion with the highest support and its most-supported reasoning trace are extracted. All prompts are in Appendix A. 
+
+3.1 Reasoning Trace Extraction 
+
+We sample multiple stochastic reasoning traces per query from each of several small, open-source LLMs. Each model is constrained to a fixed schema requiring a step-by-step reasoning trace and a final verdict tag. For each generation, we separate the free-form reasoning from the verdict, retaining both for downstream DAG extraction and ensembling. 
+
+3.2 DAG Extraction 
+
+Each reasoning trace is converted into a fine-grained causal DAG using a small LLM as a struc-tured extractor. To keep the task tractable, the LLM emits nodes together with pre-grouped bundles —each bundle is a list of node ids that must hold together to support a target—so the logical struc-ture is encoded by the premise grouping in bundles. Each node carries an id, a node type, a short textual description, and bundle lists: a support list, whose bundles each independently justify the node, and a defeats list, whose bundles each indepen-dently suppress it. Premises within a bundle are conjunctive. Bundles within a list are disjunctive. 
+
+Logical Reconstruction. An AND/OR DAG 
+
+G = ( V, S) is reconstructed in a single determin-istic pass: every support bundle becomes a posi-tive support set, every defeater bundle a negated one, and each node’s gate is assigned by car-dinality of its positive sets— ATOMIC if none, AND if one, OR if multiple. Formally, S(v) = 
+
+{(S1, δ 1), (S2, δ 2), . . . }, where each pair (Sk, δ k)
+
+consists of a predecessor set Sk ⊆ V jointly sup-porting v and a polarity flag δk ∈ { 0, 1} indicating support ( δk = 0 ) or defeasibility ( δk = 1 ). We verify that all node types are permitted, bun-dle members reference valid nodes, and the graph is acyclic. Traces failing any check are discarded so malformed outputs do not pollute aggregation. 
+
+DAG Structure. Inspired by (Lee et al., 2025), we use four labels: Planning (wherein the LLM decides what to do next), Fact (factual statements from the input context), Reasoning (intermediate inference steps linking facts to an outcome), and 
+
+Conclusion (the final determination). This struc-ture emphasizes procedural reasoning and is well suited to traces with meta-reasoning about problem-solving. A final Answer node is added after the Conclusion, exactly matching the predicted label. These DAGs provide the inputs to node merging. 
+
+3.3 Node Merging 
+
+Our node-merging strategy filters same node-type candidate pairs by embedding similarity be-fore LLM verification, balancing compute against merge precision. Neither pure approach suffices. An LLM judge, given each candidate pair’s text, la-bels, and local context yields accurate equivalence decisions but scales as O(n2) in the node count. Embedding similarity, computed as cosine distance between dense vectors of node descriptions, sim (u, v ) = eu · ev
+
+∥eu∥∥ ev∥ (1) is cheaper but produces false positives, often merg-ing surface-similar yet substantively distinct nodes. 
+
+Our hybrid method. We combine the two: a per-missive embedding threshold τ ′ = 0 .55 prunes the search space, and surviving candidates are verified by the LLM judge. To preserve logical operators, we merge nodes while keeping bundles intact. 
+
+Bundle-Preserving Merge Operator. Once a clus-tering π : V → C over all source-trace nodes is fixed, we construct the merged ensemble DAG 
+
+G∗ = ( V ∗, S∗) by mapping each bundle through 
+
+π and aggregating identical bundles: 
+
+S∗(c) = [
+
+> v∈π−1(c)
+
+[
+
+> (S,δ )∈S (v)
+
+{(π(S), δ )} (2) where π(S) = {π(u) : u ∈ S}. Two bundles match across traces iff they reduce to the same cluster-id set under π. Identical bundles are com-bined, recording how many traces attested the same justification, while distinct bundles become sep-arate support sets, recovering the OR-of-ANDs structure naturally. Gate types are then re-derived, and cycles introduced by clustering are resolved by removing the weakest support set along the cycle. Next, the resulting ensemble DAG is assigned node weights, based on cross-trace consensus. I 
+
+> L
+> F
+> H
+> G
+> B
+> C
+> A
+> K
+> JD
+> E
+
+Node -
+
+type Filter 
+
+Node 
+
+Pairing G    
+
+> K
+> F
+> HIBC
+> AL
+> JDE
+
+F H IB C KE L          
+
+> EGHABJDK
+> DIGCALFJ
+
+Cluster 
+
+Embeddings 
+
+LLM  
+
+> “Which node pairs mean the same?”
+> “Merge them”
+> “If two neighboring nodes are merged,
+> merge edge between them”
+
+ENS     
+
+> NODES
+> (> 𝜏 )
+> (< 𝜏 )
+> (< 𝜏 )
+
+Filter 
+
+(𝜏′ )
+
+P1  P2 
+
+Re1 
+
+C1 
+
+F1  F2 
+
+Re2 
+
+C2 
+
+P2  P1 
+
+Re3 
+
+C1 
+
+F2  F1 
+
+Re4 
+
+P2  P1 
+
+> Re1+Re3
+
+C2 
+
+F2  F1 
+
+Re4 Re2 
+
+C1 
+
+> 1
+
+P2  P1 
+
+Re3 
+
+C1 
+
+F2  F1 
+
+Re4 
+
+Model A Graph  Model B Graph  Ensemble Graph 
+
+Simple 
+
+Accuracy -
+
+weighted       
+
+> 11
+> 11
+> 111
+> 1
+> 11
+> 1
+> 1
+> 1
+> 11
+> 1
+> 2
+> 2
+> 121
+> 11
+> 1
+> 1
+> 1
+> 11
+
+P1  P2 
+
+Re1 
+
+C1 
+
+F1  F2 
+
+Re2 
+
+C2    
+
+> 111
+> 11
+> 1
+
+2 1
+
+# +
+
+# +
+
+> +
+> +
+
+𝑊 𝑎𝑐𝑐 
+
+𝐴  𝑊 𝑎𝑐𝑐 
+
+𝐵 
+
+> 1
+
+P2  P1 
+
+> Re1+Re3
+
+C2 
+
+F2  F1 
+
+Re4 Re2 
+
+C1          
+
+> 2
+> 21
+> 1
+> 3
+> 3
+> 231
+> 1
+> COT TRACE
+> •First, I need to identify
+> the relevant legal rule,
+> which is Section 151
+> regarding exemptions.
+> •The facts state Bob
+> earned $5,000 as a
+> student in the 2025 tax
+> year.
+> •Under the code, a
+> student earning under a
+> specific threshold can
+> be claimed as a
+> dependent.
+> •Since Bob meets the
+> criteria for a dependent,
+> an exemption is
+> applicable.
+> •Therefore, the
+> conclusion is that the
+> hypothesis is entailed.
+> [Planning]
+> Identify the relevan t
+> legal rule
+> [Fact]
+> Bob earned $5000 as a
+> student in 2025
+> [Fact]
+> Code allows students under
+> the threshold as dependents
+> [Fact]
+> Section 151 governs
+> exemptions
+> [Reasoning]
+> Bob meets the criter ia
+> for a dependent
+> [Reasoning]
+> An exemption is
+> applicable
+> [Conclusion]
+> Hypothesis is entailed
+
+Step 4  Step 5 
+
+Step 3 
+
+Step 2 Step 1 
+
+Many CoT 
+
+Query 
+
+> Multiple
+> LLMs
+
+WEIGHTED 
+
+ENS 
+
+Consensus 
+
+Reasoning 
+
+ANSWER 
+
+QUERY 
+
+LLM 1 
+
+CoT 1.1 
+
+CoT 1.M  DAG 1.M 
+
+DAG 1.1 
+
+LLM N 
+
+CoT N.1 
+
+CoT N.M 
+
+DAG N.M 
+
+DAG N.1 
+
+Step 1  Step 2 
+
+Extract  Consensus 
+
+Reasoning 
+
+ANSWER 
+
+Merge 
+
+Nodes 
+
+and 
+
+Edges 
+
+Add 
+
+Weights 
+
+Ensemble 
+
+DAG 
+
+Step 5 Step 4 Step 3 Figure 1: Detailed pipeline. Step 1: Multiple LLMs sample reasoning traces for a query. Step 2: Each trace is decomposed into a DAG with nodes labeled Planning (P), Fact (F), Reasoning (Re), and Conclusion (C). Typed node labels let independently generated DAGs be aligned and merged step-by-step rather than compared as opaque prose. Step 3: Nodes are merged based on semantic similarity. Our hybrid ensembling strategy filters candidate node pairs by type (shown by color) and embedding similarity (threshold τ ′), then verifies surviving pairs with an LLM judge. Verified pairs merge into a single node representing the same reasoning step attested by multiple traces. The hybrid avoids both the false positives of similarity-only merging and the O(n2) cost of LLM-only merging. 
+
+Step 4: The ensemble nodes are weighted based on cross-trace attestation, under simple weighting (each trace casts a unit vote, so weights depend on raw attestation counts) or accuracy-weighted (each vote scaled by its source model’s held-out accuracy). Red edges depict defeaters, gray supporters. Edge numbers are attestation counts. Accuracy weighting (whole-number for clarity, fractional in practice) redistributes mass toward steps attested by stronger models. Step 5: The highest supported answer and its highest supported justification is extracted. The output preserves alternative reasoning paths and step-level support that a single LLM’s chain-of-thought lacks. 3.4 Weighted Ensemble of DAGs 
+
+We weight each merged node to amplify reason-ing trajectories attested across multiple traces and suppress hallucinated ones, treating each trace as casting a signed vote on every merged node. Let Supp (v), Def (v) ⊆ M denote the source traces that contributed supporter and defeater bun-dles to merged node v, where M is the full set of traces, and let wt be the per-trace weight. We define the positive and negative attestation masses      
+
+> α+(v) =
+> P
+> t∈Supp (v)wt
+> P
+> t∈Mwt
+> ,α−(v) =
+> P
+> t∈Def (v)wt
+> P
+> t∈Mwt
+> .
+> (3)
+
+so that α+(v), α −(v) ∈ [0 , 1] . Traces that do not mention v contribute to neither mass but inflate the denominator, thus reducing confidence. Node scores W (v) ∈ [0 , 1] are computed topo-logically (predecessors before successors) and com-bine the predecessor support with the node’s own support. The conjunctive strength of any bundle S
+
+is the weakest-link score over its members, 
+
+ϕ(S) = min  
+
+> u∈S
+
+W (u), (4) so a conjunction is as strong as its weakest member. The positive and negative aggregate signals are then assembled by gate-aware combination over the disjunctive supporting and defeating bundles:                  
+
+> Φ+(v) =
+> 
+> 1g(v) = ATOMIC
+> ϕ(S)g(v) = AND ,S+(v) = {S}
+> max S∈S +(v)ϕ(S)g(v) = OR
+> (5)
+> Φ−(v) =
+> 
+> 0S−(v) = ∅
+> ϕ(S)S−(v) = {S}
+> max S∈S −(v)ϕ(S)|S −(v)|>1
+> (6)
+
+The final node score combines these with the attes-tation masses:      
+
+> W(v) = max
+> 
+> 0,α+(v)·Φ+(v)−α−(v)·Φ−(v)
+> 
+> .(7)
+
+Simple Weighting. The baseline sets wt = 1 for all traces, treating consensus as a raw vote count. 
+
+Accuracy-Weighting. When per-model accuracies are available from a held-out test set, we replace uniform votes with model-quality priors: wt =
+
+W m(t) 
+
+> acc
+
+, where P 
+
+> m
+
+W m 
+
+> acc
+
+= 1 . Stronger models carry larger votes in both α+(v) and α−(v). With per-node weights that quantify the support to each node computed, the ensemble is parsed to select the highest-weighted conclusion and unfold its highest-weighted supporting reasoning, as described next. 
+
+3.5 Finding the Consensus 
+
+The consensus answer is the candidate conclusion whose answer node carries the highest weight: 
+
+c⋆ = arg max  
+
+> c
+
+W (c). (8) Ties are broken by the number of attesting traces. 
+
+Consensus Subgraph. Given c⋆, we recursively unfold a proof subgraph P(c⋆) rooted at c⋆ by pick-ing at each node the support set maximizing ϕ(S):• g(v) = ATOMIC : include v and terminate. • g(v) = AND with unique support set S: in-clude all members and expand each. • If g(v) = OR with support sets {S1, S 2, . . . }:select S⋆ = arg max S ϕ(S), include all mem-bers, and recursively expand each. The resulting P(c⋆) is the strongest supported com-plete justification tree for c⋆, with every conjunct required to support every intermediate step pre-served. We report it as the consensus reasoning. 
+
+To surface alternative reasoning chains, we enu-merate the top-k subgraphs for each candidate con-clusion by varying the support set at each O R node, scoring each subgraph by its total node weight: 
+
+Ψ( P) = X
+
+> v∈P
+
+W (v). (9) Alongside the consensus, we return for each con-clusion its top-k justifications and its net support 
+
+(total node weight across the union of its proof sub-graphs) exposing alternative reasoning chains and relative standing of competing conclusions. 
+
+3.6 Summary 
+
+Together, the five stages turn unstructured reason-ing from heterogeneous models into a single au-ditable artifact. Bundle-preserving merging keeps each trace’s logical structure intact, attestation-weighted scoring suppresses hallucinated steps without discarding them, and thus we expose the consensus conclusion, consensus reasoning and the alternatives that remain in contention. The next sec-tion evaluates whether these design choices yield measurable accuracy, explainability and diversity gains over majority-vote baselines. 4 Experimental Setup 
+
+Datasets. We evaluate on six benchmarks spanning four regimes: statutory interpretation, graduate-level science, narrative multi-hop reasoning, and first-order logic. For each, we pick 50 examples for a held-out split (used to estimate per-model accuracy priors) and an evaluation split (222, 148, 200, 206, 200, 153 samples), with a fixed random seed (42) for reproducibility. The entire pipeline runs on a single NVIDIA H200 GPU. 
+
+(1) SARA (Holzenberger et al., 2020) is a 272 ques-tion statutory reasoning benchmark over US federal tax law. It pairs a statute excerpt, a case scenario, and a hypothesis judged Entailed or Contradicted .
+
+(2) GPQA Diamond (Rein et al., 2023) is a 198 question graduate-level multiple-choice benchmark in biology, chemistry, and physics, testing general-ization to high-difficulty scientific reasoning. 
+
+(3–5) MuSR (Sprague et al., 2024) is a multi-step soft reasoning benchmark over synthetic narratives, with three domains we evaluate separately: Mur-der Mysteries (MuSR-MM -250), inferring suspect, motive, and opportunity from narrative cues; Ob-ject Placements (MuSR-OP -256), tracking belief states across a sequence of actions; Team Alloca-tion (MuSR-TA -250), assigning agents to tasks under capability, preference constraints. 
+
+(6) FOLIO (Han et al., 2024) is a 203 sample first-order logic entailment benchmark with natural-language premises, conclusions and three-way la-bels with an explicit “insufficient evidence” option. 
+
+Models. We sample CoT from four small instruction-tuned LLMs spanning distinct families and pretraining mixtures within a fixed parameter budget ( ≤12B): Qwen 2.5 7B Instruct (Qwen et al., 2025), Gemma 3 12B Instruct (Team et al., 2025), Llama 3.2 3B Instruct (Grattafiori et al., 2024), and Mistral 7B Instruct v0.3 (Jiang et al., 2023), each at temperature 0.6. For DAG extraction and LLM-based node merging we use Qwen 2.5 32B In-struct (Qwen et al., 2025) as a stronger structured extractor at temperature 0.3. Node similarity uses all-mpnet-base-v2 (Reimers and Gurevych, 2019), and the LLM judge in analysis is Qwen 3 32B (Yang et al., 2025a). All models are open-weight, for reproducibility without proprietary access. 
+
+Baselines. We compare against majority vote over the same four-model pool at a fixed 20-trace budget, isolating the contribution of structural aggregation: any difference reflects how traces are combined, not the underlying reasoners or sampling budget. 
+
+Evaluation. We evaluate along three axes. (1) Accuracy: The final answer parsed from the en-semble graph, compared against a majority-vote baseline for both many-model and single-model ensembles. (2) Explainability: The framework re-turns the most-supported subgraphs, the support level for each conclusion, and the alternative con-clusions reached. We additionally quantify if en-semble weights track reasoning quality using Qwen 3 32B as an LLM judge. (3) Diversity: We quali-tatively check if alternative subgraphs present dif-ferent solution perspectives. To motivate the use of multiple model families for obtaining diverse rea-soning chains, we conduct an experiment to see if multi-model pools give more semantically diverse correct-answer reasoning trajectories than single-model pools (Appendix C). 
+
+5 Experiments and Results 
+
+This section evaluates our framework. Sections 5.1 and 5.2 report accuracy for multi- and single-model ensembles against majority-vote baselines; Section 5.3 quantifies if ensemble weights track reasoning quality via LLM-judge rankings; Section 5.4 illus-trates graphs; Section 5.5 has human evaluation. 
+
+5.1 Heterogeneous Ensemble Accuracies 
+
+Table 1(a) reports our two weighting schemes against a matched-budget 4-model majority-vote baseline (20 chains) and single-model CoT. 
+
+Different models lead on different datasets.. 
+
+Strongest-to-weakest gaps within a dataset reach 25.2%, confirming no single model is uniformly best and motivating heterogeneous ensembling. 
+
+Accuracy-weighted ensembling beats majority vot-ing on every dataset. With the largest gain of 3.1% on MuSR-MM (59.6% vs. 56.5%). Simple weight-ing also beats majority vote on three datasets, indi-cating gains stem from structural aggregation rather than the accuracy prior alone, though the prior de-livers the additional boost for consistent wins. 
+
+The strongest single model often wins outright. As expected for ensembling, averaging in weaker rea-soners introduces noise structural aggregation may not filter. The ensemble’s value here is inspectabil-ity that the single best model can not provide. 
+
+5.2 Homogeneous Ensemble Accuracies 
+
+To isolate structural aggregation from cross-model diversity, we apply our framework to single-model traces using a weak reasoner and a stronger rea-soner, 20 chains each. Table 1(b,c) compares against self-consistency and single-chain CoT. Category Weighting / Baseline SARA GPQA-D MuSR-MM MuSR-OP MuSR-TA FOLIO                                                                                                                                                                                                                                                 
+
+> (a) Heterogeneous ensemble (4 models, 5 chains each = 20 chains total)
+> Ensemble (Ours) Simple 0.6225 ±0.0142 0.2770 ±0.0461 0.6040 ±0.0096 0.4835 ±0.0199 0.2860 ±0.0195 0.6118 ±0.0260 Accuracy-based 0.6387 ±0.0080 0.2784 ±0.0495 0.5960 ±0.0074 0.4922 ±0.0174 0.2890 ±0.0167 0.6405 ±0.0257
+> Baseline 4-model majority vote (20 chains) 0.6279 ±0.0158 0.2662 ±0.0421 0.5650 ±0.0071 0.4874 ±0.0184 0.2830 ±0.0057 0.6405 ±0.0122 Single-model CoT Gemma 3 12B 0.6322 ±0.0162 0.2478 ±0.0292 0.5500 ±0.0068 0.4650 ±0.0094 0.4150 ±0.0118 0.6688 ±0.0197
+> Llama 3.2 3B 0.4987 ±0.0323 0.2462 ±0.0408 0.5166 ±0.0050 0.4371 ±0.0130 0.3827 ±0.0089 0.4532 ±0.0130 Mistral 7B v0.3 0.5613 ±0.0126 0.2576 ±0.0352 0.6034 ±0.0088 0.4328 ±0.0038 0.2446 ±0.0056 0.4797 ±0.0122 Qwen 2.5 7B 0.7510 ±0.0207 0.3087 ±0.0462 0.5854 ±0.0114 0.5565 ±0.0115 0.3334 ±0.0103 0.6518 ±0.0119
+> (b) Homogeneous ensemble: Llama 3.2 3B (weak model, 20 chains)
+> Ensemble (Ours) Llama 3.2 3B 0.5838 ±0.0133 0.2406 ±0.0304 0.5250 ±0.0000 0.4524 ±0.0121 0.4510 ±0.0279 0.5386 ±0.0229 Baselines Self-consistency (20 chains) 0.5541 ±0.0139 0.2324 ±0.0237 0.5250 ±0.0000 0.4553 ±0.0159 0.4420 ±0.0346 0.5464 ±0.0136
+> Single-chain CoT 0.4987 ±0.0323 0.2462 ±0.0408 0.5166 ±0.0050 0.4371 ±0.0130 0.3827 ±0.0089 0.4532 ±0.0130
+> (c) Homogeneous ensemble: Qwen 2.5 32B (strong model, 20 chains)
+> Ensemble (Ours) Qwen 2.5 32B 0.7730 ±0.0075 0.3587 ±0.0244 0.6550 ±0.0137 0.5281 ±0.0100 0.5450 ±0.0061 0.8065 ±0.0199 Baselines Self-consistency (20 chains) 0.7730 ±0.0082 0.3540 ±0.0183 0.6610 ±0.0096 0.5252 ±0.0121 0.5460 ±0.0055 0.8078 ±0.0164
+> Single-chain CoT 0.7578 ±0.0016 0.3555 ±0.0028 0.6539 ±0.0048 0.5210 ±0.0025 0.5306 ±0.0023 0.7675 ±0.0069
+
+Table 1: Accuracy of our framework against matched-budget baselines across six benchmarks. (a) Heterogeneous ensemble over four models, comparing our Simple (wt = 1 ) and Accuracy-based (wt = source model’s held-out accuracy) weighting schemes to a 4-model majority-vote baseline and the four single-model CoT accuracies. (b, c) 
+
+Homogeneous ensemble applied to a single weak model (Llama 3.2 3B) and a single strong model (Qwen 2.5 32B), each compared to self-consistency and single-chain CoT. The consensus answer is the answer node that has the highest aggregated weight. Values are mean ± SD over 5 seeds. Bold / underline = best / second-best per column in each block. Takeaway: on mixed models, our accuracy-weighted framework exceeds the majority-vote baseline on every dataset; on a single model, our framework exceeds single-chain CoT and matches or exceeds self-consistency. 
+
+Weak model: structural aggregation recovers gains. On Llama 3.2 3B, our method exceeds single-chain CoT (max +8 .5% on SARA and FO-LIO), and matches / exceeds self-consistency (max 
+
++3 .0% on SARA). 2 When individual traces are unreliable, structural aggregation extracts a more trustworthy verdict from cross-trace consensus and exposes the supporting graph that voting discards. 
+
+Strong model: ensemble matches self-consistency and exceeds single-chain CoT. On Qwen 2.5 32B, our framework is within ±0.6% of self-consistency on all six benchmarks and matches or exceeds single-chain CoT on every dataset, (max +3 .9% on FOLIO). A strong reasoner converges to the right answer in most chains, so any aggregation recovers it. The framework’s contribution at this scale is inspectability, that self-consistency cannot provide. 
+
+Benefits hold without cross-model diversity. 
+
+Our framework recovers self-consistency’s accu-racy while additionally producing a structured, weighted, auditable graph—demonstrating that its value is not contingent on heterogeneous pools. 
+
+5.3 Evaluation of Consensus Graph Quality 
+
+Ensemble weights correlate positively with LLM-judge rankings of reasoning quality across all datasets and weighting schemes, indicating that the weight signal reflects genuine reasoning quality. 
+
+> 2
+
+Llama 3.2 3B exhibits near-deterministic majority voting on MuSR-MM, making accuracy invariant across five seeds. 
+
+Expt A: Subgraph ranking. For each question, we sampled 5 subgraphs from the ensemble, lin-earized each into a step-by-step chain, emitting nodes in topological order, and asked Qwen3-32B to rank them by reasoning quality (5 shuffled order-ings per question, averaged to cancel presentation-order bias). Table 2(a) reports per-question Spear-man correlation between judge and weight rank-ings. Correlation is moderate: weights and LLM-judge measure overlapping but not identical notions of justification quality, and the judge is imperfect. 
+
+Expt B: Pairwise win rate. We sampled a sub-graph leading to the majority-vote answer, length-matched it to the consensus subgraph to remove length bias, linearized both, and asked Qwen3-32B which chain provided better reasoning (each pair evaluated twice with swapped A/B order). Ta-ble 2(b) reports the per-question win rate of the con-sensus subgraph. The consensus trace is preferred over 50% of the time, showing that the weighting procedure captures a meaningful signal for reason-ing quality beyond mere plausible justification. 
+
+5.4 Qualitative Analysis 
+
+To support qualitative explainability evaluation, our framework returns three components per query: the top-k most-supported reasoning subgraphs, the support level for each conclusion, and the alterna-tive conclusions reached by the models. Examples are provided in Appendix B, where each shows a Weighting SARA GPQA-D MuSR-MM MuSR-OP MuSR-TA FOLIO                                                                              
+
+> (a) Spearman ρbetween judge ranking and ensemble-weight ranking ( Ψ( P) = P
+> vW(v))
+> Simple 0.490 ±0.030 0.353 ±0.034 0.507 ±0.029 0.451 ±0.009 0.392 ±0.033 0.333 ±0.021
+> Accuracy 0.503 ±0.023 0.383 ±0.034 0.513 ±0.024 0.449 ±0.031 0.449 ±0.020 0.298 ±0.024
+> (b) Win rate of consensus subgraph vs. length-matched random alternative (%)
+> Simple 60.0 ±2.4 54.6 ±3.9 60.3 ±4.2 64.3 ±3.2 60.3 ±4.9 46.4 ±2.6 Accuracy 61.6 ±4.0 54.4 ±3.8 59.9 ±3.6 65.4 ±3.6 61.2 ±3.8 52.6 ±4.3
+
+Table 2: Two complementary measures of consensus-subgraph quality, judged by Qwen3-32B. (a) Per-question Spearman correlation between judge-ranked and weight-ranked sampled subgraphs ( n = 5 per question, 5 shuffled orderings averaged). (b) Per-question win rate of the consensus subgraph against a length-matched random alternative trace leading to the majority-vote answer (ties excluded, ordering swapped). Values are mean ± SD across 5 seeds. Bold marks the higher value per column in each block. Takeaway: ensemble weights correlate positively with judge-rated reasoning quality, and the consensus subgraph is preferred over a random alternative. FOLIO is the only exception under simple weighting, and accuracy weighting recovers preference to 52.6%. 
+
+consensus graph alongside an alternative subgraph (sampled from the same ensemble DAG) and a random single-trace CoT graph that reached the correct answer. Across these examples, the consen-sus graph consistently provides the most detailed and well-supported reasoning, the alternative graph offers a different justification for the same conclu-sion, and the single CoT is at times less thorough. 
+
+5.5 Human Evaluation 
+
+We ran a small human evaluation (Appendix D) to complement our LLM-as-a-Judge results. Ten annotators were each shown 15 correct-answer graph triplets (consensus subgraph, alternative sub-graph, single-CoT graph) randomly sampled from MuSR, and asked to pick the graph that best jus-tified the answer. The consensus, single-CoT, al-ternative, and none options were chosen 41.3%, 33.3%, 20.7%, and 4.7% of the time, respectively, supporting our LLM-judge preferring the consen-sus reasoning over alternatives. The non-trivial alternative-graph share (20.7%) also suggests that surfacing alternative reasoning chains is useful in its own right. 
+
+6 Discussion 
+
+Our results highlight three properties of structural ensembling. On accuracy , edges attested by only one trace contribute little to the consensus score, so a single model’s spurious thought cannot dom-inate the aggregate. This is what helps the frame-work beat majority voting on every dataset and recover gains over self-consistency on the single-weak-model. On interpretability , the output is a weighted graph rather than a free-form ratio-nale, so users can view the consensus reasoning, different possible conclusions, and different jus-tifications from diverse perspectives that support any conclusion—a property no answer-level base-line provides. On diversity , preserving competing conclusions makes query produce multiple sup-ported reasoning paths, and heterogeneous ensem-bles widen this due to distinct pretraining distribu-tions. This can also be observed qualitatively. These properties suggest a natural extension. In open-ended settings such as argument generation and creative writing, the goal is not to converge on a single answer but to surface a diverse set of well-supported alternatives. Our framework’s ex-isting outputs—competing conclusions with their attested support graphs—map directly onto this use case: rather than report the highest-weighted an-swer alone, the system can present the top-k alter-native conclusions and let the user choose among reasoning paths grounded in different models’ per-spectives. This shifts the role of consensus from selection to curation, and we view it as the most promising direction for follow-up work. 
+
+7 Conclusion 
+
+We introduced a framework for ensembling the reasoning structure—not just the answers—of mul-tiple LLMs, by extracting per-trace DAGs, merging them with a logic-preserving operator, and weight-ing each node by cross-trace attestation. Across six benchmarks, our accuracy-weighted ensemble out-performs matched-budget majority voting on every dataset; applied to a single model, it matches self-consistency. Ensemble weights track LLM-judge rankings of reasoning quality, and consensus sub-graphs are consistently preferred over alternatives leading to the majority-vote answer. The result-ing weighted Reasoning Consensus graph is au-ditable at the level of individual reasoning steps, ex-poses alternative conclusions that competing traces reached, alternative justifications for each conclu-sion, and naturally extends to open-ended settings where curating diverse perspectives matters. 8 Limitations 
+
+Our pipeline relies on an extractor model faith-fully converting free-form chains of thought into typed, bundle-structured DAGs. Extraction errors would propagate through aggregation. To mitigate this, we use Qwen 2.5 32B, a substantially stronger model than the trace generators, at a low decod-ing temperature (0.3) for deterministic structured output, and we discard any trace whose extraction fails validation (acyclicity, valid node types, valid bundle references). Cross-trace attestation provides a second filter: a hallucinated step appearing in a single trace receives low weight, so even when in-dividual extractions are imperfect, the aggregated graph remains dominated by steps that multiple independent traces converged on. We use Qwen 3 32B as a judge, and LLM judges exhibit known biases around position, length, and verbosity. We control for the most common ones explicitly: every pairwise comparison is evaluated twice with swapped A/B order, every ranking ex-periment is repeated five times per question with shuffled presentations and averaged, and alterna-tive subgraphs are length-matched to the consensus subgraph to remove length confounds. To further verify the judge, we ran a human evaluation on ran-domly sampled graph triplets on the MuSR dataset. Each query requires sampling 20 chains of thought, extracting a DAG per chain, computing pairwise embeddings, and running the LLM judge for node merging — more compute than single-chain CoT or self-consistency. We deliberately tar-get the high-stakes setting (legal, scientific) where the cost of an unsupported answer outweighs the compute cost of our framework, and where users cannot rely on closed APIs. To keep the framework optimized, we restrict all trace-generator models to ≤ 12 B parameters, use a permissive embedding threshold ( τ ′ = 0 .55 ) to prune most node pairs before the LLM judge sees them, and run the entire pipeline on a single NVIDIA H200 GPU. 
+
+9 AI Involvement Disclosure 
+
+AI assistance was limited to language polishing for grammar and readability. The conception, method-ology, experiments, analyses, and interpretations were conducted fully by the authors. 
+
+References 
+
+Maciej Besta, Nils Blach, Ales Kubicek, Robert Ger-stenberger, Michal Podstawski, Lukas Gianinazzi, Joanna Gajda, Tomasz Lehmann, Hubert Niewiadom-ski, Piotr Nyczyk, and Torsten Hoefler. 2024. Graph of thoughts: Solving elaborate problems with large language models. Proceedings of the AAAI Confer-ence on Artificial Intelligence , 38(16):17682–17690. Justin Chih-Yao Chen, Swarnadeep Saha, and Mohit Bansal. 2024. Reconcile: Round-table conference improves reasoning via consensus among diverse llms. Preprint , arXiv:2309.13007. Matthew Dahl, Varun Magesh, Mirac Suzgun, and Daniel E Ho. 2024. Large legal fictions: Profiling le-gal hallucinations in large language models. Journal of Legal Analysis , 16(1):64–93. Aaron Grattafiori, Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey, Abhishek Kadian, Ahmad Al-Dahle, Aiesha Letman, Akhil Mathur, Alan Schel-ten, Alex Vaughan, Amy Yang, Angela Fan, Anirudh Goyal, Anthony Hartshorn, Aobo Yang, Archi Mi-tra, Archie Sravankumar, Artem Korenev, Arthur Hinsvark, and 542 others. 2024. The llama 3 herd of models. Preprint , arXiv:2407.21783. Daya Guo, Dejian Yang, Haowei Zhang, Junxiao Song, Peiyi Wang, Qihao Zhu, Runxin Xu, Ruoyu Zhang, Shirong Ma, Xiao Bi, Xiaokang Zhang, Xingkai Yu, Yu Wu, Z. F. Wu, Zhibin Gou, Zhihong Shao, Zhu-oshu Li, Ziyi Gao, Aixin Liu, and 175 others. 2025. Deepseek-r1 incentivizes reasoning in llms through reinforcement learning. Nature , 645(8081):633–638. Simeng Han, Hailey Schoelkopf, Yilun Zhao, Zhent-ing Qi, Martin Riddell, Wenfei Zhou, James Coady, David Peng, Yujie Qiao, Luke Benson, Lucy Sun, Alex Wardle-Solano, Hannah Szabo, Ekaterina Zubova, Matthew Burtell, Jonathan Fan, Yixin Liu, Brian Wong, Malcolm Sailor, and 16 others. 2024. Folio: Natural language reasoning with first-order logic. Preprint , arXiv:2209.00840. Nils Holzenberger, Andrew Blair-Stanek, and Ben-jamin Van Durme. 2020. A dataset for statutory reasoning in tax law entailment and question answer-ing. Preprint , arXiv:2005.05257. Jinwu Hu, Yufeng Wang, Shuhai Zhang, Kai Zhou, Guo-hao Chen, Yu Hu, Bin Xiao, and Mingkui Tan. 2025. Efficient dynamic ensembling for multiple llm ex-perts. Preprint , arXiv:2412.07448. Albert Q. Jiang, Alexandre Sablayrolles, Arthur Men-sch, Chris Bamford, Devendra Singh Chaplot, Diego de las Casas, Florian Bressand, Gianna Lengyel, Guil-laume Lample, Lucile Saulnier, Lélio Renard Lavaud, Marie-Anne Lachaux, Pierre Stock, Teven Le Scao, Thibaut Lavril, Thomas Wang, Timothée Lacroix, and William El Sayed. 2023. Mistral 7b. Preprint ,arXiv:2310.06825. Youngjin Jin, Hanna Kim, Kwanwoo Kim, Chanhee Lee, and Seungwon Shin. 2026. Argora: Orchestrated argumentation for causally grounded llm reasoning and decision making. Preprint , arXiv:2601.21533. Jinu Lee, Sagnik Mukherjee, Dilek Hakkani-Tur, and Julia Hockenmaier. 2025. Reasoningflow: Seman-tic structure of complex reasoning traces. Preprint ,arXiv:2506.02532. OpenAI, :, Aaron Jaech, Adam Kalai, Adam Lerer, Adam Richardson, Ahmed El-Kishky, Aiden Low, Alec Helyar, Aleksander Madry, Alex Beutel, Alex Carney, Alex Iftimie, Alex Karpenko, Alex Tachard Passos, Alexander Neitz, Alexander Prokofiev, Alexander Wei, Allison Tam, and 244 others. 2024. Openai o1 system card. Preprint , arXiv:2412.16720. Sungjin Park, Xiao Liu, Yeyun Gong, and Edward Choi. 2024. Ensembling large language models with pro-cess reward-guided tree search for better complex reasoning. Preprint , arXiv:2412.15797. Qwen, :, An Yang, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chengyuan Li, Dayiheng Liu, Fei Huang, Haoran Wei, Huan Lin, Jian Yang, Jianhong Tu, Jianwei Zhang, Jianxin Yang, Jiaxi Yang, Jingren Zhou, and 25 oth-ers. 2025. Qwen2.5 technical report. Preprint ,arXiv:2412.15115. Nils Reimers and Iryna Gurevych. 2019. Sentence-bert: Sentence embeddings using siamese bert-networks. In Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing . Associa-tion for Computational Linguistics. David Rein, Betty Li Hou, Asa Cooper Stickland, Jackson Petty, Richard Yuanzhe Pang, Julien Di-rani, Julian Michael, and Samuel R. Bowman. 2023. Gpqa: A graduate-level google-proof q&a bench-mark. Preprint , arXiv:2311.12022. Zayne Sprague, Xi Ye, Kaj Bostrom, Swarat Chaudhuri, and Greg Durrett. 2024. Musr: Testing the limits of chain-of-thought with multistep soft reasoning. 
+
+Preprint , arXiv:2310.16049. Gemma Team, Aishwarya Kamath, Johan Ferret, Shreya Pathak, Nino Vieillard, Ramona Merhej, Sarah Perrin, Tatiana Matejovicova, Alexandre Ramé, Morgane Rivière, Louis Rouillard, Thomas Mesnard, Geoffrey Cideron, Jean bastien Grill, Sabela Ramos, Edouard Yvinec, Michelle Casbon, Etienne Pot, Ivo Penchev, and 197 others. 2025. Gemma 3 technical report. 
+
+Preprint , arXiv:2503.19786. Junlin Wang, Jue Wang, Ben Athiwaratkun, Ce Zhang, and James Zou. 2024. Mixture-of-agents en-hances large language model capabilities. Preprint ,arXiv:2406.04692. Xuezhi Wang, Jason Wei, Dale Schuurmans, Quoc Le, Ed Chi, Sharan Narang, Aakanksha Chowdhery, and Denny Zhou. 2023. Self-consistency improves chain of thought reasoning in language models. Preprint ,arXiv:2203.11171. Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Brian Ichter, Fei Xia, Ed Chi, Quoc Le, and Denny Zhou. 2023. Chain-of-thought prompting elic-its reasoning in large language models. Preprint ,arXiv:2201.11903. Yangyifan Xu, Shuo Ren, and Jiajun Zhang. 2025. Col-laborative beam search: Enhancing LLM reason-ing via collective consensus. In Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing , pages 11398–11410, Suzhou, China. Association for Computational Linguistics. An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao, Chengen Huang, Chenxu Lv, Chujie Zheng, Day-iheng Liu, Fan Zhou, Fei Huang, Feng Hu, Hao Ge, Haoran Wei, Huan Lin, Jialong Tang, and 9 others. 2025a. Qwen3 technical report. Preprint ,arXiv:2505.09388. Sen Yang, Yafu Li, Wai Lam, and Yu Cheng. 2025b. Multi-llm collaborative search for complex problem solving. Preprint , arXiv:2502.18873. Xia Yang, Xuanyi Zhang, Hao Hu, and Feng Ji. 2026. Beyond accuracy: Evaluating strategy di-versity in llm mathematical reasoning. Preprint ,arXiv:2605.09292. Shunyu Yao, Dian Yu, Jeffrey Zhao, Izhak Shafran, Thomas L. Griffiths, Yuan Cao, and Karthik Narasimhan. 2023. Tree of thoughts: Deliber-ate problem solving with large language models. 
+
+Preprint , arXiv:2305.10601. Xinyue Zeng, Junhong Lin, Yujun Yan, Feng Guo, Liang Shi, Jun Wu, and Dawei Zhou. 2026. Halluguard: Demystifying data-driven and reasoning-driven hallucinations in llms. Preprint ,arXiv:2601.18753. 
+
+A Prompts 
+
+The prompts used in our pipeline are: 
+
+A.1 Reasoning Trace Extraction A.1.1 Shared System Prompt 
+
+> You are a careful reasoner. For every question, you must: ,→
+> 1. Think step by step inside a single <reasoning>...</reasoning> block. ,→
+> 2. Put ONLY the final answer (no explanation) inside a <answer>...</answer> tag. ,→
+> Do not write anything outside these two tags. Do not abbreviate your reasoning. ,→
+
+A.1.2 SARA (Statutory Reasoning) 
+
+> You are reasoning about US federal tax law. STATUTE: {statute} CASE SCENARIO: {case}
+
+HYPOTHESIS: {question} TASK: Decide whether the statute, applied to the case scenario, ,→
+
+ENTAILS or CONTRADICTS the hypothesis. Walk through: ,→
+
+(a) which statutory provisions apply to the case, (b) what facts in the scenario trigger or fail to trigger those provisions, ,→
+
+(c) what the provisions imply about the hypothesis. ,→
+
+Output exactly: <reasoning>your step-by-step legal analysis</reasoning> ,→
+
+<answer>ENTAILED</answer> or <answer>CONTRADICTED</answer> ,→
+
+A.1.3 GPQA Diamond (Graduate-Level Science) 
+
+You are answering a graduate-level science question. Exactly one option is correct. ,→
+
+QUESTION: {question} OPTIONS: A. {option_a} B. {option_b} C. {option_c} D. {option_d} TASK: Reason carefully through the underlying science. Walk through: ,→
+
+(a) what principles or equations the question is testing, ,→
+
+(b) how to apply them to the specifics of this problem, ,→
+
+(c) why one option follows and the others do not. Output exactly: <reasoning>your step-by-step scientific reasoning</reasoning> ,→
+
+<answer>A</answer> (or B, C, or D -- a single capital letter only) ,→
+
+A.1.4 MuSR (Narrative Multi-Hop Reasoning) 
+
+You are reasoning about a narrative scenario. Read the narrative carefully, then choose the single correct answer. 
+
+> ,→
+> ,→
+
+NARRATIVE: {narrative} QUESTION: {question} OPTIONS: A. {choice_a} B. {choice_b} ... (up to G) TASK: Reason carefully through the evidence in the narrative. Walk through: ,→
+
+(a) what facts the narrative establishes, (b) how those facts bear on each candidate option, ,→
+
+(c) why one option is best supported and the others are not. ,→
+
+Output exactly: <reasoning>your step-by-step reasoning over the narrative</reasoning> ,→
+
+<answer>A</answer> (or B, C, ... up to {last_letter} -- a single capital letter only) 
+
+> ,→
+> ,→
+
+A.1.5 FOLIO (First-Order Logic Entailment) 
+
+You are reasoning about first-order logical entailment in natural language. ,→
+
+PREMISES: {premises} CONCLUSION: {conclusion} TASK: Decide whether the conclusion is logically entailed by the premises. Use these labels: ,→
+
+TRUE -- the conclusion follows necessarily from the premises ,→
+
+FALSE -- the negation of the conclusion follows from the premises ,→
+
+UNCERTAIN -- neither the conclusion nor its negation follows ,→
+
+Walk through: (a) what each premise asserts, (b) what chain of inferences, if any, the conclusion would require, ,→
+
+(c) whether the premises are sufficient to establish or refute it. ,→
+
+Output exactly: <reasoning>your step-by-step logical analysis</reasoning> ,→
+
+<answer>TRUE</answer> or <answer>FALSE</answer> or <answer>UNCERTAIN</answer> ,→
+
+A.2 DAG Extraction A.2.1 Shared System Prompt 
+
+You are a structured-reasoning extractor. Given a reasoning trace and ,→
+
+its final answer, you produce a Directed Acyclic Graph (DAG) in JSON ,→
+
+that captures the trace 's logical structure. You output ONLY a single ,→
+
+JSON object inside <dag>...</dag> tags. No prose. No markdown fences. ,→
+
+A.2.2 DAG Extraction User Prompt 
+
+TASK: Extract a Type-B reasoning DAG from this trace. ,→
+
+NODE TYPES (use exactly these strings): - "Planning": meta-reasoning, problem decomposition, deciding what to check ,→
+
+- "Fact": factual statements drawn from the question/statute/scenario ,→
+
+- "Reasoning": intermediate inferential steps linking facts to outcome ,→
+
+- "Conclusion": the final determination REQUIRED: the DAG must contain exactly ONE node of type "Conclusion", whose ,→
+
+`text ` expresses the final answer below (paraphrase it however the trace did, ,→
+
+but it must be the same verdict). All other nodes must transitively support ,→
+
+this Conclusion. BUNDLE STRUCTURE: each node has - "id": unique short string id (e.g. "p1", "f1", "r1", "c1") ,→
+
+- "type": one of the four node types above - "text": short natural-language description (one sentence) ,→
+
+- "support": list of bundles. Each bundle is a list of node ids that ,→
+
+JOINTLY (conjunctive AND) justify this node. Different ,→
+
+bundles in the list are alternative (disjunctive OR) 
+
+> ,→
+> ,→
+
+independent justifications. - "defeats": list of bundles whose joint truth would SUPPRESS this node. ,→
+
+Use [] if the trace mentions no counter-considerations. ,→
+
+Do NOT invent defeaters. RULES: - Facts may have empty support (they are atomic premises from the question). ,→
+
+- Planning/Reasoning/Conclusion nodes MUST have >=1 support bundle. ,→
+
+- Every id referenced in a bundle must exist as a node in the graph. ,→
+
+- The graph must be acyclic. - Do NOT add information the trace does not contain. ,→
+
+----------------------------------------QUESTION CONTEXT: {question_blob} FINAL ANSWER (must be the Conclusion node 'sverdict): ,→
+
+{final_answer} REASONING TRACE: {reasoning} ----------------------------------------Output ONLY this: <dag>{"nodes": [ {"id": "...", "type": "Planning|Fact|Reasoning|Conclusion", "text": "...", 
+
+> ,→
+> ,→
+
+"support": [["id1","id2"], ["id3"]], "defeats": []} ,→
+
+]}</dag> 
+
+A.3 Node Merging A.3.1 Merge Judge System Prompt 
+
+You are a strict semantic equivalence judge for reasoning-graph nodes. ,→
+
+Two nodes should merge ONLY IF they express the SAME underlying claim, ,→
+
+fact, or inference, regardless of wording. Lexical overlap is NOT enough. ,→
+
+If they cite different statutes, parties, events, rules, or draw ,→
+
+different inferences, they are DIFFERENT. Answer with a single token: YES or NO. 
+
+A.3.2 Merge Judge User Prompt 
+
+Decide whether these two reasoning-graph nodes should be merged into one. ,→
+
+Both are of type "{ntype}" (already verified to match). ,→
+
+QUESTION CONTEXT (helps interpret references like "the hypothesis"): ,→
+
+{question_blob} NODE A: {text_a} NODE B: {text_b} Should A and B be merged because they assert the SAME underlying ,→
+
+claim / fact / inference? Reply with exactly one token: YES or NO. 
+
+A.4 LLM-as-a-Judge A.4.1 Ranking Judge System Prompt 
+
+You are a strict evaluator of reasoning quality. You are given several ,→
+
+candidate reasoning chains that all argue toward the SAME final answer. ,→
+
+Rank them by the QUALITY of their reasoning and justification: are the ,→
+
+steps well-grounded in facts, are the inferences logically sound, are ,→
+
+there gaps, leaps, or irrelevant steps. Do NOT reward a chain for ,→
+
+reaching the answer -- they all reach the same answer. A chain can reach ,→
+
+a correct answer through weak or wrong reasoning; rank that chain low. ,→
+
+The number of steps does NOT matter; do not prefer a chain merely because it is longer. ,→
+
+A.4.2 Ranking Judge User Prompt 
+
+You are given {n} candidate reasoning chains. They ALL conclude the ,→
+
+same final answer. Rank them from BEST to WORST reasoning quality. ,→
+
+QUESTION CONTEXT: {question_blob} FINAL ANSWER (every chain reaches this -- it is NOT what you are judging): ,→
+
+{final_answer} {chains_block} Rank all {n} chains from best reasoning to worst. Output ONLY the ranking as ,→
+
+chain numbers separated by '>', best first. For example: 2 > 1 > 3 ,→
+
+Do not output anything else. Consensus graph  Alternative graph  CoT graph Figure 2: Three reasoning graphs reaching the same conclusion (Answer A) for a MuSR Murder Mysteries question. 
+
+Consensus graph (left): the highest-Ψ proof subgraph of the consensus answer, aggregating attested reasoning across the heterogeneous ensemble. Alternative graph (middle): a different proof subgraph for the same conclusion, sampled from the same ensemble DAG by varying the support set at O R nodes. Single CoT graph (right): a random per-trace DAG from one model whose chain reached the same answer. The consensus graph integrates evidence from multiple traces; the alternative offers a substantively different justification (eliminating Jose’s guilt vs. establishing Bella’s guilt); and the single CoT depends on fewer supporting facts. 
+
+A.4.3 Pairwise Judge System Prompt 
+
+You are a strict evaluator of reasoning quality. You are given two ,→
+
+candidate reasoning chains, each arguing for a final answer to the same ,→
+
+question. Decide which chain is the better reasoning and justification: ,→
+
+better-grounded steps, sounder inferences, fewer gaps or irrelevant ,→
+
+leaps. Chain LENGTH IS IRRELEVANT: a longer chain with more steps is NOT ,→
+
+automatically better, and a shorter chain is NOT automatically worse. ,→
+
+Do not reward verbosity. Judge only the soundness and grounding of the ,→
+
+reasoning, not how many steps it has. Answer with a single token: A or B. 
+
+A.4.4 Pairwise Judge User Prompt 
+
+Two candidate reasoning chains each argue for an answer to the same ,→
+
+question. Decide which chain is the better reasoning and justification. ,→
+
+QUESTION CONTEXT: {question_blob} --- CHAIN A (concludes: {answer_a}) ---{chain_a} --- CHAIN B (concludes: {answer_b}) ---{chain_b} Which chain reasons better -- better-grounded steps, sounder inferences, ,→
+
+fewer gaps or irrelevant leaps? The number of steps does NOT matter; do not ,→
+
+prefer a chain merely because it is longer. Reply with exactly one token: ,→
+
+A or B. 
+
+B Visualization 
+
+Warning: This appendix contains examples from MuSR-Murder Mystery subset describing hypothet-ical murder-related scenarios. 
+
+Figure 2 depicts an example of consensus, al-ternative and CoT graphs from MuSR-MM that reach the same correct answer. We can observe that the alternative graph solved the murder mystery by eliminating Jose guilty while the consensus graph solves it by asserting Bella’s guilt. This shows us the diverse perspectives taken to solve the same problem by two different graphs extracted from our ensemble DAG. The CoT graph is less detailed and does not take into account various facts that the consensus graph does. Figure 3 also depicts an example of consensus, alternative and CoT graphs from MuSR-MM that reach the same correct answer. We can observe that the consensus graph reveals much more intricate reasoning as compared to the alternative or CoT graphs, which is beneficial for users audits. Figure 4 compares a consensus graph with an alternative graph from the MUSR-OP dataset that reach different answers. The alternative graph ar-gues that since tools are usually in a tool shed, they should be searched for in the shed first. The con-sensus graph argues that since Emma had moved the tools to the backyard, she should look there first. Surfacing multiple reasoning graphs and con-clusions allows the users to audit them and decide which answer and justification they agree with. Consensus graph  Alternative graph  CoT graph Figure 3: Three reasoning graphs reaching the same conclusion (Answer A) for a MuSR Murder Mysteries question. 
+
+Consensus graph (left): the highest-Ψ proof subgraph of the consensus answer, aggregating attested reasoning across the heterogeneous ensemble. Alternative graph (middle): a different proof subgraph for the same conclusion, sampled from the same ensemble DAG by varying the support set at O R nodes. Single CoT graph (right): a random per-trace DAG from one model whose chain reached the same answer. The consensus graph integrates evidence from multiple traces and we can observe here that both the alternative graph and CoT graph show less intricate reasoning when compared to the highest weighted consensus graph. Consensus graph  Alternative 
+
+> conclusion graph
+
+Figure 4: Three reasoning graphs reaching the same conclusion (Answer A) for a MuSR Object Placement question. Consensus graph (left): the highest-Ψ proof subgraph of the consensus answer, aggregating attested reasoning across the heterogeneous ensemble. Alterna-tive conclusion graph (middle): a proof subgraph for a different conclusion, sampled from the same ensemble DAG. The consensus graph integrates evidence from multiple traces; the alternative conclusion graph offers a substantively different reasoning and conclusion (tools are usually in a tool shed so search there first vs. they were moved to the backyard so search there first). 
+
+C Single vs. multi-model diversity 
+
+We use multiple model families in our ensemble to obtain diverse reasoning perspectives that reach the correct answer. To motivate this and verify that heterogeneous ensembles produce more diverse successful trajectories, we sampled eight reason-ing traces (for SARA and GPQA-D) either entirely from one model or in a mixed setting with two traces per model (Qwen 2.5 7B, Gemma 3 12B,                                 
+
+> Condition Diversity Correct Traces Qwen-only (8) 0.111 ±0.056 4.893 ±3.252
+> Gemma-only (8) 0.081 ±0.050 4.317 ±3.575
+> Llama-only (8) 0.149 ±0.070 3.654 ±2.675
+> Mistral-only (8) 0.146 ±0.071 4.102 ±3.472
+> Mixed (2 each) 0.164 ±0.064 4.300 ±2.998
+
+Table 3: Semantic diversity of correct reasoning traces generated by individual model families and a heteroge-neous ensemble. Diversity is measured as mean pair-wise 1 − cosine similarity between trace embeddings. Mixed-model setting achieves highest diversity, indicat-ing a broader range of successful reasoning strategies. 
+
+Llama 3.2 3B, Mistral 7B v0.3). We retained only traces reaching the correct final answer, embed-ded them with all-MiniLM-L6-v2 (Reimers and Gurevych, 2019), and computed pairwise diversity as 1 − cosine similarity . Table 3 reports the mean and standard deviation of diversity, along with the average number of correct traces per question. The mixed-model setting achieves the highest diversity, supporting the claim that combining heterogeneous models yields a broader variety of successful rea-soning paths than any single model. 
+
+D Human annotation details 
+
+Annotators were students recruited on a volunteer basis. Instruction: You are provided three reason-ing graphs that lead to an answer, select the one that you think justifies the answer in the most log-ical, correct, coherent way. If none justify the an-swer well, you can respond with "none". This will be used for research. Warning: contains examples describing hypothetical murder-related scenarios.

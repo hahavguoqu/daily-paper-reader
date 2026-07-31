@@ -1,0 +1,253 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-07-31T20:53:28.229164+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 2,
+    "deep_cap": 6,
+    "deep_selected": 2,
+    "quick_candidates": 4,
+    "quick_skim_target": 11,
+    "quick_selected": 4
+  },
+  "deep_dive": [
+    {
+      "id": "2607.22949v1",
+      "source": "arxiv",
+      "title": "Beyond Exact Match: How Evaluation Methodology Dominates Model Choice in LLM-Based Product Attribute Extraction",
+      "abstract": "Large language models (LLMs) have become a default choice for structured product attribute extraction in e-commerce pipelines, with practitioners reporting widely varying performance across models, datasets, and prompting strategies. This paper presents a controlled empirical study comparing four prompting strategies -- zero-shot, few-shot, schema-guided, and definition-augmented -- across two production-grade LLMs (GPT-4o-mini and Gemini 2.5 Flash) on the MAVE benchmark. We evaluate 6,400 attribute-level predictions using both exact and fuzzy string matching, and conduct a rigorous noise audit of the ground truth labels. We formally decompose F1 variance across four experimental factors and find that evaluation methodology produces variance approximately 23 times larger than model choice and 5 times larger than prompting strategy choice. We further establish that the MAVE benchmark exhibits a 23.2% ground truth noise rate against modern LLM outputs. Paired permutation tests (B=10,000) confirm that the inter-protocol F1 gap is highly significant (p<0.0001) and Cohen's kappa of 0.769 between protocols indicates substantial agreement. We conclude that for production attribute extraction pipelines, evaluation methodology and data quality dominate the impact of model selection and prompt engineering.",
+      "authors": [
+        "Ayush Dwivedi",
+        "Ashvi Soni"
+      ],
+      "primary_category": "cs.IR",
+      "categories": [
+        "cs.IR"
+      ],
+      "published": "2026-07-24T23:25:16+00:00",
+      "link": "https://arxiv.org/pdf/2607.22949v1",
+      "tags": [
+        "keyword:vlm-cot",
+        "query:vlm-cot"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "Evaluates production-grade big tech LLMs GPT-4o-mini and Gemini 2.5 Flash",
+      "llm_evidence_cn": "评估大科技公司生产级大模型GPT-4o-mini与Gemini 2.5 Flash",
+      "llm_evidence": "评估大科技公司生产级大模型GPT-4o-mini与Gemini 2.5 Flash",
+      "canonical_evidence": "评估大科技公司生产级大模型GPT-4o-mini与Gemini 2.5 Flash",
+      "llm_tldr_en": "A controlled study comparing prompting strategies across GPT-4o-mini and Gemini 2.5 Flash on MAVE, decomposing F1 variance to show evaluation methodology, not just model, drives attribute extraction choices.",
+      "llm_tldr_cn": "电商商品属性抽取中，不同大模型和提示策略的效果众说纷纭。本文基于MAVE基准对GPT-4o-mini与Gemini 2.5 Flash进行受控实验，比较零样本、少样本、模式引导和定义增强四种提示策略，并采用精确与模糊匹配评估6400个预测。结果显示评估方法对F1方差有显著贡献，直接影响模型选择结论。",
+      "llm_tldr": "电商商品属性抽取中，不同大模型和提示策略的效果众说纷纭。本文基于MAVE基准对GPT-4o-mini与Gemini 2.5 Flash进行受控实验，比较零样本、少样本、模式引导和定义增强四种提示策略，并采用精确与模糊匹配评估6400个预测。结果显示评估方法对F1方差有显著贡献，直接影响模型选择结论。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "large model by big tech companies",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.27783v1",
+      "source": "arxiv",
+      "title": "Reasoning Consensus: Structural Ensembling of LLM Reasoning via Weighted DAG Aggregation",
+      "abstract": "Large Language Models (LLMs) explore problems through chain-of-thought, but this exploration is buried in unstructured prose. On high-stakes tasks, users cannot tell which steps are well-supported, which alternatives were seriously considered, or how the final conclusion compares to those the model discarded. We propose a framework that ensembles the reasoning structure, not just the answers, of multiple LLMs by weighted merging of Directed Acyclic Graphs (DAGs) extracted from reasoning chains. We weight each step by how many traces independently attest to it, to return \"Consensus Reasoning\". Across six benchmarks spanning statutory interpretation, graduate-level science, narrative multi-hop reasoning, and first-order logic, our ensemble outperforms a matched-budget majority-vote baseline, with a maximum accuracy gain of 3.1% on MuSR-MM (narrative multi-hop reasoning). On a single model, the framework matches or exceeds self-consistency at the same trace budget while additionally exposing an inspectable consensus reasoning graph. Ensemble weights correlate with LLM-judge rankings of reasoning quality at Spearman $ρ= 0.30$-$0.51$, and consensus subgraphs are preferred over alternatives leading to the majority-vote answer in 54.4-65.4% of head-to-head comparisons across five of six datasets. We observe that our framework can also be used to analyze diverse reasoning perspectives for a problem.",
+      "authors": [
+        "Amruta Parulekar",
+        "Jinu Lee",
+        "Dilek Hakkani-Tür",
+        "Hari Sundaram"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL",
+        "cs.AI",
+        "cs.LG"
+      ],
+      "published": "2026-07-30T07:14:50+00:00",
+      "link": "https://arxiv.org/pdf/2607.27783v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "Directly ensembles chain-of-thought reasoning structures from LLMs",
+      "llm_evidence_cn": "直接对大模型思维链进行结构化集成",
+      "llm_evidence": "直接对大模型思维链进行结构化集成",
+      "canonical_evidence": "直接对大模型思维链进行结构化集成",
+      "llm_tldr_en": "Reasoning Consensus ensembles reasoning structures from multiple LLMs by weighted DAG aggregation of chain-of-thought traces, improving reliability across six benchmarks. Directly targets chain-of-thought reasoning.",
+      "llm_tldr_cn": "大模型通过思维链探索问题，但推理过程埋藏在非结构化文本中，用户难以判断步骤可信度。论文提出Reasoning Consensus框架，将多条思维链提取为有向无环图，并按独立支持程度加权合并，得到共识推理。在法规解释、科学问答、多跳推理等六个基准上，该集成方法显著提升答案可靠性与可解释性。这项工作直接面向思维链推理的结构化集成。",
+      "llm_tldr": "大模型通过思维链探索问题，但推理过程埋藏在非结构化文本中，用户难以判断步骤可信度。论文提出Reasoning Consensus框架，将多条思维链提取为有向无环图，并按独立支持程度加权合并，得到共识推理。在法规解释、科学问答、多跳推理等六个基准上，该集成方法显著提升答案可靠性与可解释性。这项工作直接面向思维链推理的结构化集成。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2607.26593v1",
+      "source": "arxiv",
+      "title": "ASARL: Autonomous Social-Aware Relevance Learning for QQ Search",
+      "abstract": "The rapid growth of online social platforms has transformed communication and information retrieval, giving rise to social search, where queries-titles are typically expressed in informal, community-specific language. While large language models provide strong general-purpose semantic understanding, their effectiveness in social search is constrained by contextual discrepancy, data scarcity, and behavior-driven dynamics. To address these challenges, we propose the Autonomous Social-Aware Relevance Learning (ASARL), a fully automated framework that integrates multi-agent data curation with staged model training. ASARL leverages a collaborative agent system: ReasonAgent generates interpretable relevance labels grounded in social attributes, CriticAgent validates and ensures logical consistency, and GenAgent augments long-tail data through synthetic query-title pairs. Building on the curated dataset, ASARL employs three-stage training: Social Context Training (SCT) to capture social language patterns, Preference-Guided Optimization (PGO) to align model predictions with behavioral signals, and Social Distillation (SD) to transfer these improvements into compact models for efficient deployment. Extensive offline and online experiments on the QQ search platform demonstrate significant improvements in both offline relevance metrics and online user engagement indicators, along with enhanced annotation efficiency. These results validate the effectiveness of combining autonomous, socially grounded data governance with preference-aligned training in practical search systems.",
+      "authors": [
+        "Tao Su",
+        "Jinjing Hu",
+        "Xiao Wang",
+        "Xingzhong Cao",
+        "Hui Wang"
+      ],
+      "primary_category": "cs.IR",
+      "categories": [
+        "cs.IR"
+      ],
+      "published": "2026-07-29T08:14:00+00:00",
+      "link": "https://arxiv.org/pdf/2607.26593v1",
+      "tags": [
+        "keyword:vlm-cot",
+        "query:vlm-cot"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "Tencent QQ Search, LLM-based multi-agent relevance learning",
+      "llm_evidence_cn": "腾讯QQ搜索，基于LLM的多智能体相关性学习",
+      "llm_evidence": "腾讯QQ搜索，基于LLM的多智能体相关性学习",
+      "canonical_evidence": "腾讯QQ搜索，基于LLM的多智能体相关性学习",
+      "llm_tldr_en": "ASARL is an automated framework from Tencent that integrates multi-agent data curation with staged model training for social search, using ReasonAgent and CriticAgent to generate and validate relevance labels, improving QQ Search.",
+      "llm_tldr_cn": "针对社交搜索中语言非正式、数据稀缺导致通用LLM效果受限的问题，腾讯提出ASARL全自动框架。该框架通过ReasonAgent生成基于社交属性的可解释相关性标签，并由CriticAgent验证，再结合分阶段模型训练。在QQ搜索中显著提升相关性学习效果，兼顾自动化与可解释性，体现了大厂在LLM工程应用上的扎实基础。",
+      "llm_tldr": "针对社交搜索中语言非正式、数据稀缺导致通用LLM效果受限的问题，腾讯提出ASARL全自动框架。该框架通过ReasonAgent生成基于社交属性的可解释相关性标签，并由CriticAgent验证，再结合分阶段模型训练。在QQ搜索中显著提升相关性学习效果，兼顾自动化与可解释性，体现了大厂在LLM工程应用上的扎实基础。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "large model by big tech companies",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2607.23815v1",
+      "source": "arxiv",
+      "title": "Kalypso: Relational LLM Serving",
+      "abstract": "Large language models are increasingly used as semantic operators for filtering, extracting, ranking, joining, and transforming unstructured data. Existing semantic query processing systems invoke request-centric LLM serving systems that are unaware of the query plan, leaving substantial performance opportunities unused. This paper introduces relational LLM serving, an abstraction that makes LLM serving aware of semantic query structure while preserving query semantics and output accuracy. The key opportunity is pipelined execution across semantic operators: when intermediate tuples flow directly from one operator to the next, their KV-cache state can be reused instead of recomputed.   We present Kalypso, a relational LLM serving system that exposes an API for semantic query plans and executes them using an adaptive, memory-aware scheduling algorithm. Kalypso addresses a new online scheduling problem in which pipelined operator execution is coupled with GPU memory pressure management to reuse KV-cache state in the serving engine before eviction. Its scheduler continuously adjusts memory allocations to balance upstream parallelism, downstream progress, and GPU utilization. Our evaluation shows that Kalypso improves query completion time over baselines using request-centric LLM serving, with speedups up to 4.57x across diverse workloads, demonstrating that query-aware LLM serving can substantially improve the efficiency of semantic query execution.",
+      "authors": [
+        "Hojae Son",
+        "Md Ashraful Islam",
+        "Huy Gia Cao",
+        "Hui Guan",
+        "Marco Serafini"
+      ],
+      "primary_category": "cs.DB",
+      "categories": [
+        "cs.DB",
+        "cs.AI",
+        "cs.CL"
+      ],
+      "published": "2026-07-26T19:29:31+00:00",
+      "link": "https://arxiv.org/pdf/2607.23815v1",
+      "tags": [
+        "keyword:vlm-cot",
+        "query:vlm-cot"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "LLM serving system with solid engineering and KV-cache reuse",
+      "llm_evidence_cn": "具备扎实工程基础的大模型服务系统，利用KV缓存复用",
+      "llm_evidence": "具备扎实工程基础的大模型服务系统，利用KV缓存复用",
+      "canonical_evidence": "具备扎实工程基础的大模型服务系统，利用KV缓存复用",
+      "llm_tldr_en": "Kalypso proposes relational LLM serving, making serving aware of semantic query plans and reusing KV-cache state across operators to greatly improve throughput of LLM-based semantic operations.",
+      "llm_tldr_cn": "现有大模型服务系统以请求为中心，无法感知上层语义查询计划，导致性能浪费。本文提出关系型LLM服务抽象，让服务系统感知语义查询结构并流水线执行，中间元组直接流动时复用KV缓存而无需重新计算。Kalypso提供相应API并保留查询语义与输出精度，显著提升了语义查询处理效率，体现扎实的工程基础。",
+      "llm_tldr": "现有大模型服务系统以请求为中心，无法感知上层语义查询计划，导致性能浪费。本文提出关系型LLM服务抽象，让服务系统感知语义查询结构并流水线执行，中间元组直接流动时复用KV缓存而无需重新计算。Kalypso提供相应API并保留查询语义与输出精度，显著提升了语义查询处理效率，体现扎实的工程基础。",
+      "llm_tags": [
+        "query:vlm-cot:composite"
+      ],
+      "matched_query_tag": "query:vlm-cot:composite",
+      "matched_query_text": "Papers central to 视觉大模型CoT及大厂出品，大模型相关且有扎实的工程基础, especially work that connects or combines: chain of thought reasoning large model; large model by big tech companies.",
+      "matched_requirement_id": "req-composite-vlm-cot",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2607.26909v1",
+      "source": "arxiv",
+      "title": "Dual-Path LLM Reasoning for Multimodal Few-Shot Knowledge Graph Completion",
+      "abstract": "Knowledge graph completion (KGC) aims to infer missing facts in knowledge graphs (KGs), thereby improving their completeness and supporting downstream intelligent applications. However, emerging entities and relations in real-world deployments make inductive KGC difficult, especially under few-shot and zero-shot settings. Multimodal information and Large Language Model (LLM)-derived priors can enrich sparse relational contexts, but they may also introduce noisy or hallucinated evidence. To address these issues, we propose DuPLeR, a \\textbf{Du}al-\\textbf{P}ath \\textbf{L}LM \\textbf{R}easoning framework for multimodal few-shot KGC. DuPLeR builds a calibrated relation graph by combining multimodal LLM-derived type priors with factual support structures, and performs dual-level structural reasoning over the refined relation topology. Moreover, a dual-pathway multimodal enhancement module regulates message passing with query-relevant multimodal signals and supplements entity representations after graph propagation. Experiments on eight inductive variants of two multimodal KG (MMKG) benchmarks show that DuPLeR achieves robust performance in data-scarce KGC scenarios.",
+      "authors": [
+        "Jinlan Liu",
+        "Zhiying Tu",
+        "Yongchao Xing",
+        "Yicheng Liu",
+        "Bolin Zhang",
+        "Dianbo Sui",
+        "Dianhui Chu",
+        "Hongliang Sun"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-07-29T13:40:51+00:00",
+      "link": "https://arxiv.org/pdf/2607.26909v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "Dual-path LLM reasoning for multimodal few-shot KGC",
+      "llm_evidence_cn": "面向多模态少样本知识图谱补全的双路径大模型推理",
+      "llm_evidence": "面向多模态少样本知识图谱补全的双路径大模型推理",
+      "canonical_evidence": "面向多模态少样本知识图谱补全的双路径大模型推理",
+      "llm_tldr_en": "Proposes DuPLeR, a dual-path LLM reasoning framework for multimodal few-shot knowledge graph completion, combining multimodal LLM-derived type priors with factual structures to reduce hallucination.",
+      "llm_tldr_cn": "多模态少样本知识图谱补全面临实体关系稀疏与噪声证据问题，本文提出DuPLeR双路径大模型推理框架，将多模态大模型得到的类型先验与事实支持结构结合为校准关系图，从而丰富稀疏上下文并减少幻觉。实验验证该方法在少样本与零样本设定下有效提升补全性能，为大模型在知识图谱任务中的可靠应用提供了新思路。",
+      "llm_tldr": "多模态少样本知识图谱补全面临实体关系稀疏与噪声证据问题，本文提出DuPLeR双路径大模型推理框架，将多模态大模型得到的类型先验与事实支持结构结合为校准关系图，从而丰富稀疏上下文并减少幻觉。实验验证该方法在少样本与零样本设定下有效提升补全性能，为大模型在知识图谱任务中的可靠应用提供了新思路。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2607.28070v1",
+      "source": "arxiv",
+      "title": "CCFormer: Efficient Cross-Field Interaction and Hierarchical Sequence Compression for Industrial Recommendation at Tencent",
+      "abstract": "Recent studies in industrial recommendation systems have demonstrated that sequential recommendation models built upon self-attention can benefit from predictable scaling laws by increasing sequence length and model capacity. However, practical recommender systems impose strict latency and resource constraints, making it challenging to balance computational overhead with fine-grained feature interaction. In this paper, we propose CCFormer, an efficient Transformer backbone that unifies cross-field feature interaction and compressed long-sequence modeling for industrial recommendation. Specifically, CCFormer combines feature-field separated cross attention with long-sequence subspace token mixing to exploit long-term preference signals across heterogeneous feature domains. A hierarchical sequence compression strategy with progressively expanded receptive fields enables efficient long-sequence modeling with reduced information loss. Extensive experiments on two public benchmarks and a large-scale industrial dataset demonstrate that CCFormer consistently outperforms state-of-the-art baselines. Online A/B tests in a video recommendation scenario and an advertising ranking scenario at Tencent further validate its industrial practicality, yielding a 3.57% CTR gain and a 1.71% advertising revenue lift, respectively, while accelerating model training by 2.21x over the strong HSTU baseline. CCFormer has been fully deployed in Tencent's production recommendation system, serving the main traffic of both scenarios.",
+      "authors": [
+        "Yunlong Wang",
+        "Huizhe Zhang",
+        "Haonan Hu",
+        "Yudong Li",
+        "Bing Wen",
+        "Jianchao Tu",
+        "Chengxiang Zhuo",
+        "Zang Li"
+      ],
+      "primary_category": "cs.IR",
+      "categories": [
+        "cs.IR"
+      ],
+      "published": "2026-07-30T11:45:31+00:00",
+      "link": "https://arxiv.org/pdf/2607.28070v1",
+      "tags": [
+        "query:vlm-cot"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "Tencent industrial recommendation large Transformer model",
+      "llm_evidence_cn": "腾讯工业推荐大型Transformer模型",
+      "llm_evidence": "腾讯工业推荐大型Transformer模型",
+      "canonical_evidence": "腾讯工业推荐大型Transformer模型",
+      "llm_tldr_en": "CCFormer is an efficient Transformer backbone from Tencent for industrial recommendation, combining feature-field separated cross attention and long-sequence subspace token mixing to balance latency and fine-grained feature interaction, achieving scalable large-model engineering for real systems.",
+      "llm_tldr_cn": "针对工业推荐系统在时延和资源约束下难以兼顾计算开销与特征交互的问题，腾讯提出CCFormer，一种高效Transformer骨干。它统一了特征场分离的交叉注意力与长序列子空间token混合，并通过层次化序列压缩降低计算负担。在保证低延迟和资源可控的同时提升了推荐效果，为大规模工业级推荐系统工程提供了可扩展的解决方案。",
+      "llm_tldr": "针对工业推荐系统在时延和资源约束下难以兼顾计算开销与特征交互的问题，腾讯提出CCFormer，一种高效Transformer骨干。它统一了特征场分离的交叉注意力与长序列子空间token混合，并通过层次化序列压缩降低计算负担。在保证低延迟和资源可控的同时提升了推荐效果，为大规模工业级推荐系统工程提供了可扩展的解决方案。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "large model by big tech companies",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}

@@ -1,0 +1,568 @@
+Title: ASARL: Autonomous Social-Aware Relevance Learning for QQ Search
+
+URL Source: https://arxiv.org/pdf/2607.26593v1
+
+Published Time: Thu, 30 Jul 2026 00:39:47 GMT
+
+Number of Pages: 10
+
+Markdown Content:
+# ASARL: Autonomous Social-Aware Relevance Learning for QQ Search 
+
+# Tao Su ∗
+
+victorsu@tencent.com Tencent PCG Beijing, China 
+
+# Jinjing Hu ∗† 
+
+jinjinghu@tencent.com Tencent PCG Beijing, China 
+
+# Xiao Wang 
+
+leonsiuwang@tencent.com Tencent PCG Beijing, China 
+
+# Xingzhong Cao 
+
+maxwellcao@tencent.com Tencent PCG Beijing, China 
+
+# Hui Wang 
+
+joltwang@tencent.com Tencent PCG Beijing, China 
+
+## Abstract 
+
+The rapid growth of online social platforms has transformed com-munication and information retrieval, giving rise to social search, where queries-titles are typically expressed in informal, community-specific language. While large language models provide strong general-purpose semantic understanding, their effectiveness in so-cial search is constrained by contextual discrepancy, data scarcity, and behavior-driven dynamics. To address these challenges, we propose the Autonomous Social-Aware Relevance Learning (ASARL) , a fully automated framework that integrates multi-agent data curation with staged model training. ASARL leverages a col-laborative agent system: ReasonAgent generates interpretable rele-vance labels grounded in social attributes, CriticAgent validates and ensures logical consistency, and GenAgent augments long-tail data through synthetic query–title pairs. Building on the curated dataset, ASARL employs three-stage training: Social Context Training (SCT) 
+
+to capture social language patterns, Preference-Guided Optimiza-tion (PGO) to align model predictions with behavioral signals, and 
+
+Social Distillation (SD) to transfer these improvements into com-pact models for efficient deployment. Extensive offline and online experiments on the QQ search platform demonstrate significant improvements in both offline relevance metrics and online user engagement indicators, along with enhanced annotation efficiency. These results validate the effectiveness of combining autonomous, socially grounded data governance with preference-aligned training in practical search systems. 
+
+## CCS Concepts 
+
+• Information systems → Relevance assessment ; Language Models ; • Computing methodologies → Natural language processing . 
+
+> ∗Equally contribution.
+> †Corresponding author. Permission to make digital or hard copies of all or part of this work for personal or classroom use is granted without fee provided that copies are not made or distributed for profit or commercial advantage and that copies bear this notice and the full citation on the first page. Copyrights for components of this work owned by others than the author(s) must be honored. Abstracting with credit is permitted. To copy otherwise, or republish, to post on servers or to redistribute to lists, requires prior specific permission and/or a fee. Request permissions from permissions@acm.org.
+> Conference’17, Washington, DC, USA
+> ©Copyright held by the owner/author(s). Publication rights licensed to ACM. ACM ISBN 978-1-4503-XXXX-X/2018/06 https://doi.org/XXXXXXX.XXXXXXX
+
+(a) Conventional relevance learning method 
+
+(b) Autonomous social-aware relevance learning framework 
+
+Figure 1: Comparison between (a) a conventional relevance learning method, which relies on manual labeling and direct model training, and (b) our autonomous social-aware rele-vance learning framework, which integrates automated data governance, social-aware modeling, and preference align-ment. 
+
+## Keywords 
+
+Search Relevance, Multi-Agent Co-operation, Large Language Model 
+
+## 1 Introduction 
+
+The widespread adoption of online social platforms has reshaped communication and information interaction, leading to the emer-gence of social search . Platforms such as QQ, Twitter, and Instagram host diverse interest groups, communities, and user generated con-tent, which differ fundamentally from conventional web[ 3, 21 , 24 ]and e-commerce search[ 4, 28 , 44 ]. While web search primarily tar-gets general purpose information retrieval and e-commerce search focuses on transactional queries, social search centers on commu-nity driven content and interest-based interactions. Queries in this context are often informal, containing slang, colloquial expressions, or subcultural references, which deviate from standard query for-mats and pose challenges for conventional search systems. Traditional search approaches, including embedding-based rank-ing methods[ 13 , 40 ] and Transformer-based models[ 6 , 10 , 25 , 43 ], rely on abundant labeled data and well-structured query represen-tations. These methods face three key limitations in social search arXiv:2607.26593v1 [cs.IR] 29 Jul 2026 Conference’17, July 2017, Washington, DC, USA Tao Su, Jinjing Hu, Xiao Wang, Xingzhong Cao, and Hui Wang 
+
+scenarios: contextual discrepancy., as informal and community-specific language hinders alignment with standard representations; data scarcity, particularly for long-tail or niche interest groups; and behavior-driven dynamics, where user interactions provide feedback that static annotations cannot capture. Consequently, con-ventional models often produce suboptimal relevance predictions and fail to cover diverse social queries effectively. Recent advances in large language models (LLMs) have improved relevance modeling in industrial search, enabling direct relevance comparison [ 8, 35 ], structured information extraction [ 37 , 48 ], and knowledge distillation [ 18 , 33 , 39 ]. Yet these methods, designed for transactional or web domains, typically rely on a single model for data generation or prediction, limiting adaptability in dynamic social search environments. This motivates the need for frameworks capable of scalable annotation, structured reasoning, and alignment with behavioral feedback, motivating subsequent developments in automated and socially aware search systems. To address these challenges, we propose the Autonomous Social-Aware Relevance Learning (ASARL) , a fully automated frame-work that integrates multi-agent data curation with staged align-ment training. ASARL employs three specialized agents: Reason-Agent generates fine-grained relevance labels and reasoning traces for query–title pairs; CriticAgent validates the annotations and en-sures social and logical consistency; and GenAgent autonomously generates candidate titles for underrepresented regions, mitigating long-tail scarcity. Through closed-loop collaboration, these agents produce a high-quality, socially representative dataset, which forms the foundation for subsequent model training. Building on this curated dataset, ASARL adopts a three-stage training pipeline. First, Social Context Training (SCT) equips the model with core social intents and attributes awareness derived from curated annotations. Then, Preference-Guided Optimiza-tion (PGO) further aligns the model with real user behaviors, lever-aging signals such as click-through and join rates. Finally, Social Distillation (SD) transfers these capabilities into compact student models, enabling efficient and scalable deployment. As shown in Figure 1, conventional relevance learning methods rely on manual labeling and single-stage training, which limits scalability and model adaptation to social search scenarios. In con-trast, ASARL autonomously integrates agent-based data curation, social-aware model foundation training, and preference-aligned optimization. This automated framework ensures high-quality, so-cially grounded annotations and effectively incorporates user feed-back, moving beyond simple semantic matching while maintaining interpretability and social relevance in search results. Through extensive experiments, we show that ASARL consis-tently improves relevance prediction in social search. On offline benchmarks, it achieves higher Accuracy, Macro F1, and NDCG compared with baseline models, demonstrating better alignment with ground-truth relevance labels. Online evaluations further con-firm the practical benefits of our approach: ASARL increases Click-Through Rate, Join Rate, and GSB, indicating more engaging and socially aligned search results. Moreover, the multi-agent system substantially improves annotation efficiency, particularly for long-tail topics, validating the feasibility of fully autonomous, social-aware data curation and model training. We summarize the key contributions of our work as follows: 
+
+• Problem Insight : We identify key challenges of social search and the limitations of relevance learning methods. 
+
+• Methodological Innovation : We propose ASARL, an au-tonomous social-aware relevance learning framework that generates interpretable data, inject social context, and aligns models with user preferences. 
+
+• Practical Validation : We demonstrate on the QQ search platform that ASARL improves relevance metrics and anno-tation efficiency. 
+
+## 2 Related Work 2.1 Traditional Search Relevance Methods 
+
+Transformer-based models, such as BERT[ 6 ] and its variants[ 10 , 25 ,32 , 43 ], have become the backbone of traditional relevance model-ing in both web search[ 3 , 21 , 24 ] and e-commerce[ 4, 28 , 44 ]. These models are typically fine-tuned on large-scale query–document pairs, where human annotation links user queries to relevant docu-ments such as product descriptions or articles. By capturing both lexical and contextual alignment, Transformers have significantly advanced ranking performance, leveraging structured datasets and abundant user interaction signals[2, 9]. Despite their success, these methods face critical limitations in complex search scenarios. Manually annotated data is costly and sparse, particularly for long-tail queries[ 28 , 49 ] and domain-specific topics. Moreover, the supervised framework underlying these mod-els struggles with the informal, fragmented, and rapidly evolving nature of online content. As a result, traditional Transformer-based approaches are often unable to generalize effectively to the dynamic and data-scarce environment of social search. These challenges have motivated the exploration of large language models (LLMs), which offer stronger generative capabilities and greater adaptability. 
+
+## 2.2 LLMs for Search Relevance 
+
+The rise of large language models[ 1, 23 , 41 ] has opened new possi-bilities for addressing the bottlenecks of data annotation and model training. LLMs can automatically generate labeled datasets through techniques such as self-generated data and chain-of-thought (CoT) reasoning[ 22 , 38 , 47 ], thereby reducing dependence on manual annotation while improving data quality. They also play a cen-tral role in training pipelines: supervised fine-tuning[ 12 , 36 ], re-inforcement learning from preferences[ 7, 31 , 34 ], and knowledge distillation[ 18 , 33 , 39 ] have all been used to enhance generaliza-tion and efficiency, enabling deployment in resource-constrained environments. Recent studies have applied these capabilities to search systems. LLMs have been employed to enrich training corpora by gener-ating synthetic queries and hard samples[ 19 ], to refine ranking with CoT-driven reasoning[ 8 , 35 ], and to distill knowledge into smaller relevance models for real-time serving[ 18 , 33 , 39 ]. They also contribute to explainability by transforming complex reason-ing into interpretable outputs[ 37 , 48 ], and have improved multi-modal search tasks such as video retrieval through integration with speech recognition[ 46 ]. Personalized search has further bene-fited from LLMs that align recommendations with user intent and motivation[30]. ASARL: Autonomous Social-Aware Relevance Learning for QQ Search Conference’17, July 2017, Washington, DC, USA 
+
+Figure 2: Illustration of different search paradigms: (a) con-ventional web search, (b) e-commerce search, and (c) social search on the QQ platform, which centers on user-generated groups and channels. 
+
+While promising, most of these approaches rely on a single LLM either to act as a relevance model or to generate auxiliary training data. Such single-agent paradigms limit adaptability and robustness, as they cannot exploit collaborative mechanisms or iterative feedback. This motivates the development of multi-agent systems that orchestrate different roles to improve both data quality and model performance. 
+
+## 2.3 Multi-Agent Systems for Search Relevance 
+
+Multi-agent systems (MAS)[ 20 ] provide a natural framework for collaborative problem-solving, where multiple agents interact to perform tasks such as data curation[ 17 , 29 ], planning[ 15 , 42 ], and model optimization[ 11 , 16 , 45 ]. By leveraging the complementary strengths of individual agents, MAS have been successfully ap-plied to domains requiring large-scale automation and decision-making. In recent work, LLM-powered agents have been used for data cleaning[ 17 , 29 ], strategy generation[ 26 , 27 ], and knowledge distillation[ 5, 14 ], demonstrating their potential for scalable work-flows. However, applications of MAS to search relevance remain lim-ited. Existing practices typically use a single LLM to generate la-beled data or directly serve as a ranking model, overlooking the advantages of agent collaboration. To fill this gap, we propose a multi-agent framework tailored for relevance search. Our system coordinates three specialized agents—GenAgent, CriticAgent, and ReasonAgent—that iteratively curate training data and refine model outputs. The curated data is then used to train a relevance model, which undergoes a three-stage alignment process for further op-timization. This feedback-driven, self-sustaining pipeline ensures continuous improvement in both data quality and model robustness, addressing the persistent challenges of data scarcity and evolving user preferences in dynamic search environments. 
+
+## 3 Preliminaries 
+
+In this section, we formally introduce the task of social search and highlight its distinct characteristics compared with conventional web or e-commerce search. Specifically, given a user query 𝑞 and a candidate group or channel title 𝑡 , the goal is to predict the relevance score that reflects how well the candidate matches the query intent. Unlike traditional search, social search involves user-generated communities and interest channels, which bring unique challenges (see Figure 2): 
+
+• Contextual Discrepancy. Social search titles often feature informal language or community-specific terms, deviating from standard query formats and involving complex social context, making them difficult to align with traditional meth-ods. 
+
+• Data Scarcity. Many long-tail communities lack sufficient annotated training data, which limits the generalization abil-ity of supervised relevance models. 
+
+• Behavior-Driven Dynamics. Relevance in social search is often better reflected by user interaction signals, which provide dynamic feedback beyond static annotated labels and motivate preference-aligned optimization. These challenges make social search different from traditional paradigms and motivate adaptive frameworks that can handle con-textual discrepancy, compensate for limited supervision, and take behavioral feedback into account to better align models with real-world usage. 
+
+## 4 Method 
+
+To address the challenges of contextual discrepancy, data scarcity, and behavior-driven dynamics in social search, we propose the 
+
+Autonomous Social-Aware Relevance Learning (ASARL) . As shown in Figure 3, ASARL integrates multi-agent collaborative data curation with a three-stage alignment training process , forming a fully automated pipeline from raw data generation to socially aligned model optimization. The multi-agent system ensures that the curated dataset is both high-quality and socially representa-tive, while the training process progressively enhances the search model’s interpretability, preference alignment, and deployability. 
+
+## 4.1 Multi-Agent System 
+
+ASARL employs a collaborative multi-agent system consisting of three specialized agents: ReasonAgent , CriticAgent , and GenA-gent , as summarized in Algorithm 1. Their complementary roles ensure that the final dataset is not only valid and diverse but also socially aware. 
+
+4.1.1 ReasonAgent. The ReasonAgent R provides initial annota-tions for query–title pairs by sampling candidates from search logs in three tiers: top-ranked cases 𝑡 +, token-matched cases 𝑡 ∼, and randomly selected cases 𝑡 − . For each pair (𝑞 𝑖 , 𝑡 𝑖 ), the agent per-forms intent–attribute matching and outputs a relevance label 𝑙 𝑖 ∈
+
+{"Relevant", "Partially Relevant", "Irrelevant"} along with a reasoning trace 𝑟 𝑖 :
+
+(𝑟 𝑖 , 𝑙 𝑖 ) ← R ( 𝑞 𝑖 , 𝑡 𝑖 ). (1) Specifically, 𝑟 𝑖 is a structured trace decomposing the query–title pair into predefined social intents and attributes, and 𝑙 𝑖 reflects the Conference’17, July 2017, Washington, DC, USA Tao Su, Jinjing Hu, Xiao Wang, Xingzhong Cao, and Hui Wang 
+
+Algorithm 1 Multi-Agent Collaborative Data Curation in ASARL 
+
+Require: Raw query set 𝑄 , sampled candidates 𝑇 (𝑞 ) for each 𝑞 ∈ 𝑄 
+
+Ensure: Curated dataset 𝐷 ∗ 
+
+> 1:
+
+𝐷 init ← ∅  
+
+> 2:
+
+for all 𝑞 ∈ 𝑄 do  
+
+> 3:
+
+Sample 𝑡 + (top), 𝑡 ∼ (token-based), 𝑡 − (random) from 𝑇 (𝑞 ) 
+
+> 4:
+
+for all 𝑡 ∈ 𝑡 +, 𝑡 ∼, 𝑡 − do  
+
+> 5:
+
+(𝑟, 𝑙 ) ← R ( 𝑞, 𝑡 ) ⊲ ReasonAgent: intent–attribute matching  
+
+> 6:
+
+𝐷 init ← 𝐷 init ∪ ( 𝑞, 𝑡, 𝑟, 𝑙 ) 
+
+> 7:
+
+end for  
+
+> 8:
+
+end for  
+
+> 9:
+
+(𝐷 𝑣 , 𝐷 ¬𝑣 , F ) ← C( 𝐷 init ) 
+
+> 10:
+
+𝑖𝑡𝑒𝑟 ← 0 ⊲ Initialize iteration counter  
+
+> 11:
+
+while 𝐷 ¬𝑣 ≠ ∅ and 𝑖𝑡𝑒𝑟 < 𝑚𝑎𝑥𝐼𝑡𝑒𝑟 do  
+
+> 12:
+
+𝐷 𝑟 ← R ( 𝐷 ¬𝑣 ; F ) ⊲ ReasonAgent re-annotates using feedback  
+
+> 13:
+
+(𝐷 ′
+
+> 𝑣
+
+, 𝐷 ′¬𝑣 , F ′) ← C( 𝐷 𝑟 ) ⊲ CriticAgent re-validates  
+
+> 14:
+
+𝐷 𝑣 ← 𝐷 𝑣 ∪ 𝐷 ′ 
+
+> 𝑣
+
+⊲ Accumulate validated samples  
+
+> 15:
+
+𝐷 ¬𝑣 ← 𝐷 ′¬𝑣 ⊲ Update remaining invalid samples  
+
+> 16:
+
+F ← F ′ ⊲ Update feedback for next iteration  
+
+> 17:
+
+𝑖𝑡𝑒𝑟 ← 𝑖𝑡𝑒𝑟 + 1 ⊲ Increment iteration counter  
+
+> 18:
+
+end while  
+
+> 19:
+
+𝐷 𝑏 ← 𝐷 𝑣 ⊲ Base dataset after Reason–Critic loop  
+
+> 20:
+
+𝐺 ← C dist (𝐷 𝑏 ) ⊲ Detect underrepresented regions  
+
+> 21:
+
+𝐷 𝑠 ← ∅  
+
+> 22:
+
+for all 𝑞 ∈ 𝐺 do  
+
+> 23:
+
+𝑇 gen ← G( 𝑞 ) ⊲ GenAgent generates new titles  
+
+> 24:
+
+for all 𝑡 𝑔 ∈ 𝑇 gen do  
+
+> 25:
+
+(𝑟 𝑔 , 𝑙 𝑔 ) ← R ( 𝑞, 𝑡 𝑔 ) ⊲ ReasonAgent annotates generated titles  
+
+> 26:
+
+if Ccheck (𝑞, 𝑡 𝑔 , 𝑟 𝑔 , 𝑙 𝑔 ) = 1 then ⊲ CriticAgent validates  
+
+> 27:
+
+𝐷 𝑠 ← 𝐷 𝑠 ∪ ( 𝑞, 𝑡 𝑔 , 𝑟 𝑔 , 𝑙 𝑔 ) 
+
+> 28:
+
+end if  
+
+> 29:
+
+end for  
+
+> 30:
+
+end for  
+
+> 31:
+
+𝐷 ∗ ← C final (𝐷 𝑏 ∪ 𝐷 𝑠 ) return 𝐷 ∗
+
+relevance determined by this alignment. This yields annotations that are interpretable and consistent with social relevance criteria. 
+
+4.1.2 CriticAgent. The CriticAgent C serves as both a validator and a distributional monitor. Given the initial dataset 𝐷 init from the ReasonAgent, it checks the consistency of relevance labels, reasoning traces, and formatting, and returns valid and invalid subsets along with structured feedback F :
+
+(𝐷 𝑣 , 𝐷 ¬𝑣 , F ) = C( 𝐷 init ). (2) The invalid subset 𝐷 ¬𝑣 is then re-annotated by the ReasonAgent conditioned on the feedback: 
+
+𝐷 𝑟 ← R ( 𝐷 ¬𝑣 ; F ) , (3) and the CriticAgent re-validates the regenerated annotations: 
+
+(𝐷 ′
+
+> 𝑣
+
+, 𝐷 ′¬𝑣 , F ′) ← C( 𝐷 𝑟 ). (4) This feedback-regeneration loop continues until 𝐷 ¬𝑣 is empty or the maximum number of iterations is reached, with updates at each iteration: 
+
+𝐷 𝑣 ← 𝐷 𝑣 ∪ 𝐷 ′
+
+> 𝑣
+
+, 𝐷 ¬𝑣 ← 𝐷 ′¬𝑣 , F ← F ′ . (5) The CriticAgent also detects underrepresented regions in the global distribution of intents, attributes and labels: 
+
+𝐺 ← C dist (𝐷 𝑣 ), (6) which are later supplied to the GenAgent to address long-tail data scarcity. The final base dataset after Reason–Critic iterations is 
+
+𝐷 𝑏 ← 𝐷 𝑣 .
+
+4.1.3 GenAgent. For each query 𝑞 𝑖 in the underrepresented regions 
+
+𝐺 , the GenAgent generates supplementary titles to cover insuffi-cient relevance categories (relevant, partially relevant, irrelevant) and attributes. Specifically, for each query 𝑞 𝑖 , it produces titles for underrepresented aspects: 
+
+𝑇 gen = G( 𝑞 𝑖 ). (7) These synthetic titles are subsequently annotated by the Rea-sonAgent and validated by the CriticAgent and added to the sup-plementary dataset 𝐷 𝑠 . This process diversifies coverage, mitigates semantic fragmentation, and ensures long-tail representation. 
+
+4.1.4 Agent Collaboration. The three agents operate in a closed loop: the ReasonAgent provides reason–label annotations, the Crit-icAgent validates and balances the dataset, and the GenAgent aug-ments long-tail cases. Iterative refinement continues until conver-gence. Finally, the CriticAgent integrates all validated samples into the curated dataset 𝐷 ∗:
+
+𝐷 ∗ ← C final (𝐷 𝑏 ∪ 𝐷 𝑠 ), (8) producing a fully automated, high-quality, diverse, and socially aligned dataset for training. 
+
+## 4.2 Training Process 
+
+With the curated dataset 𝐷 ∗, ASARL performs a three-stage train-ing process that aligns models with social-aware relevance require-ments while ensuring deployability. 
+
+4.2.1 Social Context Training (SCT). In the first stage, Supervised Fine-Tuning builds a foundation using 𝐷 ∗. Two complementary prompt formats are employed: 
+
+• Reason+Label Prompt : requires the model to generate an explanatory reasoning trace 𝑟 followed by the final rele-vance label 𝑙 , which encourages explicit modeling of social intent–attribute alignment. 
+
+• Label-Only Prompt : requires the model to directly out-put the relevance label 𝑙 , providing a concise and efficient supervision signal. Let 𝜋 𝜃 denote the model parameterized by 𝜃 . Both prompts are optimized with the standard autoregressive objective: 
+
+LSCT = − 1
+
+𝑁 
+
+> 𝑁
+
+∑︁ 
+
+> 𝑖 =1
+> 𝑇 𝑖
+
+∑︁ 
+
+> 𝑡 =1
+
+log 𝜋 𝜃 
+
+ (𝑟 𝑖 , 𝑙 𝑖 )𝑡 | 𝑞 𝑖 , 𝑡 𝑖 , (𝑟 𝑖 , 𝑙 𝑖 )<𝑡 
+
+
+
+− 1
+
+𝑁 
+
+> 𝑁
+
+∑︁ 
+
+> 𝑖 =1
+
+log 𝜋 𝜃 (𝑙 𝑖 | 𝑞 𝑖 , 𝑡 𝑖 ) ,
+
+(9) ASARL: Autonomous Social-Aware Relevance Learning for QQ Search Conference’17, July 2017, Washington, DC, USA 
+
+Figure 3: Overview of ASARL. Queries are annotated and validated by a multi-agent system (ReasonAgent, CriticAgent, GenAgent) in a closed feedback loop to generate a high-quality, diverse, and socially aligned dataset. The curated dataset is then used in staged alignment training (SCT, PGO, SD) to produce robust social-aware search models. 
+
+where (𝑟 𝑖 , 𝑙 𝑖 )𝑡 denotes the 𝑡 -th token in the reasoning–label se-quence of the 𝑖 -th training sample and 𝑁 is the number of training samples. Reasoning supervision enhances social intent–attribute inter-pretability, while label-only supervision enforces precision. 
+
+4.2.2 Preference-Guided Optimization (PGO). After SCT, which endows the model with socially aware and interpretable reasoning, we further refine it via Preference-Guided Optimization (PGO) to align model outputs with user interaction signals. Let 𝐷 ∗ = (𝑞 𝑖 , 𝑡 𝑖 , 𝑟 𝑖 , 𝑙 𝑖 ) be the curated dataset. We first identify mispredicted samples: 
+
+M = (𝑞 𝑖 , 𝑡 𝑖 , 𝑟 𝑖 , 𝑙 𝑖 ) ∈ 𝐷 ∗ | ( 𝑟 𝑖 , 𝑙 𝑖 ) ≠ ( ˆ𝑟 𝑖 , ˆ𝑙 𝑖 ), (10) where ( ˆ𝑟 𝑖 , ˆ𝑙 𝑖 ) denotes the model prediction. Labels are verified using user interaction signals (e.g., CTR, join rate) and considered valid if the metrics satisfy predefined thresholds. For each verified sample, we construct a preference pair (𝑟 + 
+
+> 𝑖
+
+, 𝑙 + 
+
+> 𝑖
+
+),
+
+(𝑟 − 
+
+> 𝑖
+
+, 𝑙 − 
+
+> 𝑖
+
+) for optimization. The positive sequence (𝑟 + 
+
+> 𝑖
+
+, 𝑙 + 
+
+> 𝑖
+
+) is gener-ated via beam search under the model 𝜋 𝜃 , selecting the highest-probability candidate consistent with the verified label 𝑙 𝑖 :
+
+(𝑟 + 
+
+> 𝑖
+
+, 𝑙 + 
+
+> 𝑖
+
+) = arg max    
+
+> (𝑟,𝑙 ) ∈ B ( 𝑞 𝑖 ,𝑡 𝑖 ),𝑙 =𝑙 𝑖
+
+𝜋 𝜃 (𝑟, 𝑙 | 𝑞 𝑖 , 𝑡 𝑖 ), (11) where B( 𝑞 𝑖 , 𝑡 𝑖 ) is the beam search candidate set. The negative se-quence (𝑟 − 
+
+> 𝑖
+
+, 𝑙 − 
+
+> 𝑖
+
+) is taken as the model’s original prediction ( ˆ𝑟 𝑖 , ˆ𝑙 𝑖 ).This construction preserves label alignment while allowing the reasoning sequence to reflect the model distribution, enabling the DPO loss to effectively align outputs with user preferences. The model is then optimized via the DPO objective: 
+
+LPGO = −E(𝑞,𝑡, (𝑟 +,𝑙 + ),(𝑟 −,𝑙 − ) ) 
+
+h
+
+log 𝜎 
+
+
+
+𝛽 log 𝜋 𝜃 (𝑟 +, 𝑙 + |𝑞, 𝑡 )
+
+𝜋 ref (𝑟 +, 𝑙 + |𝑞, 𝑡 )−𝛽 log 𝜋 𝜃 (𝑟 −, 𝑙 − |𝑞, 𝑡 )
+
+𝜋 ref (𝑟 −, 𝑙 − |𝑞, 𝑡 )
+
+i 
+
+,
+
+(12) where 𝜋 𝜃 is the model being optimized and 𝜋 ref is the SCT-trained reference model. This design ensures that positive samples remain consistent with ground-truth labels yet realizable by the model (via beam search), while negative samples reflect its actual mispredictions, thus enabling DPO loss to effectively align reasoning and labeling with real user preferences. 
+
+4.2.3 Social Distillation (SD). Finally, under deployment scenarios with strict latency or resource constraints, we optionally distill the PGO-enhanced teacher model into a lightweight student (BERT). Let 
+
+𝑙 𝑖 denote the teacher’s predicted relevance label for query–title pair 
+
+(𝑞 𝑖 , 𝑡 𝑖 ), and 𝑝 𝑆 (𝑙 𝑖 | 𝑞 𝑖 , 𝑡 𝑖 ) the student’s predicted label distribution. Knowledge distillation is performed by minimizing the KL diver-gence between teacher and student label distributions: 
+
+LSD = 1
+
+𝑁 
+
+> 𝑁
+
+∑︁ 
+
+> 𝑖 =1
+
+KL  𝑠 (𝑙 𝑖 | 𝑞 𝑖 , 𝑡 𝑖 ) ∥ 𝑝 𝑆 (𝑙 𝑖 | 𝑞 𝑖 , 𝑡 𝑖 ), (13) where 𝑠 (𝑙 𝑖 | 𝑞 𝑖 , 𝑡 𝑖 ) is either the softmax of teacher logits or the one-hot label for hard-label distillation. This selective distillation transfers alignment and preference-aware knowledge into compact models while providing flexible trade-offs between social-aware accuracy and deployment effi-ciency. 
+
+## 5 Experiments 
+
+This section reports offline and online evaluations conducted to as-sess the effectiveness of our proposed framework. We first describe the experimental setup (datasets, metrics, baselines, and implemen-tation details), then present the offline and online results, and finally provide qualitative case analyses. Conference’17, July 2017, Washington, DC, USA Tao Su, Jinjing Hu, Xiao Wang, Xingzhong Cao, and Hui Wang 
+
+## 5.1 Experimental Setup 
+
+5.1.1 Datasets. The datasets were extracted from QQ search logs, totaling approximately 1.1M query–title pairs after being annotated using the agent system. Both the training and test splits are drawn from the same overall distribution. To provide broad domain cover-age, queries were sampled uniformly from predefined categories (e.g., education, gaming, health). For each query, 10 candidate titles were sampled from three tiers: top-ranked cases, token-matched cases, and randomly selected cases. The dataset covers two QQ search scenarios— Group Search and Channel Search —with exam-ples from both. The test set has been manually reviewed to ensure annotation accuracy. Summary statistics are presented in Table 1. 
+
+Table 1: Statistics of the datasets. Scene Train Validation Test 
+
+Group 602281 60395 59182 Channel 512039 50824 51363 
+
+5.1.2 Metrics. We evaluate our models using both offline and on-line metrics to provide a comprehensive assessment of performance. For offline evaluation, we adopt standard relevance metrics. Macro F1 measures the harmonic mean of precision and recall across all classes, treating each class equally. NDCG assesses the quality of the predicted ranking of titles relative to the ground-truth relevance labels. Accuracy computes the proportion of correctly predicted relevance labels over the entire test set. For online evaluation, we adopt three metrics. Click-Through Rate (CTR) measures the proportion of clicks per query impression. Join Rate (JR) captures how often users join a group or channel after a search interaction, reflecting deeper engagement. To compare our model against the baseline, we report GSB, which balances the number of improved versus degraded cases; a higher score indicates that the model yields more consistent gains. Together, these offline and online metrics provide a holistic view of both the predictive accuracy and the real-world user impact of the models. 
+
+5.1.3 Baselines. We compare our framework with a range of strong baselines, including classical pre-trained models and large language models. To ensure fairness, each baseline is evaluated under both unfine-tuned and fine-tuned settings. 
+
+• BERT [6]: In the unfine-tuned setting, BERT is used to com-pute query–title similarity directly. In the fine-tuned setting, the model is trained with a classification objective ( [CLS] 
+
+token) to predict the relevance score. 
+
+• RoBERTa [ 25 ]: Similar to BERT, the unfine-tuned model is applied for similarity matching, while the fine-tuned variant is trained with a classification loss to predict relevance. 
+
+• LLM Base : We adopt the Qwen3-0.6B[ 41 ] model as the rep-resentative LLM baseline. In the unfine-tuned setting, the model directly outputs a relevance label in a zero-shot man-ner. In the fine-tuned setting, it is further trained on our dataset to generate the correct label. 
+
+• ASARL (SCT) : Our proposed ASARL, initialized from Qwen3-0.6B and Qwen3-8B, both of which were fine-tuned with Social Context Training on the curated training data. 
+
+• ASARL (SCT+PGO) : An enhanced version of ASARL that further applies Preference Guided Optimization to mitigate bias and better align model outputs with human preferences. 
+
+5.1.4 Implementation Detail. The multi-agent system is equipped with tools that enable socially aware data curation: a social rel-evance criteria for intent–attribute alignment, a predefined sub-table of social attribute categories (Table 2), access to the curated dataset 𝐷 ∗ and memory buffers for read/write operations, and statistical utilities to monitor label and attributes distributions and detect underrepresented regions for long-tail augmentation. All agents—ReasonAgent, CriticAgent, and GenAgent—are imple-mented using Qwen3-235B as the underlying model. These capa-bilities allow the agents to collaboratively generate, validate, and enrich the dataset while maintaining social relevance and distribu-tional balance. 
+
+Table 2: Categorization of 10 structured social attributes on the QQ search platform. 
+
+Film Lifestyle Industry Education Gaming Location Gender Age Knowledge Otaku All training is conducted on 4 NVIDIA A100 GPUs with a batch size of 16. We adopt AdamW as the optimizer with a learning rate of 1 × 10 −5 and apply a warm-up ratio of 0.05. The input sequence length is capped at 1024 tokens, and models are trained for 4 epochs. To mitigate overfitting, we monitor validation performance using a 10% split of the training data and retain the best-performing checkpoint. For the PGO stage, the training is limited to 1 epochs to further reduce overfitting risks. During inference, we employ vLLM for efficient deployment, with the temperature fixed to 0 to ensure deterministic predictions. 
+
+## 5.2 Offline Evaluation 
+
+To comprehensively assess the effectiveness of our Autonomous Social-Aware Relevance Learning (ASARL), we conduct offline ex-periments to quantify model performance on relevance prediction. 
+
+5.2.1 Overall Performance. Table 3 compares all baseline models and our ASARL variants under two settings: without fine-tuning (w/o) and with fine-tuning (w/). Without fine-tuning, BERT, RoBERTa and LLMBase achieve relatively low MacroF1, NDCG, and Accu-racy, indicating that pre-trained models alone are insufficient to capture the complex relevance patterns in social search, which de-pend on contextual cues, domain-specific terminology, and latent user intent. Fine-tuning on the curated social search dataset improves all models. Our proposed ASARL models exhibit the most significant gains. ASARL SCT , trained with supervised fine-tuning on carefully curated social search data, substantially outperforms other fine-tuned baselines, demonstrating the importance of high-quality data and constructed COT supervision. Further integrating Pref-erence Guided Optimization in ASARL SCT+PGO leads to additional improvement, suggesting that aligning the model with user inter-action preferences provides a more nuanced understanding of rele-vance beyond what is captured by labeled data alone. Moreover, the ASARL: Autonomous Social-Aware Relevance Learning for QQ Search Conference’17, July 2017, Washington, DC, USA 
+
+Table 3: Overall performance comparison of baseline models and ASARL variants under two settings: without fine-tuning (w/o) and with fine-tuning (w/). Finetune Method MacroF1 ↑ NDCG@4 ↑ ACC ↑
+
+w/o BERT 60.73 67.78 63.03 RoBERTa 60.54 68.15 63.89 LLMBase 59.36 66.43 64.80 w/ BERT 66.23 75.13 67.92 RoBERTa 66.19 75.88 68.30 LLMBase 68.35 74.92 72.56 ASARL SCT  
+
+> 0.6B
+
+75.59 76.84 77.34 ASARL SCT+PGO  
+
+> 0.6B
+
+75.65 77.01 77.90 ASARL SCT  
+
+> 8B
+
+82.72 77.25 83.85 ASARL SCT+PGO  
+
+> 8B
+
+83.66 77.93 84.52 
+
+ASARL 8B variants consistently outperform their ASARL 0.6B coun-terparts, showing that larger models benefit more from fine-tuning and preference optimization. 
+
+5.2.2 Effectiveness of Each Agent. Table 4 presents the performance of the multi-agent pipeline under incremental ablations: Reason-Agent alone, ReasonAgent with CriticAgent, and the full pipeline including GenAgent. Using ReasonAgent only yields the lowest MacroF1, NDCG, and Accuracy, indicating that while ReasonAgent can generate initial relevance annotations, errors in reasoning con-sistency, logic, and output formatting limit its effectiveness. Adding CriticAgent improves all three metrics. By providing feedback to ReasonAgent, CriticAgent enables iterative correction of inconsistencies and logical errors, with an observed correction rate of approximately 21%. This feedback loop results in higher-quality annotations and increased precision, as reflected in the improved MacroF1 and Accuracy. Incorporating GenAgent further enhances all metrics, achieving the highest MacroF1, NDCG, and Accuracy in the full three-agent setup (Reason+Critic+Gen). This improvement reflects GenAgent’s role in generating additional high-quality examples, particularly for long-tail queries, thereby increasing coverage and diversity. 
+
+Table 4: Impact of Reason, Critic, and Gen agents on overall effectiveness. Agents MacroF1 ↑ NDCG@4 ↑ ACC ↑
+
+Reason 70.96 76.04 73.39 Reason+Critic 71.88 76.23 73.90 Reason+Critic+Gen 73.55 76.41 75.75 
+
+5.2.3 Effective of constructed COT Tuning. We further investigate the effect of constructed Chain-of-Thought (CoT) tuning on rele-vance prediction (Table 5). Compared to direct prediction (Label), a generic CoT yields only marginal improvement in MacroF1 and Ac-curacy while slightly decreasing NDCG, indicating that unguided step-by-step reasoning does not reliably capture social search sub-tleties. In contrast, our Social-Aware CoT—whose reasoning steps are explicitly designed to reflect social signals such as group cul-ture, implicit intent, and attribute alignment—delivers substantially larger gains. Combining Social-Aware CoT with label supervision produces the best results, which shows that domain-specific reason-ing and supervised labels are complementary: the former injects social priors and interpretable cues, while the latter grounds the model with explicit relevance judgments. 
+
+Table 5: Effectiveness of Social-Aware versus generic CoT reasoning in relevance prediction. Method MacroF1 ↑ NDCG@4 ↑ ACC ↑
+
+Label 68.35 74.92 72.56 Generic CoT 69.02 74.76 72.89 Social-Aware CoT 73.55 76.41 75.75 Social-Aware CoT + Label 75.59 76.84 77.34 
+
+5.2.4 Effectiveness of Knowledge Distillation. To evaluate the im-pact of our multi-stage training pipeline, we compare the online model (RoBERTa) with the version distilled after SCT and PGO. As shown in Table 6, the distilled model consistently outperforms the baseline across Macro-F1, NDCG, and Accuracy. This demonstrates that our pipeline effectively transfers richer supervision and prefer-ence signals into the student model. While distillation reduces the model size and complexity, it results in some performance trade-offs, but still retains sufficient effectiveness for real-world deployment. 
+
+Table 6: Comparison between the RoBERTa-online baseline and the distilled model. Models MacroF1 ↑ NDCG@4 ↑ ACC ↑
+
+RoBERTa-online 65.01 75.70 67.45 RoBERTa-distilled 72.05 76.41 73.92 
+
+## 5.3 Online Evaluation 
+
+Online deployment are conducted to measure real-world user en-gagement and business metrics. 
+
+5.3.1 Online Deployment. To assess our framework, we deployed it on the QQ A/B test platform. We assigned 20% traffic to the experi-mental group (using ASARL) and another 20% to the baseline group (using the previous RoBERTa-based model). For fair comparison, we continuously monitored performance and set a minimum 7-day test period to mitigate traffic fluctuation impacts. 
+
+5.3.2 Online Performance. The ASARL framework was deployed in both the channel and group search scenarios, yielding consistent improvements across key metrics. In the channel search scenario, CTR, JR, and GSB increased by 2.69%, 2.59%, and 11.66%, respectively. Similarly, in the group search scenario, the corresponding gains were 1.36%, 1.06%, and 16.66%. These results highlight that ASARL not only enhances user engagement (CTR), but also drives stronger interaction (JR) and broader social growth (GSB), thereby improving both user satisfaction and platform-level outcomes. The deployment reached a DAU of 12 million, validating its scalability. Conference’17, July 2017, Washington, DC, USA Tao Su, Jinjing Hu, Xiao Wang, Xingzhong Cao, and Hui Wang 
+
+Figure 4: Illustration of the collaborative workflow among ReasonAgent, CriticAgent, and GenAgent. The ReasonAgent performs initial reasoning and labeling, the CriticAgent detects inconsistencies and enforces alignment, and the GenAgent generates supplementary examples to enrich dataset diversity. 
+
+## 5.4 Case studies 
+
+5.4.1 Collaboration between agents. Agent collaboration is essen-tial for ensuring both annotation quality and dataset diversity. As illustrated in Figure 4, a typical scenario arises when the Reason-Agent produces inconsistent outputs between the reasoning process and the assigned label. For instance, given the pair (query: "Jining Medical College Freshmen Discussion Group", title: "Jining Medical University 2025 Class Group"), the reasoning indicates a relevance of "Relevant", whereas the final label is "Partial Relevant". The CriticAgent identifies this inconsistency and enforces alignment, thereby maintaining logical closure. After examining the data distribution, the CriticAgent further instructs the GenAgent to generate supplementary examples under specific attributes (education) and relevance level (irrelevant). In this case, the GenAgent produces titles such as "Jining Polytech-nic Freshmen Discussion Group" and "Shanghai Medical College", which capture fine-grained social characteristic distinctions. This collaborative workflow underscores the complementary roles of ReasonAgent, CriticAgent, and GenAgent in maintaining social and logical consistency while enriching the dataset. 
+
+5.4.2 Training Impact on Relevance Judgment. We present a rep-resentative case in Table 7 that shows how SCT and PGO change model’s social-aware understanding. The query is "post-00s dating and friend-expansion group" and the title is "friend-making and partner-seeking group". Before training, the base model misiden-tifies the query intent yet still considers it matched with the title, and it also incorrectly infers that the title contains the "post-00s" age marker. Together, these errors lead the model to assign label "Relevant". After SCT and PGO, the trained model recognizes the se-mantic similarity in intent and correctly detects that the "post-00s" age attribute appears only in the query and not in the title. As a re-sult, the model downgrades the judgment to label "Partial Relevant". This case illustrates that SCT and PGO reduce over-reliance on lexical similarity and improve social-level discrimination, yielding more accurate and fine-grained relevance decisions. 
+
+Table 7: Effect of SCT and PGO training in social context understanding and reasoning. Query: "post-00s dating and friend-expansion group"; Title: "friend-making and partner-seeking group". Model Reasoning Label 
+
+LLMBase 
+
+Intent : ... match ✓
+
+𝑞 : "post-00s" / 𝑡 : "friend-making" ✗
+
+Age : ... match ✗
+
+𝑞 : "post-00s" / t: "post-00s" ✗
+
+"Relevant" ASARL 
+
+Intent : ... match ✓
+
+𝑞 : "friend-expansion", "dating" / 𝑡 :"making friends", "partner-seeking" ✓
+
+Age : ... mismatch ✓
+
+𝑞 : "post-00s" / 𝑡 : "—" ✓
+
+"Partial Relevant" 
+
+## 6 Conclusion 
+
+In this work, we present ASARL , an autonomous social-aware rele-vance learning framework that combines multi-agent data curation with staged model training. By leveraging ReasonAgent, CriticA-gent, and GenAgent, ASARL generates socially grounded, inter-pretable data and augments long-tail queries. Meanwhile, its three-stage training pipeline, Social Context Training (SCT), Preference-Guided Optimization (PGO), and Social Distillation (SD), enables effective social context learning from curated data and behavioral signals. Extensive experiments on the QQ platform demonstrate improvements in relevance prediction, user engagement, and anno-tation efficiency, validating ASARL as a scalable and interpretable solution for social search. ASARL: Autonomous Social-Aware Relevance Learning for QQ Search Conference’17, July 2017, Washington, DC, USA 
+
+## References 
+
+[1] Sandhini Agarwal, Lama Ahmad, Jason Ai, Sam Altman, Andy Applebaum, Edwin Arbus, Rahul K Arora, Yu Bai, Bowen Baker, Haiming Bao, et al . 2025. gpt-oss-120b & gpt-oss-20b model card. arXiv preprint arXiv:2508.10925 (2025). [2] Qingyao Ai, Yongfeng Zhang, Keping Bi, Xu Chen, and W Bruce Croft. 2017. Learning a hierarchical embedding model for personalized product search. In 
+
+Proceedings of the 40th International ACM SIGIR Conference on Research and Development in Information Retrieval . 645–654. [3] Sergey Brin and Lawrence Page. 1998. The anatomy of a large-scale hypertextual web search engine. Computer networks and ISDN systems 30, 1-7 (1998), 107–117. [4] Ben Chen, Xian Guo, Siyuan Wang, Zihan Liang, Yue Lv, Yufei Ma, Xinlong Xiao, Bowen Xue, Xuxin Zhang, Ying Yang, et al . 2025. OneSearch: A Preliminary Exploration of the Unified End-to-End Generative Framework for E-commerce Search. arXiv preprint arXiv:2509.03236 (2025). [5] J. C.-Y. Chen, S. Saha, E. Stengel-Eskin, and M. Bansal. 2024. MAGDi: Structured Distillation of Multi-Agent Interaction Graphs Improves Reasoning in Smaller Language Models. arXiv preprint arXiv:2402.01620 (2024). [6] Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina Toutanova. 2019. Bert: Pre-training of deep bidirectional transformers for language understanding. In 
+
+Proceedings of the 2019 conference of the North American chapter of the association for computational linguistics: human language technologies, volume 1 (long and short papers) . 4171–4186. [7] Kawin Ethayarajh, Winnie Xu, Niklas Muennighoff, Dan Jurafsky, and Douwe Kiela. 2024. Kto: Model alignment as prospect theoretic optimization. arXiv preprint arXiv:2402.01306 (2024). [8] Zheng Fang, Donghao Xie, Ming Pang, Chunyuan Yuan, Xue Jiang, Changping Peng, Zhangang Lin, and Zheng Luo. 2025. ADORE: Autonomous Domain-Oriented Relevance Engine for E-commerce. In Proceedings of the 48th Inter-national ACM SIGIR Conference on Research and Development in Information Retrieval . 4259–4263. [9] Yangyang Guo, Zhiyong Cheng, Liqiang Nie, Yinglong Wang, Jun Ma, and Mohan Kankanhalli. 2019. Attentive long short-term preference modeling for person-alized product search. ACM Transactions on Information Systems (TOIS) 37, 2 (2019), 1–27. [10] Pengcheng He, Xiaodong Liu, Jianfeng Gao, and Weizhu Chen. 2020. De-berta: Decoding-enhanced bert with disentangled attention. arXiv preprint arXiv:2006.03654 (2020). [11] Sirui Hong, Mingchen Zhuge, Jonathan Chen, Xiawu Zheng, Yuheng Cheng, Ceyao Zhang, Jinlin Wang, Zili Wang, Steven Ka Shing Yau, Zijuan Lin, et al .2024. MetaGPT: Meta programming for a multi-agent collaborative framework. International Conference on Learning Representations, ICLR. [12] Cheng-Yu Hsieh, Chun-Liang Li, Chih-Kuan Yeh, Hootan Nakhost, Yasuhisa Fujii, Alexander Ratner, Ranjay Krishna, Chen-Yu Lee, and Tomas Pfister. 2023. Distilling step-by-step! outperforming larger language models with less training data and smaller model sizes. arXiv preprint arXiv:2305.02301 (2023). [13] Jui-Ting Huang, Ashish Sharma, Shuying Sun, Li Xia, David Zhang, Philip Pronin, Janani Padmanabhan, Giuseppe Ottaviano, and Linjun Yang. 2020. Embedding-based retrieval in facebook search. In Proceedings of the 26th ACM SIGKDD International Conference on Knowledge Discovery & Data Mining . 2553–2561. [14] M. Kang. 2025. Agent Distillation: Transfer Learning from LLM Agents to Small Models. arXiv preprint arXiv:2505.17612 (2025). [15] Ao Li, Yuexiang Xie, Songze Li, Fugee Tsung, Bolin Ding, and Yaliang Li. 2024. Agent-oriented planning in multi-agent systems. arXiv preprint arXiv:2410.02189 
+
+(2024). [16] Guohao Li, Hasan Hammoud, Hani Itani, Dmitrii Khizbullin, and Bernard Ghanem. 2023. Camel: Communicative agents for" mind" exploration of large language model society. Advances in Neural Information Processing Systems 36 (2023), 51991–52008. [17] Lan Li, Liri Fang, Bertram Ludäscher, and Vetle I Torvik. 2024. AutoDCWorkflow: LLM-based data cleaning workflow auto-generation and benchmark. arXiv preprint arXiv:2412.06724 (2024). [18] Xiaoyu Li, Xiao Li, Li Gao, Yiding Liu, Xiaoyang Wang, Shuaiqiang Wang, Junfeng Wang, and Dawei Yin. 2025. Proactive Guidance of Multi-Turn Conversation in Industrial Search. arXiv preprint arXiv:2505.24251 (2025). [19] Xiaopeng Li, Xiangyang Li, Hao Zhang, Zhaocheng Du, Pengyue Jia, Yichao Wang, Xiangyu Zhao, Huifeng Guo, and Ruiming Tang. 2024. Syneg: Llm-driven synthetic hard-negatives for dense retrieval. arXiv preprint arXiv:2412.17250 
+
+(2024). [20] Xinyi Li, Sai Wang, Siqi Zeng, Yu Wu, and Yi Yang. 2024. A survey on LLM-based multi-agent systems: workflow, infrastructure, and challenges. Vicinagearth 1, 1 (2024), 9. [21] Yuchen Li, Hengyi Cai, Rui Kong, Xinran Chen, Jiamin Chen, Jun Yang, Haojie Zhang, Jiayi Li, Jiayi Wu, Yiqun Chen, et al . 2025. Towards AI Search Paradigm. 
+
+arXiv preprint arXiv:2506.17188 (2025). [22] Zhiyuan Li, Hong Liu, Denny Zhou, and Tengyu Ma. 2024. Chain of thought empowers transformers to solve inherently serial problems. arXiv preprint arXiv:2402.12875 1 (2024). [23] Aixin Liu, Bei Feng, Bing Xue, Bingxuan Wang, Bochao Wu, Chengda Lu, Cheng-gang Zhao, Chengqi Deng, Chenyu Zhang, Chong Ruan, et al . 2024. Deepseek-v3 technical report. arXiv preprint arXiv:2412.19437 (2024). [24] Yiding Liu, Weixue Lu, Suqi Cheng, Daiting Shi, Shuaiqiang Wang, Zhicong Cheng, and Dawei Yin. 2021. Pre-trained language model for web-scale retrieval in baidu search. In Proceedings of the 27th ACM SIGKDD Conference on Knowledge Discovery & Data Mining . 3365–3375. [25] Yinhan Liu, Myle Ott, Naman Goyal, Jingfei Du, Mandar Joshi, Danqi Chen, Omer Levy, Mike Lewis, Luke Zettlemoyer, and Veselin Stoyanov. 2019. Roberta: A robustly optimized bert pretraining approach. arXiv preprint arXiv:1907.11692 
+
+(2019). [26] S. Mallampati et al . 2025. Dynamic Strategy Adaptation in Multi-Agent Environ-ments with Large Language Models. arXiv preprint arXiv:2507.02002 (2025). [27] P. Motwani et al . 2024. MALT: Improving Reasoning with Multi-Agent LLM Training. arXiv preprint arXiv:2412.01928 (2024). [28] Wenjun Peng, Guiyang Li, Yue Jiang, Zilong Wang, Dan Ou, Xiaoyi Zeng, Derong Xu, Tong Xu, and Enhong Chen. 2024. Large language model based long-tail query rewriting in taobao search. In Companion Proceedings of the ACM Web Conference 2024 . 20–28. [29] Danrui Qi, Zhengjie Miao, and Jiannan Wang. 2024. Cleanagent: Automating data standardization with llm-based agents. arXiv preprint arXiv:2403.08291 (2024). [30] Weicong Qin, Yi Xu, Weijie Yu, Chenglei Shen, Ming He, Jianping Fan, Xiao Zhang, and Jun Xu. 2025. MAPS: Motivation-Aware Personalized Search via LLM-Driven Consultation Alignment. arXiv preprint arXiv:2503.01711 (2025). [31] Rafael Rafailov, Archit Sharma, Eric Mitchell, Christopher D Manning, Stefano Ermon, and Chelsea Finn. 2023. Direct preference optimization: Your language model is secretly a reward model. Advances in neural information processing systems 36 (2023), 53728–53741. [32] Keshav Santhanam, Omar Khattab, Jon Saad-Falcon, Christopher Potts, and Matei Zaharia. 2021. Colbertv2: Effective and efficient retrieval via lightweight late interaction. arXiv preprint arXiv:2112.01488 (2021). [33] Hongwei Shang, Nguyen Vo, Nitin Yadav, Tian Zhang, Ajit Puthenputhussery, Xunfan Cai, Shuyi Chen, Prijith Chandran, and Changsung Kang. 2025. Knowl-edge Distillation for Enhancing Walmart E-commerce Search Relevance Using Large Language Models. In Companion Proceedings of the ACM on Web Conference 2025 . 449–457. [34] Zhihong Shao, Peiyi Wang, Qihao Zhu, Runxin Xu, Junxiao Song, Xiao Bi, Haowei Zhang, Mingchuan Zhang, YK Li, Yang Wu, et al . 2024. Deepseekmath: Pushing the limits of mathematical reasoning in open language models. arXiv preprint arXiv:2402.03300 (2024). [35] Tian Tang, Zhixing Tian, Zhenyu Zhu, Chenyang Wang, Haiqing Hu, Guoyu Tang, Lin Liu, and Sulong Xu. 2025. LREF: A Novel LLM-based Relevance Framework for E-commerce Search. In Companion Proceedings of the ACM on Web Conference 2025 . 468–475. [36] Rohan Taori, Ishaan Mishra, Shishir Jiang, Shyam Narang, Ashish Arya, and Carrie Liu. 2023. Introducing Alpaca: A Strong and Performant Instruction-Following Language Model. Accessed: 2024-06-10. [37] Xianyang Tian, Xiang Xu, Chao Wang, Tong Ruan, Baohua Wu, Maofei Que, Shenghua Ni, Zhuoran Zhuang, and Jingping Liu. 2025. Towards Explainable Search Results in E-commerce. In Companion Proceedings of the ACM on Web Conference 2025 . 476–484. [38] Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Fei Xia, Ed Chi, Quoc V Le, Denny Zhou, et al . 2022. Chain-of-thought prompting elicits reasoning in large language models. Advances in neural information processing systems 35 (2022), 24824–24837. [39] Fang Wu, Vijay Prakash Dwivedi, and Jure Leskovec. 2025. Large Language Models are Good Relational Learners. arXiv preprint arXiv:2506.05725 (2025). [40] Mingrui Wu and Sheng Cao. 2024. Llm-augmented retrieval: Enhancing re-trieval models through language models and doc-level embedding. arXiv preprint arXiv:2404.05825 (2024). [41] An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao, Chengen Huang, Chenxu Lv, et al . 2025. Qwen3 technical report. arXiv preprint arXiv:2505.09388 (2025). [42] Yingxuan Yang, Huacan Chai, Shuai Shao, Yuanyi Song, Siyuan Qi, Renting Rui, and Weinan Zhang. 2025. Agentnet: Decentralized evolutionary coordination for llm-based multi-agent systems. arXiv preprint arXiv:2504.00587 (2025). [43] Shaowei Yao, Jiwei Tan, Xi Chen, Juhao Zhang, Xiaoyi Zeng, and Keping Yang. 2022. ReprBERT: distilling BERT to an efficient representation-based relevance model for e-commerce. In Proceedings of the 28th ACM SIGKDD conference on knowledge discovery and data mining . 4363–4371. [44] Changlong Yu, Xin Liu, Jefferson Maia, Tianyu Cao, Laurence (Yang) Li, Yifan Gao, Yangqiu Song, Rahul Goutam, Haiyang Zhang, Bing Yin, and Zheng Li. 2024. COSMO: A large-scale e-commerce common sense knowledge generation and serving system at Amazon. (2024). https://www.amazon.science/publications/cosmo-a-large-scale-e-commerce-common-sense-knowledge-generation-and-serving-system-at-amazon [45] Y. Yuan et al . 2024. EvoAgent: Evolutionary Multi-Agent Optimization for LLMs. 
+
+arXiv preprint arXiv:2406.14228 (2024). Conference’17, July 2017, Washington, DC, USA Tao Su, Jinjing Hu, Xiao Wang, Xingzhong Cao, and Hui Wang 
+
+[46] Qiang Zhang, Fengshun Xiao, Tianjiao Li, Li Lin, Hanyin Fang, Huyang Sun, Ruoyu Liu, Xiaoyan Zhu, and Jiayin Wang. 2025. Efficient Integration of ASR with Large Language Models to Enhance Video Search at Scale. In Companion Proceedings of the ACM on Web Conference 2025 . 601–610. [47] Zhuosheng Zhang, Aston Zhang, Mu Li, and Alex Smola. 2022. Automatic chain of thought prompting in large language models. arXiv preprint arXiv:2210.03493 
+
+(2022). [48] Gang Zhao, Ximing Zhang, Chenji Lu, Hui Zhao, Tianshu Wu, Pengjie Wang, Jian Xu, and Bo Zheng. 2025. Explainable LLM-driven Multi-dimensional Distillation for E-Commerce Relevance Learning. In Companion Proceedings of the ACM on Web Conference 2025 . 631–640. [49] Yaochen Zhu, Liang Wu, Qi Guo, Liangjie Hong, and Jundong Li. 2024. Collab-orative large language model for recommender systems. In Proceedings of the ACM Web Conference 2024 . 3162–3172.
