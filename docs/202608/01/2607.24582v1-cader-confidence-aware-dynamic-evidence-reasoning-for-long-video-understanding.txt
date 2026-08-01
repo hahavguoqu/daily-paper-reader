@@ -1,0 +1,685 @@
+Title: CADER: Confidence-Aware Dynamic Evidence Reasoning for Long-Video Understanding
+
+URL Source: https://arxiv.org/pdf/2607.24582v1
+
+Published Time: Tue, 28 Jul 2026 02:12:12 GMT
+
+Number of Pages: 13
+
+Markdown Content:
+# CADER: Confidence-Aware Dynamic Evidence Reasoning for Long-Video Understanding 
+
+## Jinlong Yang 1∗, Wenhao Zhang 2∗, Kuanwei Lin 2, Sijie Cheng 3†
+
+> 1
+
+School of Computer Science, Northwestern Polytechnical University 
+
+> 2
+
+School of Electronic and Computer Engineering, Peking University 
+
+> 3
+
+Department of Computer Science and Technology, Tsinghua University aestalon.young@gmail.com, whzhang25@stu.pku.edu.cn 
+
+Abstract 
+
+Long-video understanding increasingly relies on large vision-language models and tool-augmented reasoning, but most sys-tems apply the same inference procedure to every example regardless of difficulty. This uniform strategy invokes unnec-essary tool-assisted processing for easy questions and provides limited control when difficult questions require fine-grained temporal evidence. We propose CADER (Confidence-Aware Dynamic Evidence Reasoning), a training-free framework for adaptive and reliable long-video reasoning. CADER first per-forms global reasoning over uniformly sampled frames and estimates answer confidence with a logit-margin signal, al-lowing high-confidence examples to exit early. For uncertain examples, CADER activates a second-stage tool-augmented loop that combines temporal cropping, lightweight semantic verification, and Relevance-Guided Resampling to progres-sively localize question-relevant evidence. This design treats tool use as a sample-level decision: a single global pass han-dles easy cases, while additional reasoning is reserved for examples where uncertainty suggests that more evidence is needed. Experiments on multiple VideoQA benchmarks show that CADER improves long-video reasoning while bypassing Stage 2 for high-confidence samples. Moreover, when applied to a backbone trained only with tool-free chain-of-thought su-pervision, CADER achieves competitive performance against specialized tool-augmented frameworks, suggesting a practi-cal inference-time route for adaptive long-video reasoning. 
+
+## Introduction 
+
+Long-video question answering is a central testbed for long-video understanding (LVU), requiring models to inte-grate sparse evidence across extended temporal contexts and ground natural-language queries in temporally distributed vi-sual events. With the rapid progress of vision-language mod-els (VLMs), recent approaches increasingly augment single-pass prediction with tool-based or agentic inference. By in-voking tools and iteratively refining evidence, these systems decide where and how to attend within long videos, improv-ing performance on complex queries (Wang et al. 2025b; Zhang et al. 2025b). However, such heavy-weight reasoning is not always nec-essary. A key limitation of existing tool-augmented long-video reasoning methods is that they typically apply a fixed inference pipeline to all samples, implicitly treating every question as if it requires fine-grained temporal search. This 
+
+> ∗
+
+These authors contributed equally. 
+
+> †
+
+Corresponding author. General MLLMs  
+
+> Easy Hard Early Exit Easy Hard Answer
+> CADER
+> Global Reasoning Answer Cropping Reflection Verification
+> RGR-based Unified Pipeline
+
+Figure 1: Motivation of CADER. Instead of applying tool-assisted reasoning uniformly, the framework first uses confi-dence to decide whether a sample should enter the expensive tool pipeline. reflects a missing decision layer in current long-video sys-tems: before deciding how to use a tool, the model should first decide whether the sample needs tool use at all. This issue is amplified by the mixed difficulty distribution of long-video benchmarks: many questions can be answered using global video semantics alone (Fu et al. 2025a; Zhou et al. 2025), while only a smaller subset requires localized evidence and iterative refinement. As a result, uniform tool invocation introduces redundant computation for easy sam-ples and may even expose them to unnecessary localization errors. These observations motivate treating tool use as a confidence-conditioned, sample-level decision rather than a default procedure. Temporal localization via video cropping is effective for focusing on relevant segments and reducing visual redun-dancy (Yang et al. 2025b). Yet, existing methods often train specialized agentic models to decide when and how to use such tools (Pan et al. 2025b), which becomes costly as base VLMs evolve. Moreover, more computation does not nec-essarily improve difficult cases: grounding errors or irrele-vant evidence can accumulate during iterative reasoning and destabilize predictions. To address these challenges, we propose CADER 
+
+(Confidence-Aware Dynamic Evidence Reasoning), aarXiv:2607.24582v1 [cs.CV] 27 Jul 2026 training-free framework for long-video understanding. In-stead of relying on retrained agentic policies, CADER intro-duces inference-time adaptive control to selectively allocate computation. In Stage 1, the model performs global reason-ing over uniformly sampled frames and estimates predic-tion confidence via the logit margin, enabling early exit for high-confidence samples without tool invocation. For low-confidence cases, Stage 2 activates a tool-augmented rea-soning pipeline that integrates temporal grounding, iterative video cropping, lightweight VLM-based semantic verifica-tion, and Relevance-Guided Resampling (RGR). RGR dy-namically adjusts frame density by down-sampling verified low-relevance regions while preserving base-rate coverage of unexplored segments. Together, these components form a closed-loop refinement process that progressively identifies task-relevant temporal evidence while avoiding redundant tool use and error accumulation. Compared to prior tool-augmented or multi-stage frame-works, CADER combines confidence-driven adaptive rout-ing with closed-loop semantic verification, enabling adaptive and stable long-video reasoning without tool-use training. A natural question is whether CADER can achieve “Think-ing with Videos”-like performance without any specialized tool-augmented training. To investigate this, we evaluate CADER on Qwen3-VL-SFT , which is fine-tuned solely with tool-free chain-of-thought (CoT) data–the same type of su-pervision used in the tool-free component of LongVT (Yang et al. 2025b) to enhance the base model’s general reasoning ability, without any tool-use annotation. This controlled ex-periment demonstrates that our training-free framework can deliver strong long-video reasoning capability even when the backbone has not undergone specialized tool-augmented supervision. The main contributions of this paper are summarized as follows: 
+
+• We propose CADER, a confidence-aware dynamic evi-dence reasoning framework that treats tool invocation as a sample-level decision, routing high-confidence exam-ples to early exit while reserving expensive reasoning for uncertain cases. 
+
+• We design a closed-loop evidence refinement stage that integrates temporal grounding, lightweight VLM verifi-cation, and Relevance-Guided Resampling (RGR), reduc-ing irrelevant evidence and improving reasoning stability for low-confidence samples. 
+
+• Extensive experiments on multiple VideoQA benchmarks show that confidence-conditioned routing consistently improves over the backbone, validates the contribution of each component, and achieves strong performance across diverse long-video scenarios. 
+
+## Related Work 
+
+Long Video Understanding 
+
+Long video understanding has advanced rapidly with mul-timodal large language models (MLLMs), enabling open-ended question answering, temporal reasoning, and seman-tic understanding over extended video inputs (Zhang et al. 2024; Jin et al. 2025b,a; Yang et al. 2025a). A central chal-lenge is that long videos contain substantial temporal re-dundancy, while the evidence needed for a specific question is often sparse. Recent methods address this issue through memory mechanisms, curriculum or reinforcement learning, scene-level organization, tree-structured representations, and hierarchical frame selection (Wang et al. 2025d; Chen et al. 2025, 2026; Ben-Ami et al. 2026). Foundation models such as Qwen3-VL (Bai et al. 2025a) further improve timestamp modeling and temporal grounding. CADER builds on these advances from a system-level perspective: rather than pro-cessing every sample with the same long-video pipeline, it uses model confidence to decide when global reasoning is sufficient and when localized evidence search is needed. 
+
+Adaptive Computation and Early-Exit Mechanisms 
+
+Adaptive computation aims to dynamically allocate com-putational resources based on input complexity, enabling models to devote more computation to hard instances while reducing cost on easier ones (Graves 2016). In computer vi-sion, this idea has been explored through techniques such as frame sparsification (Ghodrati, Bejnordi, and Habibian 2021), dynamic sampling (Wu et al. 2019), and resolution adaptation (Meng et al. 2020). Recent work further combines resolution scaling with depth-wise conditional execution, in-corporating early-exit strategies for efficient video recogni-tion (Wang et al. 2025a). These principles have also been extended to multimodal settings, such as early exiting for document understanding (Hamed et al. 2024), token-level pruning and merging for efficient MLLM inference (Zhong et al. 2025), and confidence-triggered CoT activation in video reasoning (Liu et al. 2026). However, these methods do not address whether to invoke a separate tool-assisted tempo-ral search stage. In contrast, CADER introduces a system-level adaptive mechanism that performs stage-wise routing based on model confidence after a full forward pass, which is suitable for long-video reasoning where tool pipelines incur substantially higher cost. 
+
+Tool-Augmented and Agentic VLMs 
+
+Tool-augmented reasoning has become an effective paradigm for complex multimodal tasks. In video understanding, agent-based frameworks (Fan et al. 2024; Yuan et al. 2025; Liu et al. 2025a; Yan et al. 2026) improve temporal reasoning through structured memory, multi-agent coordination, multi-tool in-teraction, and LLM-guided reasoning chains. Recent agentic condensation methods further reduce long-form videos into compact evidence representations (Yin et al. 2026), while reinforcement-learning methods train intrinsic tool-use ca-pabilities (Yang et al. 2025b; Zhang et al. 2025b; Pan et al. 2025b). However, most of these methods optimize how tools are used after invocation has been assumed. They rarely ask whether a sample should enter the tool pipeline at all, and many still consume tool outputs without explicit relevance verification (Fan et al. 2025). CADER addresses these gaps by conditioning tool invocation on model confidence and val-idating candidate segments with a lightweight VLM verifier. Beyond this routing decision, CADER uses frame-density-encoded feedback : accumulated verifier scores are converted Logit Margin Estimator High Confindence  
+
+> Confidence YES
+> Input Video
+
+[t1,t2] Crop   
+
+> Tool-Augmented Relevance Scoring
+> VLM-Scorer High Score
+> YES
+> NO
+> Adaptive Segment Sampling
+> FPS FPS FPS
+
+Reflection Loop NO 
+
+Exit Final Answer 
+
+> Fast Thinking
+
+MLLM MLLM Grounding 
+
+MLLM Reasoning …… 
+
+t1t2t3Score 
+
+Stage1 Stage2 
+
+> Question
+
+Figure 2: Overview of the CADER framework. Stage 1 performs global reasoning with confidence estimation and enables early exit for high-confidence samples. Stage 2 activates tool-assisted temporal search with lightweight VLM verification and relevance-guided resampling for low-confidence samples. into a segment-wise fps map, allowing search history to shape subsequent proposals through the resampled visual input rather than textual context alone. 
+
+## Method 
+
+Overview 
+
+Long-video question answering demands a careful balance between reasoning accuracy and computation allocation: uni-form full-video inference floods the model with temporally irrelevant content, while unconditional tool-assisted reason-ing incurs substantial overhead regardless of sample diffi-culty. CADER addresses this tension through two stages, each targeting a distinct computational regime: 
+
+Stage 1: Global Preliminary Reasoning . A strong VLM performs holistic reasoning over uniformly sampled frames and produces a candidate answer with a confidence score. High-confidence predictions exit immediately; uncertain samples proceed to Stage 2. This design allows additional tool-assisted computation to vary with sample difficulty in-stead of being applied uniformly. 
+
+Stage 2: Tool-assisted Fine-grained Reasoning . A tool-based temporal search pipeline localizes the most relevant video segment through iterative cropping and lightweight VLM verification. To prevent redundant token expenditure on regions already verified as irrelevant, we further introduce Relevance-Guided Resampling (RGR), which dynamically adjusts frame density based on accumulated verifier scores. The complete pseudocode of CADER and RGR is pro-vided in the supplementary material. 
+
+Stage 1: Global Preliminary Reasoning 
+
+Frame Sampling Strategy To provide broad temporal coverage while maintaining tractable token consumption, Stage 1 initially extracts frames at a fixed rate r1 = 1 .0 fps. Given a video V with duration D seconds, this yields 
+
+N1 = ⌊D × r1⌋ (1) frames. When N1 exceeds the backbone’s internal visual-token budget, the sequence is uniformly subsampled over the full timeline. This preserves broad temporal coverage while respecting the model’s input constraint. 
+
+Confidence Estimation via Logit Margin Given video 
+
+V , question Q, and candidate options {Oi}Ni=1 , we employ a large-scale VLM (Qwen3-VL-8B-Instruct (Bai et al. 2025a)) to perform holistic reasoning over N1 frames. The model produces logits {zi} for each candidate option, which we normalize via temperature-scaled softmax: 
+
+Pi = exp( zi/T )
+
+PNj=1 exp( zj /T ) , (2) where T =2 .0 is an empirically chosen value that softens the probability distribution without over-flattening it, improving the stability of margin-based confidence estimation across benchmarks with varying numbers of candidate options. We define the logit margin M as: 
+
+M = Ptop1 − Ptop2 , (3) where Ptop1 and Ptop2 are the highest and second-highest probabilities, respectively. A large margin indicates that the model strongly favors one option over all others, which we interpret as high prediction confidence. If M ≥ τ (τ =0 .97 ), the system directly outputs the top-1 prediction A1 (early exit). Otherwise, the sample is routed to Stage 2. The relia-bility of M as a routing signal is examined in the adaptive routing analysis. In all reported experiments, the option log-its used for answer selection also define the routing score, so confidence estimation requires no additional model call. This ties routing to the model’s own answer preference without a separately trained controller. Stage 1 inference disables chain-of-thought reasoning (enable_thinking=False ) and produces a direct single-token prediction, minimizing latency while preserv-ing logit scores for confidence estimation. Deliberate chain-of-thought reasoning is reserved for uncertain samples in Stage 2. 
+
+Stage 2: Tool-assisted Fine-grained Reasoning 
+
+Samples that fail the Stage 1 confidence check are routed to Stage 2, which performs targeted temporal search through four sequential components: temporal segment proposal, local evidence verification, reflection-based search with relevance-guided resampling, and final local reasoning. 
+
+Temporal Segment Proposal The main VLM is prompted to identify a candidate time interval [ts, t e] likely to contain the key visual evidence for answering Q. We further intro-duce a Breadth-Aware Fallback : if the proposed window exceeds 1200 s or spans more than 20% of the video, the question is treated as globally dependent and the system falls back to A1. For valid proposals, crop_video extracts the segment, enforcing a minimum duration of 10 s by symmet-rically expanding shorter windows around their midpoint. 
+
+Local Evidence Verification To validate whether the pro-posed segment contains the required visual evidence, we employ a lightweight VLM (Qwen3-VL-4B-Instruct (Bai et al. 2025a)) as a dedicated semantic verifier. We first apply 
+
+Budget-Aware Dense Sampling to maximize information density within the model’s context window. For a cropped segment of duration Dcrop = te − ts, frames are sampled at: 
+
+r2 = clip 
+
+ Nbudget 
+
+Dcrop 
+
+, r min , r max 
+
+
+
+, (4) where Nbudget =512 , rmin =1 .0 fps, and rmax =8 .0 fps, en-suring short segments receive high temporal resolution while longer crops remain within the token budget. Given the densely sampled frames, the verifier answers a binary Yes/No question, and Pyes is the token probability assigned to “Yes”. If Pyes ≥ δ (δ=0 .60 ), the segment is accepted and passed to final reasoning. Otherwise, a reflection step is triggered. The verifier scores are also accumulated across iterations to guide resampling in the next stage. 
+
+Reflection-based Temporal Search When a segment is re-jected, the system feeds all previously attempted ranges back to the main VLM, enabling spatio-temporal exclusion : the model proposes a new, non-overlapping interval informed by where evidence has not been found. After the initial proposal, the system performs at most K=2 reflection rounds, yield-ing at most K+1=3 crop-and-verify cycles. If no relevant segment is identified, it returns the cached Stage 1 prediction 
+
+A1 without an additional full-video reasoning pass. 
+
+Relevance-Guided Resampling At each reflection itera-tion, uniform 1.0 fps sampling wastes context tokens on segments already verified as irrelevant. Relevance-Guided Resampling (RGR) instead adapts frame density according to accumulated verifier scores. This frame-density-encoded feedback carries search history implicitly through the resam-pled visual input. Specifically, after verifying interval [t(k) 
+
+> s
+
+, t (k) 
+
+> e
+
+] at iteration 
+
+k, we record a scored segment S(k) = {t(k) 
+
+> s
+
+, t (k) 
+
+> e
+
+, f (k)},where: 
+
+f (k) = min  1.0, P (k)yes + fmin 
+
+, (5) with fmin =0 .4 fps ensuring non-zero coverage even for highly irrelevant segments. Overlapping segments across iterations are merged into a non-overlapping per-segment fps map P by first collecting all unique temporal breakpoints: 
+
+B = sort 
+
+[ 
+
+> k
+
+{t(k) 
+
+> s
+
+, t (k) 
+
+> e
+
+}
+
+
+
+, (6) and assigning to each sub-interval [bi, b i+1 ] the frame rate of the most recent scored segment covering it: 
+
+f[bi,b i+1 ] = f (k∗),k∗ = arg max 
+
+> k
+
+k | t(k) 
+
+> s
+
+≤ bi ∧ t(k) 
+
+> e
+
+≥ bi+1 . (7) Adjacent sub-intervals with identical frame rates are further merged to reduce fragmentation. The effective frame count for each sub-interval is: 
+
+ni = ⌊∆i × fi⌋, ∆i = bi+1 − bi, (8) and the total frame count for the reflection prompt is: 
+
+Nreflect = X
+
+> [bi,b i+1 ]∈P
+
+⌊∆i × fi⌋ + ⌊Dunexplored × r1⌋, (9) where Dunexplored is the total duration not yet covered by any scored segment. Explored regions are resampled at their adjusted rate fi ≤ r1, while uncovered regions retain the base rate r1=1 .0 fps. This allocation reduces redundant con-text consumption by down-sampling verified low-relevance regions while keeping unexplored regions at the base rate. The RGR procedure is illustrated in Figure 3, with complete pseudocode provided in the supplementary material. 
+
+Final Local Reasoning Once a relevant segment [t∗ 
+
+> s
+
+, t ∗ 
+
+> e
+
+]
+
+is accepted by the verifier, the main VLM performs final inference on its densely sampled frames (at rate r2, up to 
+
+8.0 fps). Concentrating attention on a compact, high-fidelity clip mitigates evidence dilution and distraction from irrele-vant frames. The final answer A is extracted via structured parsing with a single-letter fallback. A: Pyes =0.2 B: Pyes =0.4 A: Pyes =0.2 B: Pyes =0.4 t1 t2 t3 t4 t0 t5 t1 t2 t0 t4 Uniform Sampling (1 fps) A: Pyes =0.2 B: Pyes =0.4 A: P yes =0.2 B: Pyes =0.4 t1 t2 t3 t4 t0 t5 t1 t2 t0 t4 fps=1 fps=1 0.6 0.6 0.8 10.8 11fps fps Relevance-Guided Resampling (RGR) Figure 3: Comparison between uniform sampling and RGR. Uniform sampling allocates equal frame density across the video, wasting tokens on already-explored irrelevant seg-ments. RGR dynamically down-samples low-relevance ex-plored regions while preserving base-rate coverage of unex-plored areas, thereby encoding search history in the visual signal. 
+
+Training-Free Scaling with Backbone Improvements 
+
+While recent agentic MLLMs typically rely on tool-augmented SFT to achieve strong performance (Zhang et al. 2025b), CADER requires no such supervision and naturally benefits from improvements to the underlying backbone. To validate this, we construct a controlled backbone, Qwen3-VL-SFT , by fine-tuning Qwen3-VL-8B-Instruct for one epoch using LLaMA-Factory (Zheng et al. 2024) on a mix-ture of tool-free CoT data: LongVideo-Reason CoT (Chen et al. 2025), Video-R1 CoT (Feng et al. 2025), and image-based CoT instructions (Yang et al. 2025b), all of which are sourced from LongVT(Yang et al. 2025b). No tool-use an-notations are included, ensuring that any performance gains reflect enhanced intrinsic reasoning ability alone. Evaluating CADER on top of this strengthened back-bone under identical inference conditions, we demonstrate two key findings: (1) CADER achieves competitive long-video reasoning performance without any tool-augmented supervision; and (2) as backbone reasoning ability improves, CADER’s performance scales accordingly, confirming that our framework consistently amplifies backbone improve-ments without retraining any tool-use policies. 
+
+## Experiments 
+
+Our experiments are organized around the central claim that long-video reasoning should allocate computation according to sample difficulty. We first compare CADER with existing methods to evaluate overall accuracy, then ablate its major components to identify where the gains come from. We fur-ther quantify Stage 2 trigger rates and analyze the verifier and confidence signal, showing that sample-level tool invocation is selective and reliable. 
+
+Experimental Setup 
+
+Benchmarks. We evaluate our framework on five challeng-ing long-video understanding benchmarks: Video-MME (Fu et al. 2025a) (long subset), MLVU (Zhou et al. 2025), 
+
+LongVideoBench (Wu et al. 2024), VideoEval-Pro (Ma et al. 2025) (MCQ protocol), and LVBench (Wang et al. 2025c). These benchmarks span diverse video durations and question types, providing a comprehensive testbed for long-video QA evaluation. 
+
+Implementation Details. Our framework uses Qwen3-VL-8B-Instruct (Bai et al. 2025a) as the primary model and 
+
+Qwen3-VL-4B-Instruct (Bai et al. 2025a) as the lightweight verifier. Stage 1 samples frames at r1 = 1 .0 fps and follows the backbone’s internal visual-frame/token budget; overflow frames are uniformly subsampled to fit the model context. The confidence threshold is τ = 0 .97 , the verifier thresh-old is δ = 0 .60 , and the maximum reflection iterations are 
+
+K = 2 ; these values are fixed across benchmarks. Stage 1 performs global reasoning with thinking disabled to avoid additional reasoning overhead. In contrast, Stage 2 enables chain-of-thought reasoning (enable_thinking=True ) to support more deliberate temporal grounding and final answer generation. For localized reasoning, we use budget-aware sampling with Nbudget = 512 frames and a sampling rate clipped to 
+
+[1 .0, 8.0] fps. Each cropped segment is enforced to a mini-mum duration of 10 seconds. To study the effect of reasoning-oriented supervision, we additionally evaluate CADER on Qwen3-VL-SFT , de-scribed in the training-free scaling section. All experiments are conducted on 8 × PPU-ZW810E GPUs with 96GB mem-ory per device, and inference is run with bfloat16 preci-sion to reduce memory footprint while preserving numerical stability. 
+
+Main Results 
+
+We compare CADER with state-of-the-art methods across five benchmarks. As shown in Table 1, CADER consistently improves over its Qwen3-VL-8B backbone, with larger gains on benchmarks requiring precise temporal localization. On shorter or more semantically diverse benchmarks such as Video-MME, Stage 2 is triggered less frequently and gains are accordingly smaller. With Qwen3-VL-SFT , introduced in the training-free scaling section, CADER achieves fur-ther gains and reaches performance competitive with spe-cialized tool-augmented frameworks such as LongVT (Yang et al. 2025b), showing that reasoning-oriented supervision and inference-time adaptive computation are complemen-tary. 
+
+Ablation Study 
+
+We conduct ablation experiments on VideoMME(long) and LVBench to analyze the contribution of each compo-nent in CADER. These two benchmarks are selected be-cause they represent complementary evaluation regimes: VideoMME(long) covers a broad range of question types with a Stage 2 trigger rate of 59 .9% , while LVBench features a higher proportion of temporally localization-dependent questions and a higher Stage 2 trigger rate ( 78 .6% ), mak-ing it more sensitive to the design choices in Stage 2. Results are reported in Table 2. Table 1: Comparison with state-of-the-art methods on long-video QA benchmarks. Bold denotes the best result among open-source models of comparable size. * denotes results reproduced by us.                                                                                                              
+
+> Method Video-MME MLVU LongVideoBench LVBench VideoEval-Pro
+> (Long,w/o sub) (M-Avg, Val) (Validation) (Overall) (MCQ)
+> Open-source Models
+> Video-LLaVA (Lin et al. 2024) 36.2 47.3 39.1 -27.7 LLaVA-OneVision (Li et al. 2024) 46.7 64.7 56.3 --LLaVA-Video (Zhang et al. 2025c) 50.6 70.8 61.1 41.5 47.8 InternVL2.5 (Chen et al. 2024) 51.1 67.6 62.7 45.2 48.5 Flow4Agent (Liu et al. 2025b) 54.2 71.4 60.4 --VideoLLaMA3 (Zhang et al. 2025a) 54.9 73.0 59.8 45.3 -TimeSearch-R (Pan et al. 2025a) 56.0 71.5 60.1 --VideoChat-R1.5 (Yan et al. 2025) -70.9 62.6 48.4 -LOVE-R1 (Fu et al. 2025b) -67.4 60.1 48.2 -Video-Zoomer (Ding et al. 2026) 55.8 68.8 57.7 41.5 -TPO (LLaVA-Video) (Li et al. 2025) 55.4 71.1 60.3 --LongVT (Yang et al. 2025b) ---41.3 -Qwen2.5-VL* (Bai et al. 2025b) 50.3 66.6 58.1 45.4 47.8 Qwen3-VL* (Bai et al. 2025a) 59.3 75.2 64.0 46.9 52.1
+> Training-free Methods
+> DrVideo (Ma et al. 2024) 51.7 ----VideoAgent (Wang et al. 2024) 49.0 --29.3 -VideoTree (Wang et al. 2025d) 54.2 --28.8 -SeViCES (InternVL2.5) (Sheng et al. 2025) 55.2 72.1 61.7 46.7 -CADER (Qwen3-VL) 60.1 75.9 65.7 50.1 54.0
+> CADER (Qwen3-VL-SFT) 60.5 76.5 66.1 50.8 55.1
+
+Table 2: Ablation study on CADER. Each row disables one component while keeping the rest intact. ✓/× denote en-abled/disabled; — denotes not applicable. Uniform Stage 2 disables early exit and routes every sample to Stage 2.                                      
+
+> Variant S2 Ver. Ref. RGR VMME LVB
+> Full ✓✓✓✓60.1 50.1
+> w/o Stage 2 ×———59.3 46.9 Uniform S2 ✓✓✓✓59.0 49.8 w/o Verifier ✓×✓✓56.3 43.5 w/o Refl. ( K=0 )✓✓×—58.9 48.6 w/o RGR ✓✓✓×59.5 48.5
+
+Removing Stage 2 leads to the largest performance drop on LVBench ( −3.2 points), confirming that tool-assisted tempo-ral reasoning is the primary source of improvement for hard samples. However, uniformly routing every sample to Stage 2 is also suboptimal, reducing accuracy from 60 .1 to 59 .0
+
+on VideoMME(Long) and from 50 .1 to 49 .8 on LVBench. This shows that the gain is not obtained by simply adding more computation, but by selectively invoking Stage 2 when Stage 1 is uncertain. Disabling the verifier causes a larger drop despite Stage 2 remaining active, indicating that ac-cepting every proposed segment without relevance checking can feed the main model irrelevant visual content. Together, these results confirm that each component serves a distinct role: Stage 2 provides temporal focus, the verifier ensures rel-evance, reflection recovers from grounding failures, and RGR improves resampling under a matched reflection budget. Ad-ditional depth-wise analysis of the reflection mechanism is provided in the supplementary material. 
+
+Stage-2 Trigger Rate Analysis 
+
+Beyond accuracy, we report Stage 2 trigger rates to quantify selective tool invocation relative to a uniform pipeline that applies Stage 2 to every sample. As shown in Table 3, CADER skips Stage 2 on 38 .6% of all evaluated samples, corresponding to 2,788 out of 7,227 examples. These examples require no cropping, verifier call, or reflection step. Trigger rates also vary by benchmark: MLVU exits at Stage 1 for more than half of its samples, while LVBench triggers Stage 2 more often, consistent with its stronger temporal localization demand. This adaptive be-havior supports the central premise of CADER: computation should be allocated according to sample difficulty rather than applied uniformly across all videos. Together with the Uni-form Stage 2 ablation, the trigger rates characterize both the coverage of tool invocation and the accuracy effect of apply-ing temporal search selectively. 
+
+High-Confidence Relevance Routing 
+
+We examine whether high-confidence relevance routing on the initial Stage 2 proposal translates into downstream accu-racy gains. As shown in Figure 4, initial candidate segments assigned high relevance scores by the verifier ( Pyes ≥ 0.9)yield positive net gains over the Stage 1 baseline across all five benchmarks. This pattern indicates that highly scored Table 3: Stage 1 early-exit rate across benchmarks. The Stage 1 exit column reports the fraction of samples that avoid Stage 2 entirely. 
+
+Benchmark Total S2 Trig. S1 Exit Acc. 
+
+VideoMME-Long 900 59.9% 40.1% 60.1 LVBench 1549 78.6% 21.4% 50.1 MLVU 2160 45.4% 54.6% 75.9 LongVideoBench 1329 58.2% 41.8% 65.7 VideoEval-Pro 1289 72.0% 28.0% 54.0 
+
+Total 7227 61.4% 38.6% –
+
+initial candidate segments are likely to provide useful ev-idence for local reasoning, supporting verifier-guided rel-evance routing before local inference. Net gain counts in-correct Stage 1 answers corrected by local inference minus initially correct answers overturned. Positive values there-fore measure the end-to-end utility of high-confidence rele-vance routing after local inference. The metric follows the complete path from the initial proposal through final local reasoning, testing whether verifier-ranked evidence remains useful when consumed by the main VLM. LVBench 
+
+> (n=242)
+> LongVideoBench
+> (n=176)
+> VideoEvalPro
+> (n=233)
+> MLVU
+> (n=302)
+> VideoMME-Long
+> (n=72)
+> 0
+> 5
+> 10
+> 15
+> 20
+> 25
+> 30
+> 35
+> 40
+> 45
+> Net Correct Predictions Gained  +38
+> +21
+> +28
+> +5
+> +3
+
+Figure 4: Net correct predictions gained by Stage 2 over the Stage 1 baseline for initial candidate segments assigned high relevance scores by the verifier ( Pyes ≥ 0.9). Sample counts are shown on the x-axis. 
+
+Adaptive Routing via Confidence 
+
+Confidence calibration. We evaluate whether the logit margin M (Eq. (3)) serves as a reliable routing signal. Ta-ble 4 reports the sample distribution across margin intervals on all five benchmarks, and Figure 5 shows the corresponding Stage 1 accuracy trend. Accuracy increases monotonically with larger margins across all benchmarks, indicating that M is a reliable con-fidence signal. This trend supports using the margin for threshold-based routing; we use τ = 0 .97 consistently across benchmarks. High-margin samples exit early, while lower-margin samples are routed to Stage 2. Minor fluctuations arise from small bins, but the overall ordering remains sta-ble. 
+
+Stage 2 improvement on low-confidence samples. Ta-ble 5 reports the gain of Stage 2 over the Stage 1 baseline Table 4: Sample counts per logit-margin interval across benchmarks. Accuracy trends are shown in Figure 5. 
+
+Margin interval VMME-L LVBench MLVU LVBch VEP 
+
+≥ 0.995 263 224 921 417 262 
+
+[0 .99 , 0.995) 34 32 90 51 26 
+
+[0 .97 , 0.99) 64 75 169 89 73 
+
+[0 .90 , 0.97) 100 120 213 139 108 
+
+< 0.90 439 1098 767 640 820 <0.90 0.90 0.97 0.97 0.99 0.99 0.995 0.995 
+
+> Logit Margin Interval
+> 30
+> 40
+> 50
+> 60
+> 70
+> 80
+> 90
+> 100
+> Accuracy (%)
+> VideoMME-Long
+> LVBench
+> MLVU
+> LongVideoBench
+> VideoEval-Pro
+
+Figure 5: Stage-1 accuracy as a function of logit margin across multiple benchmarks. The monotonically increasing trend confirms that the margin reliably reflects prediction confidence and justifies threshold-based routing. restricted to low-confidence samples ( M < τ ). Table 5: Accuracy improvement of Stage 2 over Stage 1 on low-confidence samples ( M < τ ). 
+
+Margin Benchmark Stage-1 Final ∆
+
+[0 .90 , 0.97) 
+
+LongVideoBench 66.2 70.5 +4 .3
+
+LVBench 51.7 54.2 +2 .5
+
+VideoMME(Long) 55.0 56.0 +1 .0
+
+< 0.90 
+
+LongVideoBench 44.4 47.0 +2 .6
+
+LVBench 37.0 41.0 +4 .0
+
+VideoMME(Long) 40.3 40.6 +0 .2
+
+Stage 2 improves accuracy across both margin ranges and all benchmarks, with larger gains on harder samples where Stage 1 is least reliable. The smaller but positive gain on VideoMME(Long) suggests that confidence routing limits Stage 2 invocation while identifying samples where evidence search is most likely to help. 
+
+## Conclusion 
+
+CADER addresses uniform reasoning in VideoQA through confidence-aware routing, letting easy samples exit early while reserving tool use for uncertain cases. Its closed-loop design combines temporal grounding, RGR, and lightweight verification to reduce error accumulation. Results across five benchmarks support selective over uniform tool use. References 
+
+Bai, S.; Cai, Y.; Chen, R.; Chen, K.; Chen, X.; Cheng, Z.; Deng, L.; Ding, W.; Gao, C.; Ge, C.; Ge, W.; Guo, Z.; Huang, Q.; Huang, J.; Huang, F.; Hui, B.; Jiang, S.; Li, Z.; Li, M.; Li, M.; Li, K.; Lin, Z.; Lin, J.; Liu, X.; Liu, J.; Liu, C.; Liu, Y.; Liu, D.; Liu, S.; Lu, D.; Luo, R.; Lv, C.; Men, R.; Meng, L.; Ren, X.; Ren, X.; Song, S.; Sun, Y.; Tang, J.; Tu, J.; Wan, J.; Wang, P.; Wang, P.; Wang, Q.; Wang, Y.; Xie, T.; Xu, Y.; Xu, H.; Xu, J.; Yang, Z.; Yang, M.; Yang, J.; Yang, A.; Yu, B.; Zhang, F.; Zhang, H.; Zhang, X.; Zheng, B.; Zhong, H.; Zhou, J.; Zhou, F.; Zhou, J.; Zhu, Y.; and Zhu, K. 2025a. Qwen3-VL Technical Report. arXiv preprint arXiv:2511.21631 .Bai, S.; Chen, K.; Liu, X.; Wang, J.; Ge, W.; Song, S.; Dang, K.; Wang, P.; Wang, S.; Tang, J.; Zhong, H.; Zhu, Y.; Yang, M.; Li, Z.; Wan, J.; Wang, P.; Ding, W.; Fu, Z.; Xu, Y.; Ye, J.; Zhang, X.; Xie, T.; Cheng, Z.; Zhang, H.; Yang, Z.; Xu, H.; and Lin, J. 2025b. Qwen2.5-VL Technical Report. arXiv preprint arXiv:2502.13923 .Ben-Ami, D.; Serussi, G.; Cohen, K.; and Baskin, C. 2026. HiMu: Hierarchical Multimodal Frame Selection for Long Video Question Answering. arXiv:2603.18558. Chen, T.; Zhang, K.; Wu, Q.; Chen, X.; Chang, C.; Sun, X.; Zhou, Y.; and Ji, R. 2026. Scaling the Long Video Under-standing of Multimodal Large Language Models via Visual Memory Mechanism. arXiv preprint arXiv:2603.29252 .Chen, Y.; Huang, W.; Shi, B.; Hu, Q.; Ye, H.; Zhu, L.; Liu, Z.; Molchanov, P.; Kautz, J.; Qi, X.; et al. 2025. Scaling rl to long videos. arXiv preprint arXiv:2507.07966 .Chen, Z.; Wang, W.; Cao, Y.; Liu, Y.; Gao, Z.; Cui, E.; Zhu, J.; Ye, S.; Tian, H.; Liu, Z.; et al. 2024. Expanding Per-formance Boundaries of Open-Source Multimodal Models with Model, Data, and Test-Time Scaling. arXiv preprint arXiv:2412.05271 .Ding, Y.; Lai, X.; Zhang, Y.; Li, W.; Chu, R.; and Yang, Y. 2026. VideoZoomer: Reinforcement-Learned Temporal Focusing for Long Video Reasoning. In The Fourteenth International Conference on Learning Representations .Fan, S.; Cui, J.; Guo, M.-H.; and Yang, S. 2025. Tool-Augmented Spatiotemporal Reasoning for Streamlin-ing Video Question Answering Task. arXiv preprint arXiv:2512.10359 .Fan, Y.; Ma, X.; Wu, R.; Du, Y.; Li, J.; Gao, Z.; and Li, Q. 2024. Videoagent: A memory-augmented multimodal agent for video understanding. In European Conference on Computer Vision , 75–92. Springer. Feng, K.; Gong, K.; Li, B.; Guo, Z.; Wang, Y.; Peng, T.; Wu, J.; Zhang, X.; Wang, B.; and Yue, X. 2025. Video-r1: Reinforcing video reasoning in mllms. arXiv preprint arXiv:2503.21776 .Fu, C.; Dai, Y.; Luo, Y.; Li, L.; Ren, S.; Zhang, R.; Wang, Z.; Zhou, C.; Shen, Y.; Zhang, M.; Chen, P.; Li, Y.; Lin, S.; Zhao, S.; Li, K.; Xu, T.; Zheng, X.; Chen, E.; Shan, C.; He, R.; and Sun, X. 2025a. Video-MME: The First-Ever Comprehensive Evaluation Benchmark of Multi-modal LLMs in Video Analysis. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) , 24108–24118. Fu, S.; Yang, Q.; Li, Y.-M.; Wei, X.; Xie, X.; and Zheng, W.-S. 2025b. LOVE-R1: Advancing Long Video Understanding with an Adaptive Zoom-in Mechanism via Multi-Step Rea-soning. arXiv preprint arXiv:2509.24786 .Ghodrati, A.; Bejnordi, B. E.; and Habibian, A. 2021. Frame-exit: Conditional early exiting for efficient video recognition. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , 15608–15618. Graves, A. 2016. Adaptive Computation Time for Recurrent Neural Networks. arXiv preprint arXiv:1603.08983 .Hamed, O.; Bakkali, S.; Blaschko, M.; Moens, S.; and Van Landeghem, J. 2024. Multimodal adaptive inference for document image classification with anytime early exit-ing. In International Conference on Document Analysis and Recognition , 270–286. Springer. Jin, H.; Lin, K.; Zhang, W.; Jin, Y.; and Li, G. 2025a. VideoCuRL: Video Curriculum Reinforcement Learning with Orthogonal Difficulty Decomposition. arXiv preprint arXiv:2601.00887 .Jin, H.; Wang, Q.; Zhang, W.; Liu, Y.; and Cheng, S. 2025b. VideoMem: Enhancing Ultra-Long Video Under-standing via Adaptive Memory Management. arXiv preprint arXiv:2512.04540 .Li, B.; Zhang, Y.; Guo, D.; Zhang, R.; Li, F.; Zhang, H.; Zhang, K.; Zhang, P.; Li, Y.; Liu, Z.; et al. 2024. Llava-onevision: Easy visual task transfer. arXiv preprint arXiv:2408.03326 .Li, R.; Wang, X.; Zhang, Y.; Zohar, O.; Wang, Z.; and Yeung-Levy, S. 2025. Temporal Preference Optimiza-tion for Long-Form Video Understanding. arXiv preprint arXiv:2501.13919 .Lin, B.; Ye, Y.; Zhu, B.; Cui, J.; Ning, M.; Jin, P.; and Yuan, L. 2024. Video-llava: Learning united visual representation by alignment before projection. In Proceedings of the 2024 conference on empirical methods in natural language pro-cessing , 5971–5984. Liu, R.; Liu, Z.; Tang, J.; Ma, Y.; Pi, R.; Zhang, J.; and Chen, Q. 2025a. LongVideoAgent: Multi-Agent Reasoning with Long Videos. arXiv:2512.20618. Liu, R.; Sun, S.; Tang, H.; Gao, W.; and Li, G. 2025b. Flow4agent: Long-form video understanding via motion prior from optical flow. In Proceedings of the IEEE/CVF In-ternational Conference on Computer Vision , 23817–23827. Liu, S.; Zhuge, M.; Zhao, C.; Chen, J.; Wu, L.; Liu, Z.; Zhu, C.; Cai, Z.; Zhou, C.; Liu, H.; Chang, E.; Suri, S.; Xu, H.; Qian, Q.; Wen, W.; Varadarajan, B.; Liu, Z.; Xu, H.; Bordes, F.; Krishnamoorthi, R.; Ghanem, B.; Chandra, V.; and Xiong, Y. 2026. VideoAuto-R1: Video Auto Reasoning via Thinking Once, Answering Twice. arXiv preprint arXiv:2601.05175 .Ma, W.; Ren, W.; Jia, Y.; Li, Z.; Nie, P.; Zhang, G.; and Chen, W. 2025. Videoeval-pro: Robust and realistic long video understanding evaluation. arXiv preprint arXiv:2505.14640 .Ma, Z.; Gou, C.; Shi, H.; Sun, B.; Li, S.; Rezatofighi, H.; and Cai, J. 2024. DrVideo: Document Retrieval Based Long Video Understanding. arXiv:2406.12846. Meng, Y.; Lin, C.-C.; Panda, R.; Sattigeri, P.; Karlinsky, L.; Oliva, A.; Saenko, K.; and Feris, R. 2020. Ar-net: Adaptive frame resolution for efficient action recognition. In European conference on computer vision , 86–104. Springer. Pan, J.; Zhang, Q.; Zhang, R.; Lu, M.; Wan, X.; Zhang, Y.; Liu, C.; and She, Q. 2025a. TimeSearch-R: Adaptive Temporal Search for Long-Form Video Understanding via Self-Verification Reinforcement Learning. arXiv preprint arXiv:2511.05489 .Pan, J.; Zhang, R.; Wan, X.; Zhang, Y.; Lu, M.; and She, Q. 2025b. Timesearch: Hierarchical video search with spot-light and reflection for human-like long video understanding. 
+
+arXiv preprint arXiv:2504.01407 .Sheng, Y.; Hao, Y.; Li, C.; Wang, S.; and He, X. 2025. SeViCES: Unifying Semantic-Visual Evidence Con-sensus for Long Video Understanding. arXiv preprint arXiv:2510.20622 .Wang, Q.; Yu, C.; Chen, S.; Fang, W.; and Xiong, N. 2025a. Joint adaptive resolution selection and conditional early exit-ing for efficient video recognition on edge devices. Big Data Mining and Analytics , 8(3): 661–677. Wang, S.; Jin, J.; Wang, X.; Song, L.; Fu, R.; Wang, H.; Ge, Z.; Lu, Y.; and Cheng, X. 2025b. Video-Thinker: Sparking" Thinking with Videos" via Reinforcement Learning. arXiv preprint arXiv:2510.23473 .Wang, W.; He, Z.; Hong, W.; Cheng, Y.; Zhang, X.; Qi, J.; Ding, M.; Gu, X.; Huang, S.; Xu, B.; et al. 2025c. Lvbench: An extreme long video understanding benchmark. In Pro-ceedings of the IEEE/CVF International Conference on Com-puter Vision , 22958–22967. Wang, X.; Zhang, Y.; Zohar, O.; and Yeung-Levy, S. 2024. VideoAgent: Long-form Video Understanding with Large Language Model as Agent. arXiv:2403.10517. Wang, Z.; Yu, S.; Stengel-Eskin, E.; Yoon, J.; Cheng, F.; Bertasius, G.; and Bansal, M. 2025d. VideoTree: Adap-tive Tree-based Video Representation for LLM Reasoning on Long Videos. In Proceedings of the Computer Vision and Pattern Recognition Conference (CVPR) , 3272–3283. Wu, H.; Li, D.; Chen, B.; and Li, J. 2024. LongVideoBench: A Benchmark for Long-context Interleaved Video-Language Understanding. arXiv:2407.15754. Wu, Z.; Xiong, C.; Ma, C.-Y.; Socher, R.; and Davis, L. S. 2019. Adaframe: Adaptive frame selection for fast video recognition. In Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition , 1278–1287. Yan, H.; Zhou, H.; Xu, P.; Feng, X.; and Liu, M. 2026. Symphony: A Cognitively-Inspired Multi-Agent System for Long-Video Understanding. arXiv:2603.17307. Yan, Z.; Li, X.; He, Y.; Yue, Z.; Zeng, X.; Wang, Y.; Qiao, Y.; Wang, L.; and Wang, Y. 2025. VideoChat-R1.5: Visual Test-Time Scaling to Reinforce Multimodal Reasoning by Iterative Perception. arXiv preprint arXiv:2509.21100 .Yang, X.; Zhang, W.; Jin, H.; Liu, L.; Xu, H.; Nie, Y.; Yu, F.; and Ma, F. 2025a. Enhancing long video question answer-ing with scene-localized frame grouping. arXiv preprint arXiv:2508.03009 .Yang, Z.; Wang, S.; Zhang, K.; Wu, K.; Leng, S.; Zhang, Y.; Li, B.; Qin, C.; Lu, S.; Li, X.; and Bing, L. 2025b. LongVT: Incentivizing "Thinking with Long Videos" via Native Tool Calling. arXiv preprint arXiv:2511.20785 .Yin, Y.; Xing, Y.; Meng, Q.; Chen, M.; Yang, Y.; and Yu, Z. 2026. Progressive Video Condensation with MLLM Agent for Long-form Video Understanding. arXiv:2604.02891. Yuan, H.; Liu, Z.; Zhou, J.; Qian, H.; Shu, Y.; Sebe, N.; Wen, J.-R.; and Dou, Z. 2025. VideoExplorer: Think With Videos For Agentic Long-Video Understanding. arXiv:2506.10821. Zhang, B.; Li, K.; Cheng, Z.; Hu, Z.; Yuan, Y.; Chen, G.; Leng, S.; Jiang, Y.; Zhang, H.; Li, X.; Jin, P.; Zhang, W.; Wang, F.; Bing, L.; and Zhao, D. 2025a. VideoLLaMA 3: Frontier Multimodal Foundation Models for Image and Video Understanding. arXiv preprint arXiv:2501.13106 .Zhang, H.; Gu, X.; Li, J.; Ma, C.; Bai, S.; Zhang, C.; Zhang, B.; Zhou, Z.; He, D.; and Tang, Y. 2025b. Thinking with videos: Multimodal tool-augmented reinforcement learning for long video reasoning. arXiv preprint arXiv:2508.04416 .Zhang, J.; Huang, J.; Jin, S.; and Lu, S. 2024. Vision-language models for vision tasks: A survey. IEEE trans-actions on pattern analysis and machine intelligence , 46(8): 5625–5644. Zhang, Y.; Wu, J.; Li, W.; Li, B.; Ma, Z.; Liu, Z.; and Li, C. 2025c. LLaVA-Video: Video Instruction Tuning With Synthetic Data. arXiv:2410.02713. Zheng, Y.; Zhang, R.; Zhang, J.; Ye, Y.; and Luo, Z. 2024. Llamafactory: Unified efficient fine-tuning of 100+ language models. In Proceedings of the 62nd annual meeting of the association for computational linguistics (volume 3: system demonstrations) , 400–410. Zhong, Y.; Liu, Z.; Li, Y.; and Wang, L. 2025. Aim: Adaptive inference of multi-modal llms via token merging and prun-ing. In Proceedings of the IEEE/CVF International Confer-ence on Computer Vision , 20180–20192. Zhou, J.; Shu, Y.; Zhao, B.; Wu, B.; Liang, Z.; Xiao, S.; Qin, M.; Yang, X.; Xiong, Y.; Zhang, B.; Huang, T.; and Liu, Z. 2025. MLVU: Benchmarking Multi-task Long Video Understanding. In Proceedings of the IEEE/CVF Confer-ence on Computer Vision and Pattern Recognition (CVPR) ,13691–13701. Supplementary Material 
+
+## A Training Details of Qwen3-VL-SFT 
+
+Base Model. We fine-tune Qwen3-VL-8B-Instruct (Bai et al. 2025a) as the backbone using the LLaMA-Factory (Zheng et al. 2024) framework for one epoch. 
+
+Training Data. Following LongVT (Yang et al. 2025b), we construct our SFT training mixture from the tool-free por-tion of its publicly released SFT data. Specifically, we retain only samples without external tool calls and use three major chain-of-thought sources: LongVideo-Reason CoT , Video-R1 CoT , and image-based CoT instruction data . In our final training split, this yields approximately 228.8K samples in total, including 5,238 samples from LongVideo-Reason CoT, 165,575 samples from Video-R1 CoT, and 58,022 samples from image-based CoT data. This construction follows the data recipe of LongVT while excluding tool-augmented trajectories, allowing us to isolate the effect of reasoning-oriented supervision without intro-ducing explicit tool-use annotation. 
+
+Hyperparameters. Key training hyperparameters are listed in Table 6. Table 6: Training hyperparameters for Qwen3-VL-SFT. 
+
+Hyperparameter Value 
+
+Base model Qwen3-VL-8B-Instruct Fine-tuning type Full-parameter SFT Training epochs 1Learning rate 1.0 × 10 −5
+
+Effective batch size 16 Max sequence length 10240 tokens Warmup ratio 0.1 LR scheduler cosine Precision bfloat16 Hardware 8× PPU-ZW810E (96GB) 
+
+Data Preprocessing. Video frames are uniformly sampled at 1.0 fps before tokenization. The maximum video length is set to 4096 frames. Inputs exceeding the maximum context length are truncated. We use a maximum visual resolution of 262,144 pixels for images and 65,536 pixels for video frames. 
+
+## B Case Study 
+
+We present two representative cases in Figure 6 to illustrate the adaptive routing behavior of CADER across different difficulty levels. 
+
+(a) Easy Case: Stage 1 Early Exit. Stage 1 samples sparse frames and produces a highly confident prediction with 
+
+M =0 .999 , exceeding the threshold τ =0 .97 . The model di-rectly answers the question based on global semantic under-standing without invoking Stage 2. This case demonstrates that CADER can handle simple queries via early exit without invoking Stage 2. 
+
+(b) Hard Case: Stage 2 with Iterative Refinement. 
+
+Stage 1 yields a low-confidence prediction ( M =0 .056 < τ ), resulting in an incorrect answer. CADER then activates Stage 2 for tool-augmented reasoning. An initial temporal proposal [2100 s, 2130 s] is generated but rejected by the ver-ifier ( Pyes =0 .378 ). After one round of reflection, a refined proposal [2300 s, 2330 s] is produced and accepted with higher confidence ( Pyes =0 .679 ). Dense reasoning over this segment successfully recovers the correct answer. 
+
+Discussion. These cases highlight the key advantage of CADER: it routes samples according to prediction confi-dence. Easy samples exit after Stage 1, while more challeng-ing ones benefit from iterative grounding and verification, leading to improved accuracy. 
+
+## C Prompt Templates 
+
+We provide the complete prompt templates used in each stage of CADER. Placeholders in curly braces (e.g., 
+
+{question} ) are filled with the corresponding inputs at inference time. 
+
+C.1 Stage 1: Global Reasoning 
+
+Stage 1 — System Prompt                         
+
+> You are avideo question answering assistant. Watch the video carefully and answer the multiple-choice question. Output ONLY asingle capital letter corresponding to your answer. No explanation. No punctuation. Nothing else.
+
+Stage 1 — User Prompt       
+
+> Question: {question} Options: {options} Answer:
+> Chain-of-thought is disabled ( enable_thinking=False )to minimize latency. The logit probability of each option token is extracted to compute the margin M=Ptop1 −Ptop2 .
+
+C.2 Stage 2: Temporal Segment Proposal 
+
+Temporal Grounding — System Prompt                                   
+
+> You are avideo temporal grounding assistant. Your task is to identify the time window in the video that contains the key visual evidence to answer the given multiple-choice question. Output ONLY asingle window in JSON format. Do NOT include explanations or multiple windows.
+
+(a) Easy case: confident early exit (b) Hard case: evidence refinement 
+
+> What year appears in the opening caption of the video?
+
+(A) 1636 (B) 1366 (C) 1363 (D) 1633 
+
+# D Stage 1 prediction 
+
+> How is the weather before the season transitions to winter?
+
+(A) Rainy (B) Windy (C) Snowy (D) Sunny 
+
+D Initial prediction M = 0.999 ≥ τ
+
+Final answer: D 
+
+M = 0.056 < τ
+
+Final answer:A A
+
+Stage 1 Global reasoning HIGH CONFIDENCE EARLY EXIT STAGE 2 TRIGGERED Stage 2 · iterative evidence search Proposal 1 : [2100–2130 s] P_yes = 0.378 · REJECT Reflect and re-propose Proposal 2 : [2300–2330 s] P_yes = 0.679 · ACCEPT Figure 6: Case study of CADER on two representative samples. (a) Easy case : Stage 1 exits early with high confidence (M =0 .999 ≥ τ =0 .97 ), correctly answering without invoking Stage 2. (b) Hard case : Stage 1 produces an incorrect low-confidence prediction ( M =0 .056 ). Stage 2 first proposes [2100 s, 2130 s] (Pyes =0 .378 ), then refines it to [2300 s, 2330 s], which is accepted ( Pyes =0 .679 ), leading to the correct answer. 
+
+Temporal Grounding — User Prompt (First Pro-posal) 
+
+Question: {question} Options: {options} The video is {duration} seconds long. Identify the time window containing the visual evidence that distinguishes between the options above. The window must be at least {min_crop} seconds wide. After thinking, output your answer in this format: {"relevant_windows": [["<start_seconds>", "<end_seconds>"]]} 
+
+Temporal Grounding — User Prompt (Reflection) 
+
+The following time windows have already been tried and failed: {tried_ranges} Please identify a different time window that is less likely to overlap 
+
+with the above. Pick ONLY ONE single time window. The video is {duration} seconds long. The window must be at least {min_crop}s wide. Question: {question} Options: {options} After thinking, output your answer in this format: {"relevant_windows": [["<start_seconds>", "<end_seconds>"]]} 
+
+The reflection prompt (orange box) replaces the first-proposal prompt when previously attempted intervals exist, en-abling spatio-temporal exclusion. Chain-of-thought is enabled (enable_thinking=True ). 
+
+C.3 Verifier Prompt 
+
+The verifier (Qwen3-VL-4B-Instruct) receives the cropped video segment and the following prompt. Pyes is extracted from the token probability of Yes .
+
+Verifier — System Prompt 
+
+You are a video question answering assistant. Watch the video carefully and answer the multiple-choice question. 
+
+Verifier — User Prompt               
+
+> Does this video clip contain relevant visual evidence for answering the question below? Question: {question} Options: {options} Answer Yes or No only.
+
+C.4 Stage 2: Final Reasoning 
+
+Final Reasoning — System Prompt             
+
+> You are avideo question answering assistant. Watch the video carefully and answer the multiple-choice question.
+
+Final Reasoning — User Prompt                              
+
+> This is the most relevant segment of the video ({start_t}s ∼{end_t}s). Watch it carefully and answer the question. Question: {question} Options: {options} After thinking, output your answer in this format: <answer>X</answer> Where Xis a single capital letter: {valid_letters}.
+> Chain-of-thought is enabled ( enable_thinking=True ) for deliberate reasoning over the localized clip. The answer is extracted via structured parsing of the <answer> tag, with a single-letter fallback.
+
+## D Reflection Depth Analysis 
+
+To understand the contribution of the iterative reflection mechanism, we analyze LVBench samples that enter Stage 2 and execute at least one crop-and-verify cycle, stratified by iteration depth. For each such sample, the depth d ∈ { 1, 2, 3}
+
+denotes how many crop-and-verify cycles were executed be-fore the verifier either accepted a segment ( Pyes ≥ δ) or exhausted the two-reflection budget ( K=2 ), which permits at most three crop-and-verify cycles. Results are shown in Table 7. Depth 1 and depth 2 samples obtain substantial improve-ments over their Stage 1 baselines, with gains of +8 .6 and 
+
++16 .2 points, respectively. The stronger gain at depth 2 shows that one reflection step can recover from initial temporal Table 7: Stage 2 accuracy vs. Stage 1 baseline on LVBench.                 
+
+> Depth Samples Stage-1 Base Final Acc ∆
+> 1 (0 reflections) 327 41.59% 50.15% +8 .6
+> 2 (1 reflection) 111 35.14% 51.35% +16 .2
+> 3 (2 reflections) 757 37.38% 37.91% +0 .5
+
+grounding failures and redirect the search toward more rel-evant evidence. At depth 3, the aggregate gain is smaller because most samples reach the maximum search depth, ex-haust the reflection budget, and conservatively fall back to the Stage 1 prediction. Accordingly, the aggregate gain at this depth is limited. This result indicates diminishing returns at the maximum reflection depth. In the w/o Reflection variant ( K=0 ), samples that require later reflection steps are not refined further and therefore fall back to their Stage 1 predictions. The resulting accuracy is reported in the main paper; the per-depth statistics above explain the observed drops to 48 .6% on LVBench and 58 .9% 
+
+on VideoMME (Long). 
+
+## E Pseudocode 
+
+We provide the complete pseudocode of CADER and Relevance-Guided Resampling (RGR) for reproducibility. Algorithm 1 Dual-Stage Adaptive Evidence Reasoning (CADER) 
+
+Require: Video V , Question Q, Options {Oi}
+
+Ensure: Answer A
+
+1: Stage 1: Global Preliminary Reasoning 
+
+2: F1 ← ConstantRateSample( V, r 1=1 .0 fps )
+
+3: {zi} ← MainVLM( F1, Q )
+
+4: Pi ← Softmax( zi/T ), T =2 .0
+
+5: M ← Ptop1 − Ptop2 
+
+6: A1 ← arg max i Pi
+
+7: if M ≥ τ then ▷ τ =0 .97 ; early exit 
+
+8: return A1
+
+9: end if 
+
+10: Stage 2: Tool-assisted Fine-grained Reasoning 
+
+11: S ← ∅; tried ← ∅; Fcur ← F1; iter ← 0
+
+12: while iter ≤ K do ▷ K =2 reflection rounds; at most 
+
+K+1 attempts 
+
+13: [ts, t e] ← ProposeInterval( Fcur , Q, tried) ▷ use 
+
+F1 at iter = 0 , Freflect thereafter 
+
+14: if IsTooBroad( ts, t e, V ) then 
+
+15: return A1 ▷ return cached Stage 1 prediction 
+
+16: end if 
+
+17: C ← crop_video (V, t s, t e)
+
+18: r2 ← clip(512 / (te−ts), 1.0, 8.0) 
+
+19: F2 ← Sample( C, r 2)
+
+20: Pyes ← SmallVLM verifier (F2, Q )
+
+21: f (iter) ← min(1 .0, P yes + fmin )
+
+22: S ← S ∪ { (ts, t e, f (iter) )}
+
+23: if Pyes ≥ δ then ▷ δ =0 .60 ; segment accepted 
+
+24: A ← MainVLM( F2, Q )
+
+25: return A
+
+26: end if 
+
+27: tried ← tried ∪ { [ts, t e]}
+
+28: if iter = K then 
+
+29: break ▷ reflection budget exhausted 
+
+30: end if 
+
+31: P ← RGR -Fuse( S) ▷ build per-segment fps map 
+
+32: Freflect ← RGR -Sample( V, P, r 1=1 .0) 
+
+33: Fcur ← Freflect ▷ update context for next proposal 
+
+34: iter ← iter + 1 
+
+35: end while 
+
+36: return A1 ▷ return cached Stage 1 prediction; no extra VLM call 
+
+Algorithm 2 Relevance-Guided Resampling (RGR) 
+
+Require: Scored segments S={(t(k) 
+
+> s
+
+, t (k) 
+
+> e
+
+, f (k))}, video V
+
+with duration D, base fps r1
+
+Ensure: Resampled frame sequence Freflect 
+
+// Step 1: Collect breakpoints and build non-overlapping map 
+
+1: B ← sort 
+
+S
+
+> k
+
+{t(k) 
+
+> s
+
+, t (k) 
+
+> e
+
+}
+
+
+
+2: P ← ∅
+
+3: for i = 0 to |B| − 2 do 
+
+4: bs ← B [i]; be ← B [i + 1] 
+
+5: k∗ ← arg max k{k | t(k) 
+
+> s
+
+≤ bs ∧ t(k) 
+
+> e
+
+≥ be}
+
+6: f[bs,b e] ← f (k∗)
+
+7: P ← P ∪ { (bs, b e, f [bs,b e])}
+
+8: end for 
+
+9: Merge adjacent entries in P with equal fps // Step 2: Resample explored regions at reduced rates 
+
+10: Freflect ← [ ] 
+
+11: for (bs, b e, f i) ∈ P do 
+
+12: ni ← ⌊ (be − bs) × fi⌋
+
+13: Freflect .append(Sample( V [bs : be], n i)) 
+
+14: end for 
+
+// Step 3: Resample unexplored regions at base rate 
+
+15: U ← [0 , D ] \ S 
+
+> (bs,b e,·)∈P
+
+[bs, b e]
+
+16: for [us, u e] ∈ U do 
+
+17: Freflect .append(Sample( V [us : ue], r 1)) 
+
+18: end for 
+
+19: Sort Freflect by timestamp 
+
+20: return Freflect

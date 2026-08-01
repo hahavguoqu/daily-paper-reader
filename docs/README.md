@@ -6,40 +6,39 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-07-31
-- 运行时间：2026-07-31 20:57:34 UTC
+- 最新运行日期：2026-08-01
+- 运行时间：2026-08-01 20:08:33 UTC
 - 运行状态：成功
-- 本次总论文数：6
+- 本次总论文数：5
 - 精读区：2
-- 速读区：4
+- 速读区：3
 
 ### 今日简报（AI）
-今日6篇AI论文聚焦LLM评测与推理，精读两篇均获8分。  
-最值得关注：评估协议会主导模型选择，且加权DAG聚合能提升推理一致性。  
-建议优先精读这两篇，速读可浏览社交相关性学习与多模态知识补全。
-- 详情：[/202607/31/README](/202607/31/README)
+今日精读5篇论文，聚焦医疗视觉语言模型的谄媚行为与推理中介分离，以及深度研究智能体系统，速读覆盖动态广告检索、长视频推理与工业CAD多模态模型。
+
+最值得关注：医疗VLM中“推理位置”比“信息来源”更能区分真实推理与谄媚性迎合（9.0分），且DeepResearch Agent展现出强任务规划能力（9.0分）。
+
+建议优先吸收这两篇精读的结论与方法，后续可关注多模态推理的可解释性设计。
+- 详情：[/202608/01/README](/202608/01/README)
 
 ### 精读区论文标签
-1. [Beyond Exact Match: How Evaluation Methodology Dominates Model Choice in LLM-Based Product Attribute Extraction](/202607/31/2607.22949v1-beyond-exact-match-how-evaluation-methodology-dominates-model-choice-in-llm-based-product-attribute-extraction)  
-   标签：评分：8.0/10、query:vlm-cot
-   evidence：评估大科技公司生产级大模型GPT-4o-mini与Gemini 2.5 Flash
-2. [Reasoning Consensus: Structural Ensembling of LLM Reasoning via Weighted DAG Aggregation](/202607/31/2607.27783v1-reasoning-consensus-structural-ensembling-of-llm-reasoning-via-weighted-dag-aggregation)  
-   标签：评分：8.0/10、query:vlm-cot
-   evidence：直接对大模型思维链进行结构化集成
+1. [Position, Not Provenance: Separating Reasoning Mediation from Sycophancy in Medical Vision-Language Models](/202608/01/2607.27304v1-position-not-provenance-separating-reasoning-mediation-from-sycophancy-in-medical-vision-language-models)  
+   标签：评分：9.0/10、query:vlm-cot
+   evidence：视觉语言模型中的思维链推理
+2. [DeepResearch Agent System](/202608/01/2607.27562v1-deepresearch-agent-system)  
+   标签：评分：9.0/10、query:vlm-cot
+   evidence：具备多步推理与扎实工程基础的大模型系统，契合思维链与大厂出品的组合主题
 
 ### 速读区论文标签
-1. [ASARL: Autonomous Social-Aware Relevance Learning for QQ Search](/202607/31/2607.26593v1-asarl-autonomous-social-aware-relevance-learning-for-qq-search)  
+1. [SMART: LLM-Augmented Hybrid Retrieval for Dynamic Product Ads](/202608/01/2607.23121v1-smart-llm-augmented-hybrid-retrieval-for-dynamic-product-ads)  
    标签：评分：7.0/10、query:vlm-cot
-   evidence：腾讯QQ搜索，基于LLM的多智能体相关性学习
-2. [Kalypso: Relational LLM Serving](/202607/31/2607.23815v1-kalypso-relational-llm-serving)  
+   evidence：Meta 广告中的工业级大模型混合检索
+2. [CADER: Confidence-Aware Dynamic Evidence Reasoning for Long-Video Understanding](/202608/01/2607.24582v1-cader-confidence-aware-dynamic-evidence-reasoning-for-long-video-understanding)  
    标签：评分：6.0/10、query:vlm-cot
-   evidence：具备扎实工程基础的大模型服务系统，利用KV缓存复用
-3. [Dual-Path LLM Reasoning for Multimodal Few-Shot Knowledge Graph Completion](/202607/31/2607.26909v1-dual-path-llm-reasoning-for-multimodal-few-shot-knowledge-graph-completion)  
+   evidence：视觉大模型针对长视频进行动态证据推理，按置信度自适应调整推理过程
+3. [IndustryForge-27B: A Domain-Enhanced Multimodal Foundation Model for Industrial CAD](/202608/01/2607.28050v1-industryforge-27b-a-domain-enhanced-multimodal-foundation-model-for-industrial-cad)  
    标签：评分：6.0/10、query:vlm-cot
-   evidence：面向多模态少样本知识图谱补全的双路径大模型推理
-4. [CCFormer: Efficient Cross-Field Interaction and Hierarchical Sequence Compression for Industrial Recommendation at Tencent](/202607/31/2607.28070v1-ccformer-efficient-cross-field-interaction-and-hierarchical-sequence-compression-for-industrial-recommendation-at-tencent)  
-   标签：评分：6.0/10、query:vlm-cot
-   evidence：腾讯工业推荐大型Transformer模型
+   evidence：基于通义千问VL的多模态基础模型
 
 
 <div class="dpr-home-promo-card">
