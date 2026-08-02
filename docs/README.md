@@ -6,39 +6,29 @@
 </div>
 
 ## 每次日报
-- 最新运行日期：2026-08-01
-- 运行时间：2026-08-01 20:08:33 UTC
+- 最新运行日期：2026-08-02
+- 运行时间：2026-08-02 19:58:14 UTC
 - 运行状态：成功
-- 本次总论文数：5
-- 精读区：2
-- 速读区：3
+- 本次总论文数：3
+- 精读区：1
+- 速读区：2
 
 ### 今日简报（AI）
-今日精读5篇论文，聚焦医疗视觉语言模型的谄媚行为与推理中介分离，以及深度研究智能体系统，速读覆盖动态广告检索、长视频推理与工业CAD多模态模型。
-
-最值得关注：医疗VLM中“推理位置”比“信息来源”更能区分真实推理与谄媚性迎合（9.0分），且DeepResearch Agent展现出强任务规划能力（9.0分）。
-
-建议优先吸收这两篇精读的结论与方法，后续可关注多模态推理的可解释性设计。
-- 详情：[/202608/01/README](/202608/01/README)
+今日精读聚焦多潜头注意力（MLA）如何分离内容与位置信息，另速读智能体系统与层级隐式推理推荐两篇。最值得关注的是MLA对长上下文建模的优化思路，以及推荐系统中层次化潜在推理的可行性。建议普通读者优先从精读9.0分论文入手，理解注意力机制的关键瓶颈与分离设计。
+- 详情：[/202608/02/README](/202608/02/README)
 
 ### 精读区论文标签
-1. [Position, Not Provenance: Separating Reasoning Mediation from Sycophancy in Medical Vision-Language Models](/202608/01/2607.27304v1-position-not-provenance-separating-reasoning-mediation-from-sycophancy-in-medical-vision-language-models)  
+1. [Through the Bottleneck: How Multi-head Latent Attention Separates Content from Position in Language Models](/202608/02/2607.23054v1-through-the-bottleneck-how-multi-head-latent-attention-separates-content-from-position-in-language-models)  
    标签：评分：9.0/10、query:vlm-cot
-   evidence：视觉语言模型中的思维链推理
-2. [DeepResearch Agent System](/202608/01/2607.27562v1-deepresearch-agent-system)  
-   标签：评分：9.0/10、query:vlm-cot
-   evidence：具备多步推理与扎实工程基础的大模型系统，契合思维链与大厂出品的组合主题
+   evidence：DeepSeek-V2大模型注意力机制
 
 ### 速读区论文标签
-1. [SMART: LLM-Augmented Hybrid Retrieval for Dynamic Product Ads](/202608/01/2607.23121v1-smart-llm-augmented-hybrid-retrieval-for-dynamic-product-ads)  
+1. [DeepResearch Agent System](/202608/02/2607.27562v1-deepresearch-agent-system)  
    标签：评分：7.0/10、query:vlm-cot
-   evidence：Meta 广告中的工业级大模型混合检索
-2. [CADER: Confidence-Aware Dynamic Evidence Reasoning for Long-Video Understanding](/202608/01/2607.24582v1-cader-confidence-aware-dynamic-evidence-reasoning-for-long-video-understanding)  
+   evidence：包含ReAct与IterResearch双模式推理引擎的大模型系统，支持多步推理，契合思维链推理需求
+2. [Hierarchical Latent Reasoning for LLM-based Recommendation](/202608/02/2607.27760v1-hierarchical-latent-reasoning-for-llm-based-recommendation)  
    标签：评分：6.0/10、query:vlm-cot
-   evidence：视觉大模型针对长视频进行动态证据推理，按置信度自适应调整推理过程
-3. [IndustryForge-27B: A Domain-Enhanced Multimodal Foundation Model for Industrial CAD](/202608/01/2607.28050v1-industryforge-27b-a-domain-enhanced-multimodal-foundation-model-for-industrial-cad)  
-   标签：评分：6.0/10、query:vlm-cot
-   evidence：基于通义千问VL的多模态基础模型
+   evidence：面向LLM的层级潜在推理框架，直接研究类CoT的推理机制
 
 
 <div class="dpr-home-promo-card">

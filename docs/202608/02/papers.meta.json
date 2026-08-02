@@ -1,0 +1,54 @@
+{
+  "label": "2026-08-02",
+  "date": "2026-08-02",
+  "generated_at": "2026-08-02T19:58:19",
+  "count": 3,
+  "papers": [
+    {
+      "paper_id": "202608/02/2607.23054v1-through-the-bottleneck-how-multi-head-latent-attention-separates-content-from-position-in-language-models",
+      "section": "deep",
+      "title_en": "Through the Bottleneck: How Multi-head Latent Attention Separates Content from Position in Language Models",
+      "authors": "Dhruvil S, Fenil Sojitra, Ravirajsinh Chauhan",
+      "date": "2026-07-25",
+      "pdf": "https://arxiv.org/pdf/2607.23054v1",
+      "score": "9.0",
+      "evidence": "DeepSeek-V2大模型注意力机制",
+      "tldr": "多头潜在注意力（MLA）通过共享低秩瓶颈压缩键值对，但其内部机制尚不明晰。本文训练114M参数模型并结合SVD、线性探针等方法进行可解释性分析，发现瓶颈仅保留内容信息（实体身份保留98%）而丢弃位置信息，归纳头集中于单层，且存在一个兼具高秩与强归因的语义枢纽层。该工作揭示MLA不仅压缩注意力，更重塑内容—位置分离与电路结构。",
+      "tags": "query:vlm-cot",
+      "abstract_en": "Multi-head Latent Attention (MLA), introduced in DeepSeek-V2, compresses key-value pairs through a shared low-rank bottleneck (cKV), achieving 81% KV-cache reduction during inference. Despite its adoption in massive production models, no prior work has studied what information this bottleneck preserves or discards, nor how it reshapes internal transformer circuits. We present the first comprehensive mechanistic interpretability study of MLA, training a 114M-parameter transformer (pretrained on a web/code/math mixture, fine-tuned on TinyStories) and analyzing its representations through SVD, attention head taxonomy, linear probing, and a disruption-attribution analysis. Our key findings are: (1) the cKV bottleneck learns a pure content representation, preserving entity identity (98% retention) while discarding positional information, validating MLA's separation of content from position via RoPE; (2) induction heads co-locate at a single layer (Layer 12), unlike their distributed formation in standard MHA; (3) a single \"semantic hub\" layer (Layer 15) simultaneously exhibits the highest SVD effective rank and strongest disruption-attribution score; and (4) the bottleneck is globally over-provisioned, using only 46% of its capacity on average. These findings suggest MLA does not merely compress attention passively, but reshapes how the model organizes content, position, and circuit structure. We view this as an initial data point and detail scope limitations in Section 5.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "paper_id": "202608/02/2607.27562v1-deepresearch-agent-system",
+      "section": "quick",
+      "title_en": "DeepResearch Agent System",
+      "authors": "Yong Huang, Yulu Huang, for the team Collaboration",
+      "date": "2026-07-30",
+      "pdf": "https://arxiv.org/pdf/2607.27562v1",
+      "score": "7.0",
+      "evidence": "包含ReAct与IterResearch双模式推理引擎的大模型系统，支持多步推理，契合思维链推理需求",
+      "tldr": "针对大语言模型在深度信息检索与自主研究任务中推理深度不足、长上下文处理与多工具协同能力有限的问题，本文提出DeepResearch Agent System。核心方法包括稀疏激活架构（总参数30B，每token仅激活3B）与128K上下文分层注意力机制，设计ReAct和IterResearch双模式推理引擎，并采用基于GRPO的强化学习进行优化。实验结果显示，系统推理速度提升3.2倍，工具使用准确率达92.1%，在Humanity's Last Exam、BrowserComp中文和WebWalkerQA基准上分别取得87.3%、85.3%和91.2%的成绩，均达到最优水平。该系统全链路开源，为学术研究、商业分析及教育等场景提供了高效的自主研究技术方案。",
+      "tags": "query:vlm-cot",
+      "abstract_en": "The DeepResearch Agent System is a large language model system engineered for deep information retrieval, multi-step reasoning, and autonomous research tasks. Built upon a sparse activation architecture with 30 billion total parameters of which only 3 billion are activated per token, the system achieves state-of-the-art performance on multiple agent search benchmarks while delivering 3.2 times faster inference compared to dense counterparts of equivalent scale. The system supports a 128K-token context window with hierarchical attention mechanisms that yield 18.7% accuracy and 23.4% recall improvements over standard long-context approaches. A dual-mode reasoning engine provides both a ReAct paradigm for basic multi-step problem solving and an IterResearch mode for high-performance iterative research with up to 20 reasoning steps, collectively delivering a 31.2% accuracy improvement over single-pass baselines. Multi-tool coordination integrates retrieval, computation, web search, and file parsing modules to achieve 92.1% tool-use accuracy. A reinforcement learning optimization framework based on the GRPO algorithm provides token-level policy gradients that improve training stability by 35% and accelerate convergence by 42%. An automated data synthesis pipeline with seed-based expansion achieves a 92.5% usability rate. Benchmark results include 87.3% on Humanity's Last Exam, 85.3% on BrowserComp Chinese, and 91.2% on WebWalkerQA. The system is fully open-sourced, including data synthesis, training, and inference code, and supports applications in academic research, business analysis, R&D support, and education.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "paper_id": "202608/02/2607.27760v1-hierarchical-latent-reasoning-for-llm-based-recommendation",
+      "section": "quick",
+      "title_en": "Hierarchical Latent Reasoning for LLM-based Recommendation",
+      "authors": "Peiyu Hu, Siying Gu, Weihai Lu, Zhuodong Liu, Yuntian Tang, Jiahao Liang, Yiying Xie, Jiang Rong, Zhaokai Luo, Zhiyong Wang, Jia Wang",
+      "date": "2026-07-30",
+      "pdf": "https://arxiv.org/pdf/2607.27760v1",
+      "score": "6.0",
+      "evidence": "面向LLM的层级潜在推理框架，直接研究类CoT的推理机制",
+      "tldr": "现有基于LLM的推荐引入推理机制以增强偏好建模，但显式自然语言推理开销大，潜在推理方法对层级偏好角色和贡献刻画不足。为此提出HiLaR，构建时间引导的层级用户偏好表示，并与多个LLM潜在推理状态对齐，实现从广泛偏好到当前意图的分层推理。结合最终推荐反馈和基于边际似然增益的层级过程奖励优化推理轨迹。在四个Amazon数据集上取得优异效果，验证层级表示与过程优化的有效性。",
+      "tags": "query:vlm-cot",
+      "abstract_en": "Large Language Models (LLMs) have shown strong potential for recommendation by leveraging their semantic understanding and contextual modeling capabilities. Recent studies further introduce reasoning mechanisms to improve user preference modeling. However, explicit natural-language reasoning incurs substantial inference overhead, whereas existing latent reasoning methods mainly focus on generating or verifying intermediate states, leaving their layer-wise preference roles and contributions insufficiently characterized. We propose HiLaR, a Hierarchical Latent Reasoning framework with layer-aware reinforcement optimization for LLM-based recommendation. HiLaR constructs temporal-guided hierarchical user preference representations, aligns them with multiple LLM latent reasoning states, and organizes the reasoning process from broad preferences to fine-grained current intents. To further optimize the reasoning trajectory, HiLaR combines final recommendation feedback with layer-aware process rewards derived from the marginal target-likelihood gain of each state. Experiments on four Amazon benchmark datasets show that HiLaR generally outperforms strong sequential, generative, and LLM-based recommendation baselines. Ablation and sensitivity analyses further verify the contribution of hierarchical representation learning, latent alignment, and process-level optimization. Our code is available in https://github.com/hupeiyu21/HiLaR.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "errors": []
+}
