@@ -1,0 +1,501 @@
+Title: BLADE: Boundary-Expanded and Layer-Adaptive Dynamic Exit for Efficient LLM Reasoning
+
+URL Source: https://arxiv.org/pdf/2607.28966v1
+
+Published Time: Mon, 03 Aug 2026 00:21:10 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# BLADE: Boundary-Expanded and Layer-Adaptive Dynamic Exit for Efficient LLM Reasoning 
+
+## Keshu Fu 1∗, Keqin Peng 1∗, Jun Bai 2∗, Shuhan Qin 1, Chen Li 1, Junzhu Liang 3, Yefei Chen 4
+
+## Jiaqi Li 2, Yuanxin Ouyang 1†
+
+> 1
+
+School of Computer Science and Engineering, Beihang University 
+
+> 2
+
+Beijing Institute for General Artificial Intelligence, BIGAI 
+
+> 3
+
+Academy for Advanced Interdisciplinary Studies, Peking University 
+
+> 4
+
+School of Computer Science and Technology, East China Normal University 
+
+Correspondence: fukeshu@buaa.edu.cn, oyyx@buaa.edu.cn 
+
+Abstract 
+
+Large language models often improve task performance by generating long reasoning traces, but the resulting computa-tion is frequently wasted on redundant verification and revi-sion. Existing probe-based early-exit approaches mainly in-spect explicit self-doubt expressions, leaving many earlier ter-mination opportunities undetected. Expanding inspection to ordinary reasoning boundaries improves coverage, but also exposes highly diverse intermediate states whose predictive information may reside in different hidden layers. We present Boundary-Expanded and Layer-Adaptive Dynamic Exit for Efficient LLM Reasoning (BLADE), a lightweight frame-work that dynamically terminates reasoning by estimating whether the generated prefix is sufficient for correct answer-ing. BLADE constructs multi-granular checkpoints from sen-tence, self-doubt, and paragraph boundaries, and derives ro-bust training labels through repeated answer completions. It further learns a compact subset of informative probe layers in-stead of relying on fixed choices or expensive representations from all layers. At inference time, calibrated predictions are combined with checkpoint-specific confirmation rules to bal-ance responsiveness and premature-exit risk. Experiments on five benchmarks and two Qwen3 reasoning models show that BLADE preserves near-baseline accuracy while reducing gen-erated tokens by 24.8% on Qwen3-8B and 15.8% on Qwen3-4B. Ablation studies further confirm the benefits of diverse checkpoints and automatic layer selection, demonstrating an effective approach to more efficient LLM reasoning. 
+
+## 1 Introduction 
+
+Large Language Models (LLMs) achieve strong perfor-mance through extended reasoning traces (Han et al. 2026). Early work showed that Chain-of-Thought (CoT) prompting improves arithmetic, commonsense, and symbolic reason-ing (Wei et al. 2022). Recent studies show that additional inference-time computation can improve reasoning perfor-mance (Snell et al. 2025; Wu et al. 2025). However, more computation is not always beneficial. LLMs may overthink simple problems, repeatedly verify es-tablished conclusions, or continue generating after reaching 
+
+> ∗
+
+These authors contributed equally. 
+
+> †
+
+Corresponding author. We subtract 5 from both sides, obtaining  3𝑥 = 15 .                              
+
+> Dividing both sides by 3 gives 𝑥 =5.
+> Therefore, the answer is 𝑥 =5.
+> This completes the solution to the equation.
+> The final result can be written as 𝑥 =5.
+> Wait, let me verify the result once more.
+> Substituting 𝑥 =5gives 3×5+5=20 , which is correct.
+> Therefore, the answer remains 𝑥 =5.
+> Missed
+> early -exit
+> opportunity
+> Sufficient sentence boundary
+> Self -doubt cue
+> problem : Solve 3𝑥 +5=20
+> CoT :
+
+Figure 1: A missed early-exit opportunity: the correct answer appears before “Wait,” but self-doubt-only monitoring over-looks it and permits redundant verification. a correct answer (Chen et al. 2024; Sui et al. 2025; Peng et al. 2025). Such unnecessary reasoning increases inference cost and can degrade answer quality through redundant revision or deviation from a correct solution (Akgül et al. 2025; Yang et al. 2026). A practical approach to mitigating overthinking is to en-able reasoning early exit with a lightweight probe (Zhang et al. 2025a; Akgül et al. 2025). At selected checkpoints, the probe examines hidden states and predicts whether the current reasoning prefix is sufficient for a correct final an-swer. This requires training only a small prediction module, without modifying or retraining the base model. In this way, prior work uses self-doubt markers, such as “wait,” “how-ever,” and “let me reconsider,” as natural exit checkpoints (Fu et al. 2025; Yang et al. 2026). These markers often signal a shift from problem solving to reflection or revision, indi-cating that a viable solution may already have been reached. Probing internal confidence at such positions can therefore identify opportunities to terminate unnecessary reasoning. However, self-doubt checkpoints miss many sufficient rea-soning states. As shown in Fig. 1, a regular sentence bound-ary may already complete a key calculation or establish the correct conclusion before any self-doubt checkpoint appears. We therefore expand the checkpoint set to include both self-doubt markers and sentence boundaries, enabling earlier and broader detection of sufficient prefixes. This broader cover-age introduces heterogeneous reasoning states, ranging from arXiv:2607.28966v1 [cs.CL] 31 Jul 2026 incomplete derivations and intermediate conclusions to re-flection and revision. Their sufficiency signals may be most informative at different model depths, making fixed layer choices difficult to generalize. Concatenating all layers avoids manual selection but creates a large, redundant probe input with substantial parameter and inference overhead. To address these issues, we propose BLADE , a Boundary-Expanded and Layer-Adaptive Dynamic Exit framework for efficient LLM reasoning. BLADE formulates early exit as prefix-sufficiency prediction and coordinates three decisions: where to inspect the reasoning trajectory, which hidden lay-ers to probe, and when to terminate generation. Because sparse self-doubt checkpoints can miss earlier sufficient states, Multi-Granular Reasoning Checkpoints (MGRC) 
+
+augments them with sentence and paragraph boundaries, pro-viding broader coverage at complementary reasoning granu-larities. The resulting checkpoints represent heterogeneous rea-soning states, whose sufficiency signals may be distributed differently across model layers. To avoid both brittle manual layer choices and costly all-layer concatenation, Adaptive Probe-Layer Selection (APLS) identifies a compact sub-set of informative layers for a lightweight sufficiency probe. Finally, because dense sentence checkpoints are less seman-tically reliable than sparse self-doubt checkpoints, BLADE adopts a calibrated, checkpoint-aware stopping policy: con-fident self-doubt predictions can trigger immediate exit, whereas sentence-level predictions require consecutive con-firmation to prevent premature termination. Experiments on five mathematical reasoning benchmarks with two Qwen3 backbones (Yang et al. 2025) show that BLADE achieves a favorable accuracy–efficiency trade-off among the evaluated early-exit methods. Compared with full CoT generation, BLADE reduces generated tokens by 24 .8% 
+
+on Qwen3-8B and 15 .8% on Qwen3-4B while largely pre-serving accuracy. Further analyses validate both adaptive designs. As shown in Supplementary Table 3, on MATH-500(Hendrycks et al. 2021; Lightman et al. 2024) with Qwen3-8B, combining sentence and self-doubt checkpoints improves accuracy from 84 .89% to 85 .56% while reduc-ing generated tokens by 17 .8% compared with self-doubt checkpoints alone. At approximately 86% accuracy, APLS uses 17 .6% fewer tokens than random four-layer selection, demonstrating the importance of both broad checkpoint cov-erage and informative layer selection. Our main contributions are as follows: 
+
+• We reveal a fundamental trade-off in checkpoint de-sign: self-doubt-only probing provides limited coverage, whereas broader checkpoint coverage introduces hetero-geneous reasoning states. 
+
+• We propose BLADE, which combines multi-granular reasoning checkpoints, adaptive probe-layer selection, and checkpoint-aware stopping to enable reliable and lightweight dynamic reasoning exit. 
+
+• Experiments on multiple benchmarks and backbones demonstrate favorable accuracy-efficiency trade-offs, re-ducing generated tokens by up to 24 .8% while largely preserving accuracy. Further analyses validate the bene-fits of checkpoint diversity and automatic layer selection. 
+
+## 2 Related Work 
+
+Overthinking in Long-CoT Reasoning. Long-CoT rea-soning can improve performance through additional test-time computation, but may continue after sufficient infor-mation for a correct answer has already been obtained. Prior work analyzes this overthinking behavior from outcome- and process-level perspectives (Chen et al. 2024; Sui et al. 2025). In particular, Peng et al. (2025) identify self-doubt-driven re-peated verification as a major source of redundancy and miti-gate it through prompting. However, self-doubt does not mark every sufficient reasoning state. BLADE therefore treats it as one signal among multiple checkpoints and performs online prefix-sufficiency prediction rather than globally shortening reasoning. 
+
+Dynamic Early Exit for Efficient LLM Reasoning. Ex-isting methods differ in where they inspect reasoning and how they decide to stop. DEER, LYNX, and DTSR mon-itor reflection-related positions, such as Wait and other self-doubt cues, using trial answers, hidden-state probes, or prompted sufficiency judgments to trigger early exit (Yang et al. 2026; Akgül et al. 2025; Xiang et al. 2026). Reason-ing Path Deviation Monitoring instead tracks high-entropy token transitions to detect departures from productive rea-soning paths (Guan et al. 2026), while AdaQR performs query-level routing between lightweight and deeper reason-ing modes (Zhang et al. 2025b). These approaches are often restricted to sparse reflection cues, local token statistics, or coarse query-level decisions. BLADE combines self-doubt and sentence boundaries with checkpoint-aware calibration and temporal confirmation, broadening checkpoint coverage while controlling premature exits. 
+
+Prefix-Sufficiency Probing. The hidden states of a rea-soning model encode signals predictive of answer correct-ness, enabling self-verification and early exit (Zhang et al. 2025a). However, probe effectiveness depends on the layers used: task-relevant information is distributed unevenly across model depth and may span multiple layers (Peters et al. 2018; Tenney, Das, and Pavlick 2019; de Vries, van Cranenburgh, and Nissim 2020). Using all layers is costly, while fixed subsets may omit informative representations. BLADE ad-dresses this trade-off with APLS, which learns a compact, adaptive layer subset through dense cross-layer modeling and uses only the selected representations at inference. 
+
+## 3 Methodology 
+
+We formulate reasoning early exit as prefix-sufficiency pre-diction: determining whether an intermediate reasoning pre-fix already supports a reliable correct answer. As shown in Fig. 2, BLADE consists of two training components and a checkpoint-aware inference policy. MGRC constructs diverse candidate states with low-noise sufficiency labels, while APLS selects a compact set of hidden layers for ef-ficient prediction. At inference, the resulting probe applies checkpoint-specific stopping rules to terminate unnecessary reasoning. 1. Multi -Granular Reasoning Checkpoints  2. Adaptive Probe -Layer Selection  
+
+> (a) Multi -granular checkpoints
+
+r₁  r₂  r₃  … rₜ  … 𝑟 𝑇    
+
+> (b)Prefix -sufficiency labeling
+> FINAL ANSWER
+> 12
+
+… N  
+
+> unanimous across Nruns?
+
+✓ × −    
+
+> all correct all wrong mixed
+> y = 1 y = 0 discard
+> ambiguous cases discarded
+
+(a) 
+
+> All -layer
+> representations
+
+(b) 
+
+> Dense cross -
+> layer modeling
+
+(c) 
+
+> Hard Top -K layer
+> selection
+
+(d) 
+
+> Multi -seed
+> aggregation
+
+(e) 
+
+> Compact
+> probe refit
+
+L₀ 
+
+L₁ 
+
+⋮
+
+𝐿 𝐿 
+
+⋮ ⋮ ⋮
+
+> layer scores
+> 0
+> 1
+> 2
+
+⋮
+
+> 𝑳 𝑳 −𝟏
+> 𝑳 𝑳
+> Top –K
+
+…
+
+> seed 1
+> seed 2
+
+⋮
+
+> seed S
+> frequency -based
+> aggregation
+
+…
+
+> selected
+> K layers
+
+…
+
+> concat
+> score
+> (a) Scoring at checkpoints
+
+compact probe    
+
+> score
+> score < 𝝀 𝒒 𝒋 (𝛿 )
+> (continue)
+> score ≥ 𝝀 𝒒 𝒋 𝜹
+> (sufficient)
+> (b) Early -exit decision
+
+r₁  r₂  r₃  r₄  r₅  … 𝑟 𝑇 
+
+> …
+
+continue  stop & output     
+
+> sentence checkpoint self -doubt checkpoint paragraph checkpoint (train only) selected layer (kept) layer not selected
+> all
+> layers
+> Unanimous labels+
+> dense -probe KD
+
+Figure 2: Overview of BLADE. MGRC constructs multi-granular checkpoints and retains unanimous forced-completion out-comes as prefix-sufficiency labels. APLS freezes the dense cross-layer modeling, learns hard Top-K masks across multiple runs, aggregates the selected subsets, and refits a compact probe. At inference, the calibrated probe applies checkpoint-type-aware temporal stopping. 
+
+3.1 Problem Formulation 
+
+Given a problem xi, a reasoning model generates a token sequence 
+
+ri = ( ri, 1, . . . , r i,T i ). (1) At a candidate boundary t, the current reasoning prefix is denoted by ri, ≤t, and its layer-wise hidden states are 
+
+Hi,t = ( hi,t, 0, . . . , h i,t,L −1) , hi,t,ℓ ∈ Rd. (2) We define a binary prefix-sufficiency variable Yi,t ∈{0, 1}, where Yi,t = 1 indicates that the current prefix can reliably support a correct final answer. A lightweight probe estimates 
+
+pθ (i, t ) = Pθ (Yi,t = 1 | Hi,t ) = σ(fθ (Φ( Hi,t ))) , (3) where Φ extracts representations from the compact layer sub-set selected by APLS. 
+
+3.2 Multi-Granular Checkpoint Supervision 
+
+Multi-granular checkpoint construction. MGRC con-structs training candidates from three complementary types of reasoning checkpoints: 
+
+Ctrain  
+
+> i
+
+= Csent  
+
+> i
+
+∪ C doubt  
+
+> i
+
+∪ C para  
+
+> i
+
+. (4) Sentence checkpoints broadly cover completed calculations and intermediate conclusions, self-doubt checkpoints capture reflection and verification states, and paragraph checkpoints provide additional coarse-grained supervision. Their com-bination extends the coverage of potentially sufficient states beyond sparse explicit self-doubt checkpoints. 
+
+Low-noise prefix-sufficiency supervision. For each can-didate boundary t ∈ C train  
+
+> i
+
+, we force the model to termi-nate its current reasoning trajectory and generate an answer 
+
+N = 16 times. Let 
+
+bi,t,k = I [Check (ˆ ai,t,k , a ⋆i ) = 1] , k = 1 , . . . , N, (5) where ˆai,t,k is the answer produced by the k-th forced com-pletion and a⋆i is the ground-truth answer. We retain only unanimous outcomes: 
+
+yi,t =
+
+
+
+0, PNk=1 bi,t,k = 0 ,
+
+1, PNk=1 bi,t,k = N, 
+
+⊥, otherwise .
+
+(6) Candidates labeled with ⊥ are excluded from probe training, reducing the label noise caused by stochastic completions. 
+
+Boundary-adaptive dynamic exit. At inference, BLADE evaluates sentence and self-doubt checkpoints, which differ in representation and frequency. Applying a uniform stop-ping rule can therefore cause premature exits at dense sen-tence boundaries. BLADE instead exits immediately after an accepted self-doubt checkpoint, but requires two consec-utive acceptances at sentence checkpoints. Once triggered, the current prefix is retained and followed by a final-answer completion; otherwise, reasoning continues to its natural end. 
+
+3.3 Adaptive Probe-Layer Selection 
+
+Concatenating all hidden layers captures rich cross-layer in-formation but incurs substantial redundancy and overhead. As shown in Table 4, the APLS compact probe reduces pa-rameters by approximately 64%, peak memory by 85%, and training time per epoch by 90% relative to dense cross-layer modeling. APLS achieves this efficiency by selecting a com-pact, adaptive subset of K layers through dense modeling, hard Top-K selection, and multi-seed aggregation. 
+
+Dense cross-layer sufficiency modeling. Each layer repre-sentation is independently normalized and mapped through a shared projection: 
+
+ui,t,ℓ = GELU ( Wp LN ℓ(hi,t,ℓ ) + bp) . (7) The projected features from all layers are concatenated and passed to a dense prediction head: 
+
+zTi,t = fT ([ ui,t, 0; . . . ; ui,t,L −1]) . (8) The dense model is trained on the unanimous sufficiency la-bels using class-balanced binary cross-entropy. After train-ing, the dense model is frozen, and its output logits are used to guide the optimization of the layer selector. 
+
+Budget-constrained hard Top-K selection. After freez-ing the dense model, each layer is assigned a learnable gate logit αℓ, which is normalized into a soft gate score: 
+
+π = softmax( α). (9) Under the fixed layer budget K, the forward pass constructs a hard binary Top-K mask: 
+
+mHℓ = I [ℓ ∈ TopK ( π, K )] . (10) Since the discrete Top-K operation is not directly differen-tiable, we use a straight-through estimator (Bengio, Léonard, and Courville 2013): 
+
+mℓ = mHℓ + πℓ − stopgrad( πℓ). (11) Therefore, exactly K layers are active in the forward pass, while the backward pass propagates gradients to the gate logits through the continuous soft gate scores. A temporary selection head evaluates the masked cross-layer representation: 
+
+zMi,t = fM ([ m0ui,t, 0; . . . ; mL−1ui,t,L −1]) . (12) The gates and selection head are jointly optimized using class-balanced classification supervision and knowledge dis-tillation from the frozen dense model. The selection head is used only during layer search and is discarded afterward. 
+
+Stability-aware multi-seed aggregation. Due to repre-sentation redundancy across Transformer layers (Dalvi et al. 2020), independent selection runs may identify different but functionally similar layer subsets. Let S(r) denote the Top-
+
+K subset obtained from run r. We compute the selection frequency of each layer: 
+
+fℓ = 1
+
+R
+
+> R
+
+X
+
+> r=1
+
+I
+
+h
+
+ℓ ∈ S (r)i
+
+. (13) The final adaptive subset consists of the K most frequently selected layers: 
+
+S⋆ = TopK ℓ (fℓ, K ) , (14) with mean gate rank used only to break frequency ties. After fixing S⋆, we discard the dense model, gates, and temporary selection head, and refit a compact probe directly on the concatenated raw hidden states of the selected layers. 
+
+## 4 Experiments 
+
+4.1 Setup 
+
+Benchmarks and models. We evaluate BLADE on five mathematical reasoning benchmarks—GSM8K-test (Cobbe et al. 2021), MATH-500 (Lightman et al. 2024), AMC 2023 (AI-MO Team 2024), AIME 2024 (Zhang and Math-AI Team 2024), and AIME 2025 (Zhang and Math-AI Team 2025)—using Qwen3-8B and Qwen3-4B (Yang et al. 2025). The suite contains 1,919 questions, split into 192 calibration and 1,727 held-out test examples. 
+
+Probe training and inference. For each backbone, we train the dense teacher and compact probe on a 6,000-question corpus comprising 2,000 examples each from GSM8K train (Cobbe et al. 2021), the numeric-answer sub-set of MATH train (Hendrycks et al. 2021), and DeepScaleR train (Luo et al. 2025). Data are split at the question level. Both models are trained for 100 epochs with K16 strict-clean supervision, while checkpoint and layer selection use only the internal validation split. At inference, the resulting probe scores sentence and self-doubt boundaries. Architecture and labeling details appear in Sec. 3.3. 
+
+Calibration, reporting, and metrics. For each frozen method, conformal thresholds are estimated on the calibra-tion split at δ ∈ D = {0.002 , 0.003 , 0.005 , 0.01 }, where 
+
+δ controls the stringency of the stopping threshold: smaller values yield more conservative early-exit decisions. The re-sulting thresholds are applied unchanged to the held-out test split. We report answer accuracy, average generated response tokens, and Accuracy–Efficiency Score (AES) (Luo et al. 2026); prompt tokens are excluded because they are shared by all methods. Let p and L denote the accuracy and average generated-token count of an evaluated method, respectively, and let pb and Lb denote those of the corresponding Full-CoT baseline. AES is defined as 
+
+AES = Lb − LLb
+
++
+
+(3 p−pb 
+
+> pb
+
+, p ≥ pb,
+
+−5 pb−ppb , p < p b. (15) The first term measures relative token savings, while the second rewards accuracy improvements and penalizes accu-racy degradation. Higher AES therefore indicates a better accuracy–efficiency trade-off. For each benchmark, tables report the operating point with the highest AES over D. The Average columns first macro-average metrics across the five benchmarks at each operating point and then average them over D; they are therefore not averages of the displayed benchmark-wise best points. 
+
+Baselines. We compare BLADE with Full-CoT and LYNX-style baselines (Akgül et al. 2025). LYNX-K1 uses self-doubt checkpoints, the fixed LYNX layer subset, and forced-exit labels derived from a single completion. LYNX-K16 uses the same checkpoints and fixed layers, but re-places the single-completion labels with K16 strict-clean supervision. For layer-selection ablations, we further com-pare against final-layer, validation-selected single-layer, fixed four-layer, random four-layer, adjacent-middle, evenly spaced, and all-layer probes. Method GSM8K MATH-500 AMC23 AIME24 AIME25 Average Acc. #Tok. Acc. #Tok. Acc. #Tok. Acc. #Tok. Acc. #Tok. Acc. #Tok. AES                                                                                                                                   
+
+> Qwen3-8B
+> Base 92.3 1705 89.8 4639 88.7 7822 61.4 11956 51.9 13064 76.8 7837 0.000
+> Ours-Mixed 93.7 733 85.6 2620 87.5 5610 60.5 9476 52.2 11055 75.2 5896 0.213
+> Ours-Doubt 93.4 830 87.8 3809 88.4 5827 61.7 10092 52.5 11431 76.4 6684 0.187 LYNX-K16 93.8 811 84.2 2507 87.7 5626 61.7 10448 51.5 10982 76.2 6520 0.188 LYNX-K1 93.0 892 87.3 3389 87.0 4961 60.8 10665 52.2 11247 76.2 6650 0.163
+> Qwen3-4B
+> Base 85.3 1415 92.0 4325 91.4 7205 58.3 11999 52.2 13148 75.8 7618 0.000
+> Ours-Mixed 92.4 700 86.9 2907 88.9 4512 57.7 11382 52.5 11386 75.6 6414 0.175
+> Ours-Doubt 90.7 937 88.7 3500 90.0 5122 58.0 11056 52.2 12299 75.4 6757 0.112 LYNX-K16 90.5 975 87.6 2918 89.3 5116 58.0 10415 52.2 11903 75.6 6843 0.109 LYNX-K1 90.9 969 92.0 3863 90.0 5068 58.3 11380 52.2 11662 75.9 6781 0.127
+
+Table 1: Main results. Accuracy (%), average generated tokens, and AES. Benchmark-specific entries use the highest-AES operating point in the pre-specified δ grid; Average follows the protocol in Sec. 4.1. 0.001 0.002 0.003 0.005    
+
+> δ
+> 0.00
+> 0.05
+> 0.10
+> 0.15
+> 0.20
+> 0.25
+> AES
+> Ours-Mixed Ours-Doubt LYNX-K16 LYNX-K1
+
+Figure 3: Average AES on the five-benchmark Qwen3-8B evaluation suite. Results are equal-weight macro-averages across the five benchmarks. 
+
+4.2 Main Results 
+
+Accuracy-preserving token savings. Table 1 summarizes performance at the best operating point for each bench-mark. On Qwen3-8B, BLADE achieves the highest average AES ( 0.213 ), exceeding LYNX-K16 ( 0.188 ) and LYNX-K1 (0.163 ). It reduces the average number of generated tokens from 7,837 to 5,896 , a 24 .8% reduction, while retaining 
+
+75 .2% accuracy compared with 76 .8% for Full-CoT. These results show that BLADE provides a stronger overall balance between answer accuracy and reasoning cost than the LYNX baselines. 
+
+Performance across calibration levels. Fig. 3 reports the combined five-benchmark results at every δ ∈ D . BLADE achieves the strongest AES throughout the evaluated grid, showing that its token-saving advantage is not tied to a single calibration setting. In particular, its advantage remains under stricter stopping thresholds, where maintaining accuracy is most important. 
+
+Generality across models. The same pattern holds for Qwen3-4B: BLADE achieves an average AES of 0.175 ,exceeding LYNX-K16 ( 0.109 ) and LYNX-K1 ( 0.127 ). It reduces average generated tokens from 7,618 to 6,414 
+
+(15 .8% ) while maintaining nearly unchanged average accu-racy ( 75 .6% versus 75 .8% for Full-CoT). Together with the Qwen3-8B results, this finding shows that BLADE remains effective across the two evaluated Qwen3 backbones rather than relying on the reasoning behavior of a single model. 
+
+4.3 Layer-Selection Ablation 
+
+Table 2 compares BLADE with single-layer, all-layer, prede-fined, and random strategies to assess the value of cross-layer modeling and automatic compact layer selection. 
+
+Comparison with single-layer probes. BLADE substan-tially outperforms the validation-selected best single-layer probe, achieving average AES values of 0.213 versus 0.100 
+
+on Qwen3-8B and 0.175 versus 0.075 on Qwen3-4B. More-over, even the best single-layer probe underperforms most of the evaluated four-layer strategies on both backbones. The gap between the best and worst single-layer probes ( 0.100 
+
+versus −0.162 on Qwen3-8B and 0.075 versus 0.024 on Qwen3-4B) further shows that performance is sensitive to the chosen layer. Together, these results indicate that a sin-gle layer provides an incomplete representation for prefix-sufficiency prediction, whereas combining complementary information from multiple depths is beneficial. 
+
+Comparison with all-layer representations. Using all layers is not necessarily optimal. BLADE achieves average AES values of 0.213 and 0.175 on Qwen3-8B and Qwen3-4B, respectively, compared with 0.103 and 0.147 for the all-layer probe. Thus, simply concatenating representations from every layer does not improve prefix-sufficiency pre-diction and may introduce redundant or less task-relevant features that are harder to model effectively. As shown in Sec. 4.6, retaining dense cross-layer modeling at deployment incurs substantially greater parameter and hidden-state ac-cess costs. BLADE instead uses APLS to compress dense cross-layer information into a compact subset that retains strong early-exit performance. Method GSM8K MATH-500 AMC23 AIME24 AIME25 Average Acc. #Tok. Acc. #Tok. Acc. #Tok. Acc. #Tok. Acc. #Tok. Acc. #Tok. AES 
+
+Qwen3-8B 
+
+Base 92.3 1705 89.8 4639 88.7 7822 61.4 11956 51.9 13064 76.8 7837 0.000 
+
+Ours: selected K4 93.7 733 85.6 2620 87.5 5610 60.5 9476 52.2 11055 75.2 5896 0.213 
+
+Final layer 92.5 682 84.0 2606 83.6 5317 58.6 10091 48.8 11531 71.6 5643 -0.006 LYNX-K4 93.3 735 86.7 3344 87.7 5378 60.8 9840 53.1 11141 75.1 6017 0.199 Best single 92.9 712 84.9 2886 87.3 5468 58.6 10269 51.9 11713 73.3 5759 0.100 Worst single 92.8 991 87.6 3854 85.7 6573 58.3 11397 48.1 12425 71.4 6460 -0.162 Adjacent-middle K4 93.0 729 85.1 2776 88.9 6119 61.1 11106 50.3 10598 75.0 6166 0.159 Evenly-spaced K4 92.8 764 84.0 2472 85.9 5243 61.4 9881 52.5 11370 73.7 5755 0.151 All layers 93.8 822 81.8 2220 86.6 5172 60.8 10751 51.2 12047 73.7 6094 0.103 Random K4 (10-seed avg.) 92.6 720 86.1 3181 87.5 5691 60.6 10211 51.9 11799 74.6 5945 0.166 
+
+Qwen3-4B 
+
+Base 85.3 1415 92.0 4325 91.4 7205 58.3 11999 52.2 13148 75.8 7618 0.000 
+
+Ours: selected K4 92.4 700 86.9 2907 88.9 4512 57.7 11382 52.5 11386 75.6 6414 0.175 Final layer 92.4 907 89.1 3634 90.7 6051 58.0 11777 51.2 12788 75.0 6875 0.054 LYNX-K4 92.2 736 88.9 3141 90.7 5759 57.7 11355 52.8 11605 75.5 6420 0.169 Best single 92.2 886 88.9 3700 90.5 5272 58.6 11931 51.9 12686 75.4 6907 0.075 Worst single 89.6 779 88.9 3823 90.5 6050 57.4 11766 51.2 12774 74.0 6735 0.024 Adjacent-middle K4 91.7 686 89.3 2971 89.3 5198 57.7 10778 52.2 12053 75.0 6169 0.176 
+
+Evenly-spaced K4 92.4 738 89.6 3513 89.1 4904 57.4 11251 52.5 11701 76.0 6591 0.176 All layers 92.8 768 90.2 3381 90.7 5978 57.1 11352 51.9 11603 75.4 6476 0.147 Random K4 (10-seed avg.) 92.7 755 88.7 3332 89.0 4878 57.6 11573 51.4 11736 75.7 6609 0.151 
+
+Table 2: Layer-selection ablation. Accuracy (%), average generated tokens, and AES. All results follow the reporting protocol in Sec. 4.1; Random K4 is averaged over 10 layer seeds before operating-point selection. 0.2 0.3 0.4 0.5 0.6     
+
+> Token Saving Rate
+> 0.82
+> 0.84
+> 0.86
+> 0.88
+> 0.9
+> Accuracy
+> (a) Candidate Stream
+> Full-CoT
+> Doubt
+> Mixed
+> 0.3 0.4 0.5 0.6 0.7
+> Token Saving Rate
+> 0.78
+> 0.82
+> 0.86
+> 0.9
+> Accuracy
+> (b) Stop Policy
+> Full-CoT
+> Consecutive-2
+> Doubt-1 / Sentence-2
+> Single
+
+Figure 4: Runtime-policy ablations on MATH-500 with Qwen3-8B. All variants use the same frozen probe. The left panel shows candidate streams, and the right panel shows stopping policies. 
+
+Comparison with Fixed and Random Layer Selection. 
+
+BLADE avoids reliance on manually specified layer indices. On Qwen3-8B, it achieves the highest average AES among the evaluated strategies ( 0.213 ), outperforming the fixed LYNX-K4 subset ( 0.199 ) and random four-layer selection (0.166 ). On Qwen3-4B, BLADE reaches 0.175 , exceeding LYNX-K4 ( 0.169 ) and random selection ( 0.151 ), and re-maining comparable to adjacent-middle and evenly spaced subsets ( 0.176 ). Although multiple four-layer combinations can yield similar representations, BLADE consistently iden-tifies a strong compact subset without manual tuning or ran-dom search, supporting automatic layer selection in APLS. 
+
+4.4 Runtime-Policy Ablations 
+
+We isolate the candidate stream and temporal stopping policy. Fig. 4 shows their effects on the MATH-500 accuracy–token frontier. 
+
+Candidate stream. Fig. 4(a) compares doubt-only and mixed candidate streams on MATH-500 with Qwen3-8B. By adding ordinary sentence boundaries, the mixed stream introduces more exit opportunities and improves the high-accuracy region of the frontier. This result suggests that self-doubt checkpoints are informative but too sparse to cover all prefixes that already support a reliable answer, motivating 0 5 10 15 20 25 30 35 35        
+
+> Layer ID (0-based)
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> Selection frequency
+> 2
+> 1
+> 3
+> 11
+> 3
+> 5
+> 3333
+> 11
+> 2
+> 11
+> 33
+> selected
+> other
+
+(a) Qwen3-8B 0 5 10 15 20 25 30 35 35       
+
+> Layer ID (0-based)
+> 0.0
+> 0.1
+> 0.2
+> 0.3
+> 0.4
+> 0.5
+> Selection frequency
+> 111
+> 2
+> 1
+> 2
+> 4
+> 1
+> 44
+> 33
+> 2
+> 5
+> 111
+> 2
+> 1
+> selected
+> other
+
+(b) Qwen3-4B 
+
+Figure 5: Layer-selection frequencies over 10 APLS runs on (a) Qwen3-8B and (b) Qwen3-4B. Low cross-run agreement indicates non-unique layer subsets. broader checkpoint coverage for safe early exit. 
+
+Temporal stopping policy. Fig. 4(b) compares temporal stopping policies on MATH-500 with Qwen3-8B. The asym-metric policy exits immediately after a positive self-doubt prediction but requires two consecutive positive sentence predictions. It yields a stronger high-accuracy trade-off than uniform immediate stopping: temporal confirmation reduces premature exits at heterogeneous sentence boundaries while retaining the broader coverage of the mixed candidate stream. Overall, the strongest runtime frontier is obtained by com-bining mixed candidate coverage and asymmetric temporal stopping. Thus, candidate expansion alone is insufficient: its benefit depends on how the additional candidates are cali-brated and converted into stopping decisions. 
+
+4.5 Layer-Selection Stability Analysis 
+
+Fig. 5, together with Table 3, shows that independent APLS runs have low layer overlap and near-zero rank correlations, while their AUROC variance remains consistently small across both model scales. Panels (a) and (b) report the layer-selection frequencies for Qwen3-8B and Qwen3-4B, respec-tively. The frequency-aggregated subsets are [15 , 19 , 31 , 35] 
+
+for Qwen3-8B and [19 , 21 , 22 , 27] for Qwen3-4B, further in-dicating that the preferred absolute layer indices are model dependent. One plausible explanation is that prefix-sufficiency infor-mation is redundantly distributed across model depth. Be-cause Transformer residual representations are progressively Metric Qwen3-8B Qwen3-4B Pairwise Jaccard 0.119 ± 0.093 0.133 ± 0.147 Kendall τ -0.005 ± 0.132 0.011 ± 0.136 Spearman ρ -0.002 ± 0.185 0.012 ± 0.189 Full-val AUROC ↑ 0.871 ± 0.004 0.866 ± 0.003 Clean AUROC ↑ 0.883 ± 0.003 0.881 ± 0.003 Table 3: Layer-selection stability across 10 fixed-split runs. Pairwise Jaccard and rank correlations are computed over 45 run pairs, and AUROC over individual runs. Low subset agreement but small AUROC variance indicates stable per-formance despite non-unique layer choices. 
+
+Architecture Params Peak alloc. (MiB) Time (s/epoch) Dense cross-layer model 11.83M 1348.8 39.87 APLS compact probe ( K = 4 ) 4.24M 209.0 3.97 
+
+Table 4: Efficiency comparison between the dense cross-layer model and the compact APLS probe. updated and partially preserve information from earlier lay-ers, several different layer combinations may provide com-parable evidence for the same sufficiency decision. The se-lection objective may therefore admit multiple functionally similar solutions rather than a single uniquely optimal subset. Accordingly, the selector should be interpreted as identifying an effective compact representation, rather than recovering a unique set of mechanistically critical layers. 
+
+4.6 Efficiency and Resource Analysis 
+
+Finally, we examine whether the compact layer subset iden-tified by APLS translates into practical resource savings. We compare the deployed APLS compact probe with the dense cross-layer model used during layer selection. Both archi-tectures are evaluated under the same controlled training protocol on Qwen3-8B. As shown in Table 4, the APLS compact probe substan-tially reduces the parameter count and peak allocated mem-ory compared with the dense cross-layer model. It also re-duces the per-epoch training time from approximately 40 seconds to under 4 seconds. These results show that APLS converts compact probe-layer selection into concrete com-putational savings. 
+
+## 5 Conclusion 
+
+We propose BLADE, a boundary-expanded, layer-adaptive framework for dynamic early exit in efficient LLM reason-ing. Experiments on five benchmarks and two Qwen3 back-bones show that BLADE reduces generated tokens while largely preserving accuracy. Ablations show that combining sentence and self-doubt boundaries uncovers exit opportuni-ties missed by self-doubt-only monitoring, while automatic layer selection yields compact representations. These find-ings highlight the complementary roles of checkpoint cover-age and adaptive layer selection in efficient reasoning. References 
+
+AI-MO Team. 2024. AIMO Validation AMC Dataset. https: //huggingface.co/datasets/AI-MO/aimo-validation-amc. Akgül, Ö. F.; Kalaycı, Y. H.; Kannan, R.; Neiswanger, W.; and Prasanna, V. 2025. LYNX: Learning Dynamic Ex-its for Confidence-Controlled Reasoning. arXiv preprint arXiv:2512.05325 .Bengio, Y.; Léonard, N.; and Courville, A. 2013. Estimating or Propagating Gradients Through Stochastic Neurons for Conditional Computation. arXiv preprint arXiv:1308.3432 .Chen, X.; Xu, J.; Liang, T.; He, Z.; Pang, J.; Yu, D.; Song, L.; Liu, Q.; Zhou, M.; Zhang, Z.; Wang, R.; Tu, Z.; Mi, H.; and Yu, D. 2024. Do NOT Think That Much for 2+3=? On the Overthinking of o1-Like LLMs. arXiv preprint arXiv:2412.21187 .Cobbe, K.; Kosaraju, V.; Bavarian, M.; Chen, M.; Jun, H.; Kaiser, L.; Plappert, M.; Tworek, J.; Hilton, J.; Nakano, R.; Hesse, C.; and Schulman, J. 2021. Training Verifiers to Solve Math Word Problems. arXiv preprint arXiv:2110.14168 .Dalvi, F.; Sajjad, H.; Durrani, N.; and Belinkov, Y. 2020. An-alyzing Redundancy in Pretrained Transformer Models. In 
+
+Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing , 4908–4926. de Vries, W.; van Cranenburgh, A.; and Nissim, M. 2020. What’s So Special about BERT’s Layers? A Closer Look at the NLP Pipeline in Monolingual and Multilingual Models. In Findings of the Association for Computational Linguistics: EMNLP 2020 , 4339–4350. Fu, Y.; Chen, J.; Zhuang, Y.; Fu, Z.; Stoica, I.; and Zhang, H. 2025. Reasoning Without Self-Doubt: More Efficient Chain-of-Thought Through Certainty Probing. In ICLR 2025 Workshop on Foundation Models in the Wild .Guan, W.; Li, L.; Liu, J.; Li, B.; Fu, P.; Fang, C.; Hao, X.; Ma, C.; and Wang, W. 2026. Mitigating overthinking in large reasoning language models via reasoning path deviation monitoring. arXiv preprint arXiv:2603.14251 .Han, J.; Di, Z.; Jiang, Z.; Liao, Y.; Liang, J.; Wang, Y.; and Xiao, Y. 2026. Structured Reasoning for Large Language Models. arXiv preprint arXiv:2601.07180 .Hendrycks, D.; Burns, C.; Kadavath, S.; Arora, A.; Basart, S.; Tang, E.; Song, D.; and Steinhardt, J. 2021. Measuring Mathematical Problem Solving with the MATH Dataset. In 
+
+Proceedings of the Neural Information Processing Systems Track on Datasets and Benchmarks , volume 1. Lightman, H.; Kosaraju, V.; Burda, Y.; Edwards, H.; Baker, B.; Lee, T.; Leike, J.; Schulman, J.; Sutskever, I.; and Cobbe, K. 2024. Let’s Verify Step by Step. In International Confer-ence on Learning Representations .Luo, H.; He, H.; Wang, Y.; Liu, S.; Li, W.; Cao, X.; Tao, D.; Tan, N.; and Shen, L. 2026. O1-Pruner: Length-Harmonizing Fine-Tuning for O1-Like Reasoning Pruning. In Findings of the Association for Computational Linguistics: ACL 2026 ,14242–14257. Luo, M.; Tan, S.; Wong, J.; Shi, X.; Tang, W. Y.; Roongta, M.; Cai, C.; Luo, J.; Zhang, T.; Li, L. E.; Popa, R. A.; and Stoica, I. 2025. DeepScaleR: Surpassing O1-Preview with a 1.5B Model by Scaling RL. Notion Blog. Accessed: 2026-07-29. Peng, K.; Ding, L.; Ouyang, Y.; Fang, M.; and Tao, D. 2025. Revisiting overthinking in long chain-of-thought from the perspective of self-doubt. arXiv preprint arXiv:2505.23480 .Peters, M. E.; Neumann, M.; Iyyer, M.; Gardner, M.; Clark, C.; Lee, K.; and Zettlemoyer, L. 2018. Deep Contextualized Word Representations. In Proceedings of the 2018 Confer-ence of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, Volume 1 (Long Papers) , 2227–2237. Snell, C.; Lee, J.; Xu, K.; and Kumar, A. 2025. Scaling LLM Test-Time Compute Optimally Can Be More Effective than Scaling Parameters for Reasoning. In International Conference on Learning Representations .Sui, Y.; Chuang, Y.-N.; Wang, G.; Zhang, J.; Zhang, T.; Yuan, J.; Liu, H.; Wen, A.; Zhong, S.; Chen, H.; and Hu, X. 2025. Stop Overthinking: A Survey on Efficient Reason-ing for Large Language Models. Transactions on Machine Learning Research .Tenney, I.; Das, D.; and Pavlick, E. 2019. BERT Redis-covers the Classical NLP Pipeline. In Proceedings of the 57th Annual Meeting of the Association for Computational Linguistics , 4593–4601. Wei, J.; Wang, X.; Schuurmans, D.; Bosma, M.; Ichter, B.; Xia, F.; Chi, E.; Le, Q. V.; and Zhou, D. 2022. Chain-of-Thought Prompting Elicits Reasoning in Large Language Models. In Advances in Neural Information Processing Sys-tems , volume 35, 24824–24837. Wu, T.; Liu, Y.; Bai, J.; Jia, Z.; Zhang, S.; Lin, Z.; Wang, Y.; Zhu, S.-C.; and Zheng, Z. 2025. Native Parallel Reasoner: Reasoning in Parallelism via Self-Distilled Reinforcement Learning. arXiv preprint arXiv:2512.07461 .Xiang, Y.; Ji, Y.; Xu, R.; Qiao, D.; Yang, Z.; Li, J.; and Zhang, M. 2026. When is thinking enough? early exit via sufficiency assessment for efficient reasoning. In Proceedings of the 64th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) , 23541–23556. Yang, A.; Li, A.; Yang, B.; Zhang, B.; Hui, B.; Zheng, B.; et al. 2025. Qwen3 Technical Report. arXiv preprint arXiv:2505.09388 .Yang, C.; Si, Q.; Duan, Y.; Zhu, Z.; Zhu, C.; Li, Q.; Chen, M.; Lin, Z.; and Wang, W. 2026. Dynamic Early Exit in Reasoning Models. In International Conference on Learning Representations .Zhang, A.; Chen, Y.; Pan, J.; Zhao, C.; Panda, A.; Li, J.; and He, H. 2025a. Reasoning Models Know When They’re Right: Probing Hidden States for Self-Verification. In Second Conference on Language Modeling .Zhang, Y.; Bai, J.; Cai, Z.; Qin, S.; Chen, Z.; Guan, J.; and Rong, W. 2025b. Your Dense Retriever is Secretly an Expe-ditious Reasoner. arXiv preprint arXiv:2510.21727 .Zhang, Y.; and Math-AI Team. 2024. American Invi-tational Mathematics Examination (AIME) 2024. https: //huggingface.co/datasets/math-ai/aime24. Zhang, Y.; and Math-AI Team. 2025. American Invi-tational Mathematics Examination (AIME) 2025. https: //huggingface.co/datasets/math-ai/aime25.

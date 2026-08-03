@@ -1,0 +1,446 @@
+Title: ViewMind3D: Modular View-Aware Inference for Training-Free 3D-QA
+
+URL Source: https://arxiv.org/pdf/2607.28442v1
+
+Published Time: Fri, 31 Jul 2026 01:18:03 GMT
+
+Number of Pages: 8
+
+Markdown Content:
+# ViewMind3D: Modular View-Aware Inference for Training-Free 3D-QA 
+
+Ping-Kun Chiang, Kun-Ru Wu, Po-han Li, Sandeep Chinchali, Ufuk Topcu, Yu-Chee Tseng 
+
+Abstract — Recent advances in large language models (LLMs) and vision-language models (VLMs) have enabled new pos-sibilities for 3D question answering (3D-QA), a key capabil-ity for embodied AI and robotic perception. However, most existing methods rely on 3D-specific training or fine-tuning with costly annotations, limiting their scalability and real-world applicability. We present ViewMind3D, a fully training-free and modular framework for 3D spatial reasoning over multi-view observations of a scene without requiring complete 3D reconstruction. The framework decomposes the 3D-QA task into four interpretable components: (1) question-driven multi-view selection, (2) guided visual grounding with language-conditioned object cues, (3) spatial context encoding via abird’s-eye-view (BEV) viewpoint indicator, and (4) structured answer generation through role-based reasoning. This design enables structured, robust, and interpretable reasoning without requiring model tuning. Experimental results on ScanQA and SQA3D show that ViewMind3D achieves competitive perfor-mance compared to prior training-free and fine-tuned 3D-LLMs. In particular, our method improves performance on spatially grounded question types, such as “What” questions in SQA3D, while maintaining strong overall accuracy (50.8%) and achieving 73.4 CIDEr on ScanQA. These results demonstrate that effective 3D reasoning can be achieved through modular orchestration of general-purpose LLMs and VLMs for robotic perception in real-world environments. 
+
+I. I NTRODUCTION 
+
+Understanding 3D scenes from language queries is acore capability for embodied AI, robotics, and human–robot interaction. While recent advances in 3D question answering (3D-QA) improve spatial reasoning, most methods rely on costly 3D annotations, task-specific training, and specialized architectures [1]–[3], limiting scalability. In contrast, vision– language models (VLMs) [4] generalize well but lack explicit 3D reasoning mechanisms. This raises a key question: Can general-purpose 2D VLMs perform 3D reasoning without retraining or fine-tuning? 
+
+A 3D-QA system connects spatial language understanding with grounded visual reasoning. Given a 3D scene repre-sented by multi-view observations, a question, and optionally the questioner’s state, the goal is to produce a grounded answer. Benchmarks such as ScanQA [5] and SQA3D [6] evaluate 3D vision–language reasoning in complex indoor environments. Existing methods span 2D-based, 3D-based, and hybrid paradigms [1]–[3], [7], but typically require retraining and remain dataset-specific, limiting generalization across environments. By integrating with large language models (LLMs), [8] leverages large-scale pretraining and language–3D align-ment, while [9] employs visual prompting to capture global– local relationships. Object-centric approaches such as [10], [11] further enable fine-grained grounding and compositional reasoning through structured object representations and inter-actions. However, these methods typically rely on substantial 3D-aware training, and their performance often degrades under strict zero-shot settings. Consequently, they depend on training data, prompt design, or task-specific tuning, which limits their generalization to unseen environments. Most existing 3D-QA methods therefore face key chal-lenges for robotics applications, including high annotation cost, computational overhead, and limited reasoning capabil-ity of smaller backbones [1]. Although recent efforts leverage pre-trained LLMs and VLMs for training-free reasoning [1], [12], they often still depend on auxiliary 3D-trained compo-nents, leaving fully modular, interpretable, and training-free solutions underexplored. To address these limitations, we propose ViewMind3D , a modular, training-free framework for 3D-QA in real-world indoor scenes. With a structured design, it performs 3D-QA without task-specific fine-tuning or parameter updates, while supporting general-purpose prompts. The framework decomposes 3D reasoning into interpretable components, enabling general-purpose LLMs/VLMs to reason over multi-view observations, even in unseen environments. This design enables robust, interpretable 3D reasoning while remaining flexible across diverse LLMs/VLMs. ViewMind3D consists of four components: (1) Relevance View Selection , filtering multi-view images for question-relevant views; (2) Guided Detection , overlaying visual annotations for referenced objects; (3) Viewpoint Indicator ,encoding camera poses as bird’s-eye-view (BEV) represen-tations; and (4) 3D-QA Module , fusing visual, spatial, and linguistic cues to generate grounded answers. These components address key challenges in multi-view 3D reasoning. Multi-view inputs often contain redundant or irrelevant information, motivating relevance-based selection. The absence of explicit object grounding weakens alignment between visual evidence and language queries, which is mitigated by guided detection. Finally, individual views lack a shared spatial reference, hindering cross-view reasoning; this is addressed by viewpoint indicators encoded in BEV. Experimental results show that ViewMind3D achieves competitive performance against prior methods, including 3D-LLM [1], improving CIDEr by 4.01 on ScanQA and achieving higher overall accuracy on SQA3D in zero-shot settings, demonstrating the effectiveness of our modular design. The contributions of this work are:  
+
+> •
+
+A modular and fully training-free 3D-QA framework enabling 2D VLMs to perform spatial reasoning over multi-view observations without retraining;  
+
+> •
+
+A question-driven visual grounding module providing arXiv:2607.28442v1 [cs.CV] 30 Jul 2026 phrase-level bounding box annotations that improve interpretability and reduce visual noise;  
+
+> •
+
+A BEV-based viewpoint encoding that represents cam-era position and orientation as interpretable spatial cues;  
+
+> •
+
+A structured multi-stage reasoning process that aggre-gates cross-view information into spatially grounded representations for robust 3D understanding. II. R ELATED WORKS 
+
+Text-only LLMs [13] lack grounding in non-linguistic modalities. VLMs, exemplified by CLIP and its succes-sors [14], [15], align visual and textual representations through large-scale pretraining. Building on this foundation, modern VLMs integrate visual encoders with LLMs via lightweight adapters [16], [17], enabling cross-modal rea-soning over images and language. Recent large multimodal models [4] further extend these capabilities to support multi-step reasoning and zero-shot generalization across diverse perception tasks. Despite these advances, existing VLMs primarily operate on 2D observations and lack explicit mech-anisms for reasoning over 3D spatial structures. 3D vision–language reasoning integrates spatial, visual, and linguistic information, enabling agents to understand complex 3D environments. Benchmarks such as ScanQA [5] and SQA3D [6] evaluate tasks including 3D-QA, object grounding, and scene understanding. Existing approaches can be categorized as:  
+
+> •
+
+2D-based methods [1]: project 3D scenes into multi-view images or videos, leveraging strong 2D priors but lacking explicit spatial modeling.  
+
+> •
+
+3D-based methods [2], [3]: directly process point clouds or meshes to capture geometric structure, requir-ing specialized architectures and training.  
+
+> •
+
+Hybrid methods [7], [18]: combine 2D and 3D repre-sentations for unified scene understanding, often at the cost of increased model complexity. Despite recent progress, prior methods still face key chal-lenges, including high annotation cost, computational over-head, and limited generalization due to reliance on training-specific components [1]. Scene-LLM [8] improves spatial understanding through large-scale pretraining and alignment between language and 3D representations, enabling reason-ing over structured scenes. However, Scene-LLM depends on large-scale 3D-language pretraining and curating sub-stantial 3D-aware training data requires significant efforts. GPT4Scene [9] adopts a visual prompting paradigm that augments multi-view inputs with BEV representations and spatial markers to establish global–local correspondence. However, its effectiveness in purely training-free settings remains limited. Incorporating multi-view information into 3D datasets has also been explored in DSPNet [19] and MV-ScanQA [20], demonstrating strong performance. How-ever, these approaches rely on training or pre-training for 3D feature fusion. Object-centric approaches such as Chat-Scene [10] and Chat-Scene++ [11] represent scenes as se-quences of object-level embeddings with identifier tokens, enabling fine-grained grounding and reasoning. However, these methods rely on learned object representations and scene-language training. Further, these methods require addi-tional adaptation and often entangle perception and reasoning into monolithic pipelines, reducing interpretability. While recent works explore zero-shot strategies using pre-trained LLMs and VLMs [1], [12], most still depend on auxiliary 3D-trained modules, limiting scalability and inter-pretability. In contrast, ViewMind3D adopts a fully training-free and modular approach, enhancing interpretability. III. M ETHODOLOGY 
+
+A. Problem Statement 
+
+Given a 3D scene S represented by a point cloud P ∈
+
+RNpts ×D , where Npts is the number of points and D
+
+denotes the feature dimensionality (e.g., coordinates, color, or semantics), the goal of 3D question answering (3D-QA) is to generate a textual answer A for a natural language query 
+
+T . All points in P are defined in a unified global coordinate frame. Optionally, the input includes (i) a situation descriptor s =
+
+⟨stxt , s pos , s ori ⟩ and (ii) a set of multi-view RGB images 
+
+I = {I1, . . . , I Nview }, defined from the perspective of the questioner. Here, stxt describes the spatial context, spos ∈ R3
+
+denotes the 3D position, and sori ∈ SO (3) represents the orientation. SQA3D [6] provides s, while ScanQA [5] does not. Both datasets are built on ScanNet [21]. Each image 
+
+Ii ∈ RH×W ×3.The 3D-QA task is defined as a mapping F :(P , T, s, I) 7 → A , where s and I are optional. The objective is to produce an answer A that is semantically consistent with T and grounded in S.In this work, F is realized in a fully training-free manner, without task-specific fine-tuning or parameter updates on 3D data, using pre-trained LLMs and VLMs. 
+
+B. ViewMind3D Framework 
+
+ViewMind3D is a modular, fully training-free framework for open-ended 3D-QA. As illustrated in Fig. 1, it consists of four stages: relevance selection, visual grounding, spatial encoding, and answer synthesis. We introduce an intermediate structured representation 
+
+that bridges perception and reasoning. Specifically, outputs from scene understanding modules are organized into filtered views, grounded visual annotations, and spatial BEV cues, enabling modular and interpretable 3D reasoning. 
+
+Relevance View Selection: Filters multi-view observa-tions to retain question-relevant perspectives while preserv-ing high recall for downstream reasoning. 
+
+Guided Detection: Extracts object cues from T and grounds them in selected views via open-vocabulary detec-tion, producing annotated images for visual grounding. 
+
+Viewpoint Indicator: Encodes each view with a bird’s-eye-view (BEV) representation of camera position and ori-entation, providing explicit spatial context. 
+
+3D-QA Module: Given the structured representation, in-tegrates visual, spatial, and linguistic information through multi-step reasoning to generate grounded answers. (1) Multi-modal 
+
+input 
+
+> What type of
+> kitchen cabinets
+> are in the room?
+
+Text Question 𝑻 
+
+Multi-view Images 𝑰 2.1 Relevance Selection Module 
+
+[Output] Filtered Images 𝐼 ∗
+
+> Filters question-relevant multi-view images
+
+2.3 Viewpoint Indicator Module 
+
+> 𝐵 ୧୬ୢ 𝐵 ୥୪୭ୠୣ
+
+[Output] BEV Indicators 
+
+> Overlays camera poses on a global BEV map
+
+Final Answer 𝐴 ୤୧୬ୟ୪ 
+
+(2) Scene Understanding 
+
+and Representation 
+
+2.2 Guided Detection Module 
+
+[Output] Annotated Images 𝐼 መ  
+
+> Grounds question-relevant objects in each view
+> Natural
+> Language
+> Guider
+> Detector
+> Object
+> List 𝑶
+> Enriched
+> Lists 𝑶 ∗
+> Decorator
+
+(3) Structured 
+
+Representation     
+
+> What type of kitchen
+> cabinets are in the room?
+> Text Question 𝑻
+> Global BEV 𝑩 𝒈𝒍𝒐𝒃𝒆
+> Annotated Images 𝑰 ෠
+> BEV Indicators 𝑩 𝐢𝐧𝐝
+
+(5) Answer 
+
+Brown wooden 
+
+built-in cabinets 
+
+with drawers and doors 
+
+3D Point Cloud 𝑷 
+
+(4) 3D-QA 
+
+Reasoning 
+
+> Question
+> Interpreter
+> View Captioner
+> Summarizer
+> Answerer
+> Answer
+> Normalizer
+> Term-Based Instructions
+
+[Output] Answer 
+
+> 𝑻, 𝑩 𝒈𝒍𝒐𝒃𝒆
+> 𝑻
+> 𝑻
+> 𝑰 ෠, 𝑩 𝒊𝒏𝒅
+
+Fig. 1. Overview of the ViewMind3D framework for 3D-QA. Given a natural language query, multi-view images, and a 3D point cloud, the system performs scene understanding and organizes the outputs into a structured representation that bridges perception and reasoning. This representation is then processed through four stages. The example illustrates how the query is grounded in multi-view visual evidence and resolved via structured spatial reasoning. 
+
+All components operate in an inference-only regime with-out parameter updates. The framework leverages general-purpose LLMs and VLMs (e.g., GPT-4.1 and o3), enabling a fully training-free yet effective 3D-QA pipeline. 
+
+C. Relevance View Selection 
+
+Given multi-view images I and a query T , this module filters views relevant for answering T . For each image Ii ∈ I,a relevance-selection agent predicts a binary label: 
+
+ri =
+
+(
+
+Agent selector (T, I i), if ScanQA, 
+
+Agent selector (T, s txt , I i), if SQA3D, (1) where ri ∈ { yes , no } indicates whether the image is re-tained. The filtered set is I∗ = {Ii | ri = yes } with N ∗ 
+
+> view
+
+= |I∗|.Instead of enforcing a fixed number of views, the module adopts a query-adaptive strategy that prioritizes recall, pre-serving potentially useful spatial evidence. Multi-view inputs often contain redundant observations that hinder reasoning. By selecting question-relevant views, this module reduces redundancy and provides a more focused input for subsequent processing, improving the stability of downstream reasoning without requiring additional training. 
+
+D. Guided Detection 
+
+This module aligns question intent with visual content by transforming filtered views I∗ into annotated images ˆI that highlight question-relevant objects. These annotations form part of structured representation for downstream reasoning. 
+
+1) Natural Language Guider: A language-guided agent extracts object categories from the query: 
+
+O =
+
+(
+
+Agent guider (T ), if ScanQA, 
+
+Agent guider (T, s txt ), if SQA3D, (2) where Nobj = |O|. If no object is referenced, grounding is skipped. For example, for “What type of kitchen cabinets are in the room?”, the output is O = {kitchen cabinets }.
+
+2) Decorator: For each image I∗ 
+
+> i
+
+∈ I∗, a decorator agent enriches each object oj ∈ O with attributes: 
+
+O∗ 
+
+> i
+
+= Agent decorator (O, I ∗ 
+
+> i
+
+). (3) This produces image-specific object phrases O∗ =
+
+{O∗ 
+
+> 1
+
+, . . . , O∗ 
+
+> N∗
+> view
+
+}, providing more discriminative cues for grounding. 
+
+3) Detector: An object detection agent localizes objects in O∗ 
+
+> i
+
+using Florence-2 [22]. For each I∗ 
+
+> i
+
+∈ I∗:
+
+Ai = {(bi,k , o ik) | oik ∈ O∗ 
+
+> i
+
+}, (4) where bi,k denotes the bounding box of oik. Non-maximum suppression retains boxes with IoU below τ = 0 .6, yielding 
+
+ˆAi = NMS( Ai, τ = 0 .6) . The annotated image is ˆIi =Overlay( I∗ 
+
+> i
+
+, ˆAi), producing ˆI = { ˆI1, . . . , ˆIN ∗ 
+
+> view
+
+}.If no objects are detected, the image remains unchanged. For “How”-type questions in SQA3D, annotations are omit-ted to avoid unreliable detections. These annotations provide explicit visual grounding for subsequent reasoning. 
+
+E. Viewpoint Indicator 
+
+This module encodes camera poses as explicit spatial cues using bird’s-eye-view (BEV) representations. It generates a global BEV Bglobe from the 3D scene S and N ∗ 
+
+> view
+
+view-specific indicator maps for each I∗ 
+
+> i
+
+∈ I∗.Each camera pose Ci ∈ SE (3) , defined by rotation Ri ∈
+
+R3×3 and translation Ti ∈ R3, is projected onto the BEV plane. The indicator map is constructed as 
+
+Bind  
+
+> i
+
+= Overlay( Bglobe , C i), (5) where Overlay( ·) draws a directional marker at Ti based on 
+
+Ri. The full set is Bind = {Bind 1 , . . . , B ind  
+
+> N∗
+> view
+
+}.These BEV indicators provide a shared spatial reference across views, enabling consistent reasoning over viewpoint relationships and scene layout. They form part of the struc-tured representation used for downstream reasoning. 
+
+F. 3D-QA Module 
+
+The 3D-QA module performs structured multimodal rea-soning based on the structured representation, including the question T , annotated images ˆI, global BEV Bglobe , and viewpoint indicators Bind . As shown in Fig. 1, it consists of five stages: question interpretation, view captioning, cross-view summarization, answer synthesis, and normalization. 
+
+1) Question Interpreter: The interpreter extracts struc-tured intent from the input question: 
+
+Q =
+
+(
+
+Agent interpreter (T ), if ScanQA, 
+
+Agent interpreter (T, s txt ), if SQA3D. (6) 
+
+Q = (Oq , Rq , Sq , Fq ) encodes entities, reasoning type, spatial constraints, and attribute filters, providing a structured guide for downstream reasoning. 
+
+2) View Captioner: For each view, a captioning agent generates a viewpoint-aware description: 
+
+⟨Lview  
+
+> i
+
+, S view  
+
+> i
+
+⟩ = Agent captioner 
+
+ Q, ˆIi, B ind 
+
+> i
+
+, (7) where Lview  
+
+> i
+
+encodes viewpoint information and Sview 
+
+> i
+
+summarizes question-relevant observations. The outputs are 
+
+Lview and Sview . BEV indicators provide spatial cues for consistent cross-view interpretation. 
+
+3) Summarizer: The summarizer aggregates view-level descriptions into compact region-level representations: 
+
+M region = Agent summarizer (Lview , Sview )= {M region 1 , M region 2 , . . . , M region  
+
+> Nregion
+
+}. (8) Each region summarizes spatially coherent information, re-ducing redundancy across views. 
+
+4) Answerer: The answerer generates the final response using region summaries and global spatial context: 
+
+A =
+
+(
+
+Agent answerer (T, M region , B globe ), if ScanQA, 
+
+Agent answerer (T, s txt , M region , B globe ), if SQA3D. (9) 
+
+5) Answer Normalizer: For ScanQA, the output is nor-malized for evaluation: 
+
+Afinal =
+
+(
+
+Agent normalizer (T, A), if ScanQA 
+
+A, if SQA3D (10) 
+
+6) Term-Based Instructions: This module constrains out-puts to dataset-specific vocabularies, reducing variation and improving evaluation consistency. Prompt details are pro-vided in the multimedia material. IV. E XPERIMENTS 
+
+A. Datasets 
+
+We evaluate ViewMind3D on two standard 3D-QA bench-marks, ScanQA [5] and SQA3D [6], both built on Scan-Net [21]. SQA3D additionally provides a textual situation descriptor for each question. Following prior works [1], [5], [6], we evaluate on the ScanQA validation set and the SQA3D test set, ensuring consistent comparison with existing methods. All experiments are conducted in a zero-shot, training-free setting without any task-specific fine-tuning. Multi-view RGB images are obtained from the 
+
+scannet frames 25k subset, and the corresponding 3D point clouds are used to construct BEV-based viewpoint indicators. 
+
+B. Experimental Setup 
+
+We compare ViewMind3D with both fine-tuned and zero-shot baselines. Fine-tuned methods include representative 3D approaches (e.g., VoteNet+MCAN, ScanRefer+MCAN, ScanQA [5], [23]) and vision–language models such as Flamingo and BLIP2-FlanT5 [16], [24], as well as 3D-LLM [1]. Zero-shot baselines include LLaVA [17] and GPT-4.1 variants ( SingleImage , MultiView , TwoStage ) [13]. We also include GPT4Scene [9] for reference, reporting its zero-shot results for fair comparison with training-free methods, as its full performance relies on additional fine-tuning. We report standard language generation metrics, including BLEU-1, METEOR, ROUGE-L, CIDEr, and BERTScore-F1 [25]–[29], following prior 3D-QA works. Evaluation is conducted using COCO Captions and Hugging Face Evalu-ate. All experiments follow the protocol of 3D-LLM [1]. For methods without public implementations, we report results from the original papers. 
+
+C. Main Results on ScanQA 
+
+Table I presents results on the ScanQA validation set. De-spite being fully training-free, ViewMind3D achieves com-petitive performance compared to both 3D-based and fine-tuned VLM baselines. ViewMind3D (GPT-4.1) attains results comparable to 3D-LLM across multiple metrics, particularly on METEOR, demonstrating that structured zero-shot rea-soning can approach the performance of trained 3D mod-els. ViewMind3D (OpenAI o3) further improves semantic TABLE I COMPARISONS ON THE SCAN QA VALIDATION SET .BLEU-1 ↑ METEOR ↑ ROUGE-L ↑ CIDEr ↑ Cos. Sim. ↑ BERTScore-F1 ↑
+
+VoteNet+MCAN 28.00 11.40 29.80 54.70 – –ScanRefer+MCAN 26.90 11.50 30.00 55.40 – –ScanQA 30.20 13.10 33.30 64.90 – –flamingo-SingleImage 23.80 10.70 26.70 52.00 – –flamingo-MultiView 25.60 11.30 31.10 55.00 – –BLIP2-flant5-SingleImage 28.60 10.60 25.80 42.60 – –BLIP2-flant5-MultiView 29.70 11.30 26.60 45.70 – –3D-LLM (flamingo) 30.30 12.20 32.30 59.20 – –3D-LLM (BLIP2-opt) 35.90 13.80 34.00 63.80 – –3D-LLM (BLIP2-flant5) 39.3 14.50 35.70 69.40 – –LLaVA-SingleImage 7.10 10.50 12.30 5.70 – –GPT-4.1-SingleImage 19.34 7.87 16.84 7.90 32.72 49.33 GPT-4.1-MultiView 4.28 9.11 9.59 0.97 43.16 82.93 GPT-4.1-TwoStage 10.92 13.61 25.68 35.97 51.67 77.42 GPT4Scene (Qwen2-VL-7B, zero-shot) – 14.10 33.2 68.7 – –ViewMind3D (GPT-4.1) 34.33 14.95 35.61 68.30 62.29 89.78 ViewMind3D (o3) 35.82 15.34 37.62 73.41 63.74 91.94 
+
+TABLE II COMPARISONS ON THE SQA3D TEST SET .FORMAT : V = 3D VISUAL SCENE S; S = SITUATION DESCRIPTION stxt ; Q = QUESTION T ; A = ANSWER A; L = LOCATION ⟨spos , s ori ⟩.Format What Is How Can Which Others Avg. ScanQA(w/o stxt ) VQ → A 28.58 65.03 47.31 66.27 43.87 42.88 45.27 ScanQA VSQ → A 31.64 63.80 46.02 69.53 43.87 45.34 46.58 ScanQA + aux. task VSQ → AL 33.48 66.10 42.37 69.53 43.02 46.40 47.20 MCAN VSQ → A 28.86 59.66 44.09 68.34 40.74 40.46 43.42 ClipBERT VSQ → A 30.24 60.12 38.71 63.31 42.45 42.71 43.31 Unified QA Large w/ ScanRefer VSQ → A 33.01 50.43 31.91 56.51 45.17 41.11 41.00 Unified QA Large w/ ReferIt3D VSQ → A 27.58 47.99 34.05 59.47 40.91 39.77 38.71 GPT-3 w/ ScanRefer VSQ → A 39.67 45.99 40.47 45.56 36.08 38.42 41.00 GPT-3 w/ ReferIt3D VSQ → A 28.90 46.42 28.05 40.24 30.11 36.07 34.57 GPT-4.1-SingleImage VSQ → A 20.83 26.99 15.70 19.53 22.22 24.38 20.83 GPT-4.1-MultiView VSQ → A 27.55 59.97 26.45 57.10 37.61 43.64 39.84 GPT-4.1-TwoStage VSQ → A 23.80 47.09 30.54 34.02 44.16 30.57 33.11 GPT4Scene (Qwen2-VL-7B, zero-shot) VSQ → A – – – – – – 43.1 GPT4Scene (GPT-4o, zero-shot) VSQ → A – – – – – – 44.8 GPT4Scene (Gemini-1.5-Pro, zero-shot) VSQ → A – – – – – – 46.0 3D-LLM VSQ → A 37.05 65.18 45.81 67.46 51.00 49.82 49.79 ViewMind3D (OpenAI o3) VSQ → A 44.38 64.11 47.53 59.47 37.89 53.71 50.75 
+
+metrics, achieving the best performance on multiple metrics, including BLEU-1, METEOR, CIDEr, and BERTScore-F1. Recent approaches such as GPT4Scene (GPT-4o, zero-shot) report performance on the ROUGE-L metric, benefit-ing from multi-view visual prompting and enriched spatial context through BEV representations and spatial-temporal markers. While effective, these gains rely on carefully de-signed input representations. In contrast, our method achieves competitive performance through structured reasoning and modular orchestration, without requiring specialized input design or additional adaptation. We observe that GPT-4.1-MultiView achieves lower BLEU-1 but higher BERTScore-F1 than the SingleImage variant, indicating that multi-view inputs produce more de-scriptive outputs. While such outputs may reduce n-gram overlap, semantic metrics better capture their correctness. Overall, these results demonstrate that modular orchestration of LLMs and VLMs enables strong 3D reasoning perfor-mance without any task-specific training. 
+
+D. Main Results on SQA3D 
+
+Table II reports results on the SQA3D test set. Despite be-ing fully training-free, ViewMind3D achieves 50.75% accu-racy, outperforming prior baselines under the same evaluation protocol. Recent approaches such as GPT4Scene (GPT-4o, zero-shot) report performance on SQA3D using the average EM-1 metric, achieving 44.8% accuracy. The largest gain is observed in “What”-type questions, where ViewMind3D reaches 44.38% accuracy, exceeding 3D-LLM by over 7 points. These questions require fine-grained spatial and relational reasoning [6], indicating that the proposed design effectively captures spatially grounded information. Performance on “Which”-type questions is lower, as these resemble implicit multiple-choice tasks re-quiring explicit comparison, which is less naturally handled by generative zero-shot models. This suggests that incor-porating candidate selection or ranking mechanisms could further improve performance. Our method demonstrates consistent performance across multiple question types, highlighting the effectiveness of structured reasoning. Overall, the results demonstrate that structured decomposition enables general-purpose VLMs to achieve strong zero-shot performance on complex 3D-QA tasks without task-specific training. 
+
+E. Efficiency and Computational Analysis 
+
+We analyze the computational characteristics of View-Mind3D from a pipeline perspective. As a modular and training-free framework, the overall cost is primarily de-termined by the number of LLM/VLM invocations and the length of intermediate representations. Based on empirical measurements, a full inference re-quires on average approximately 90K tokens and around 120 seconds, with moderate variance across queries. Among all components, the 3D-QA module constitutes the primary computational bottleneck, consuming the largest portion of tokens (approximately 35K on average) due to multi-view captioning, cross-view summarization, and answer synthesis. The Guided Detection module introduces additional over-head (around 30K tokens), mainly for language-conditioned grounding, while the Relevance View Selection module con-tributes approximately 25K tokens. This distribution indicates that computational cost is largely driven by downstream reasoning, while earlier stages help organize inputs for subsequent processing. In particular, Relevance View Selection reduces redundant views, which indirectly affects the overall computational load by limiting the amount of information passed to later stages. While modern LLMs support large context windows, directly processing all multi-view observations in a sin-gle pass can be inefficient and may complicate reasoning over irrelevant inputs. In contrast, the proposed pipeline decomposes the 3D-QA task into multiple stages, distributing computation across components. This modular design provides flexibility in balancing per-formance and efficiency. For example, the number of selected views can be adjusted, or certain modules can be simplified depending on task requirements, without requiring retraining. V. A BLATION AND ANALYSIS 
+
+A. Component-wise Ablation 
+
+We remove two specific modules, Guided Detection and Viewpoint Indicator, in ViewMind3D to validate each of their contributions. All experiments use the same GPT-4.1 backbone with identical prompt settings. No rule-based post-processing is conducted to ensure consistent conditions. For SQA3D, we adopt a mixed prompt strategy: a compass-based protocol for “What” and “Which” questions, and a clock-based protocol for other question types, based on empirical observations. 
+
+Effectiveness of Guided Detection. Incorporating this module improves performance across several metrics on ScanQA, with CIDEr increasing from 60.30 to 61.45 (Ta-ble III), indicating that object-centric grounding enhances alignment between visual evidence and generated answers. A similar trend is observed on SQA3D, where the average accuracy improves from 47.07 to 48.64 (Table IV). However, the improvements are not uniform across ques-tion types. In particular, performance on “How” questions decreases (47.31 → 39.78, Table IV). This behavior reflects a limitation of open-world object detectors, which may introduce noisy or inaccurate annotations for unseen or ambiguous categories. Such noise is especially detrimental to count-based or procedural reasoning, where precise and reliable visual cues are required. These findings suggest that object-centric grounding is beneficial when accurate detection is available, but may become less effective when the grounding signal is noisy or misaligned with the reasoning objective. To address this issue, we can adaptively bypass Guided Detection for “How” questions by directly using raw image inputs instead. 
+
+Effectiveness of Viewpoint Indicator. Enabling this module leads to a noticeable improvement in CIDEr on ScanQA (57.41 → 63.48, Table III), with additional gains in METEOR and ROUGE-L, indicating that explicit camera pose cues support spatial grounding and content alignment. On SQA3D, we see improvements across most question types, with the largest gain observed for “Which” questions (30.20 → 37.89, Table IV). This suggests that viewpoint-aware representations are particularly useful for resolving reference-based queries that require spatial disambiguation among multiple candidates. The relatively modest gains on other metrics can be attributed to three factors. First, the input views are sampled from the scannet frames 25k subset, resulting in sparse multi-view coverage that limits the impact of camera pose cues. Second, Relevance View Selection already reduces re-dundant viewpoints, constraining multi-view evidence aggre-gation. Third, View Captioner already incorporates semantic viewpoint descriptors, partially compensating for the absence of explicit geometric indicators. Overall, these results indicate that Viewpoint Indicator primarily benefits tasks requiring explicit spatial disambigua-tion, while its contribution is less pronounced when semantic cues alone are sufficient. 
+
+B. Single-Agent vs. Multi-Agent Ablation 
+
+We compare the standard ViewMind3D pipeline, which assigns multiple specialized agents for question interpreta-tion, view captioning, and cross-view summarization, against a collapsed baseline where all functionalities are handled by a single agent. We call the former role decomposition .For consistency, Term-Based Instructions is disabled in both settings. TABLE III COMPONENT -WISE ABLATION RESULTS ON SCAN QA (VI=V IEWPOINT INDICATOR , GD=G UIDED DETECTION , RD=R OLE DECOMPOSITION ,TBI=T ERM -B ASED INSTRUCTIONS ). 
+
+BLEU-1 ↑ METEOR ↑ ROUGE-L ↑ CIDEr ↑ Cos. Sim. ↑ BERTScore-F1 ↑
+
+ViewMind3D w/o VI 29.72 14.32 33.60 57.41 60.28 88.04 
+
+ViewMind3D w/ VI 29.32 15.02 35.22 63.48 60.29 87.70 ViewMind3D w/o GD 27.65 14.99 34.40 60.30 59.35 86.27 ViewMind3D w/ GD 29.58 15.34 35.38 61.45 60.04 87.86 
+
+ViewMind3D w/o RD 27.02 13.89 31.40 54.77 57.10 86.09 ViewMind3D w/ RD 28.01 13.62 32.03 58.05 58.65 87.56 
+
+ViewMind3D w/o TBI 28.01 13.62 32.03 58.05 58.65 87.56 ViewMind3D w/ TBI 29.32 15.02 35.22 63.48 60.29 87.70   
+
+> Note: Each ablation pair is evaluated under a component-specific setting. In particular, GDM uses a subset for efficiency, and role decomposition and TBI are tested under different prompt configurations. Comparisons are valid only within each pair. TABLE IV COMPONENT -WISE ABLATION RESULTS ON SQA3D.
+
+What Is How Can Which Others Avg. ViewMind3D w/o VI 38.97 61.20 50.75 60.06 30.20 49.29 47.46 ViewMind3D w/ VI 39.49 63.80 47.53 60.95 37.89 50.00 48.65 
+
+ViewMind3D w/o GD 38.86 63.08 47.31 61.19 24.29 50.91 47.07 ViewMind3D w/ GD 39.74 64.62 39.78 59.70 40.00 54.55 48.64 
+
+As shown in Table III, role decomposition improves per-formance across multiple metrics (CIDEr 54.77 → 58.05). Similar gains are observed in BLEU-1, ROUGE-L, cosine similarity, and BERTScore-F1, suggesting that structured, modular reasoning leads to more semantically aligned an-swers. In contrast, the monolithic baseline must simulta-neously handle all reasoning tasks, which may introduce ambiguity and instability. These findings indicate that the performance gains are primarily attributable to the modular pipeline design of ViewMind3D, rather than prompt variation alone. Such role decomposition structures the reasoning process through in-termediate stages without requiring additional training. 
+
+C. Ablation on Term-Based Instructions 
+
+Using the Term-Based Instructions setting, our agents are constrained to use a canonical vocabulary for object categories, colors, and spatial descriptors from frequently occurring terms in the human-annotated answers in ScanQA. As shown in Table III, this setting improves n-gram-based metrics (CIDEr 58.05 → 63.48), as such metrics are sensitive to lexical overlap and exact phrasing. Without such setting, large language models tend to gen-erate diverse and semantically valid expressions, including synonyms and paraphrases, which may deviate from the canonical vocabulary used in ground truth annotations. While these variations are linguistically appropriate, they can re-duce surface-level overlap and lead to lower scores under string-based evaluation metrics. These findings suggest that Term-Based Instructions func-tion as an output normalization mechanism that aligns model predictions with benchmark evaluation protocols. Rather than altering the reasoning capability, it reduces discrepancies between semantically correct answers and their canonical representations. From a system perspective, this module com-plements other components in ViewMind3D by stabilizing the final output space. 
+
+D. Ablation on BEV-Based Direction Encoding 
+
+We compare two BEV direction encoding schemes, compass-based and clock-based, on ScanQA and SQA3D. As shown in Table V, both schemes achieve comparable performance across all metrics, indicating that ViewMind3D is not sensitive to the choice of directional encoding. Since SQA3D includes diverse question types, we observe moderate performance variations across them. The clock-based scheme performs better on “What” and “Others” questions, which often require finer spatial discrimination, while the compass-based scheme shows advantages on “Is” questions, where coarse directional reasoning is typically sufficient. These results suggest that the required level of spatial granularity depends on the question. Clock-based encoding provides finer angular resolution for detailed spatial reason-ing, whereas compass-based encoding offers simpler direc-tional cues for coarse decisions. An adaptive hybrid approach can select between compass- and clock-based encoding based on the question type. VI. C ONCLUSION 
+
+We presented ViewMind3D , a training-free and modular framework for 3D question answering in complex indoor TABLE V ABLATION RESULTS ON BEV DIRECTION ENCODING SCHEMES .
+
+ScanQA (subset) BLEU-1 ↑ METEOR ↑ ROUGE-L ↑ CIDEr ↑ Cos. Sim. ↑ BERTScore-F1 ↑
+
+ViewMind3D (Compass) 29.58 15.34 35.38 61.45 60.04 87.86 ViewMind3D (Clock) 29.11 15.46 35.77 60.89 61.26 89.24 SQA3D What Is How Can Which Others Avg. ViewMind3D (Compass) 43.16 63.96 40.86 58.58 37.89 50.53 48.85 ViewMind3D (Clock) 43.50 62.27 40.43 59.47 37.61 53.71 49.16 Note: Both encoding schemes yield comparable performance. Clock-based encoding provides finer spatial resolution, benefiting detailed reasoning, while compass-based encoding remains effective for coarse directional cues. 
+
+scenes. By decomposing 3D-QA into VLM-driven com-ponents—view selection, visual grounding, viewpoint in-dication, and structured answer synthesis—the framework enables multi-modal reasoning without 3D-specific training. Experiments on ScanQA and SQA3D demonstrate competi-tive performance against fine-tuned 3D-LLMs. Beyond performance, ViewMind3D offers strong inter-pretability through explicit intermediate representations and supports flexible integration with diverse LLM/VLM back-bones. Overall, our results highlight that structured decompo-sition is an effective and practical approach for training-free 3D vision-language reasoning. REFERENCES [1] Y. Hong, H. Zhen, P. Chen, S. Zheng, Y. Du, Z. Chen, and C. Gan, “3D-LLM: Injecting the 3D World into Large Language Models,” in 
+
+Advances in Neural Information Processing Systems , vol. 36, 2023. [2] R. Xu, X. Wang, T. Wang, Y. Chen, J. Pang, and D. Lin, “PointLLM: Empowering Large Language Models to Understand Point Clouds,” in 
+
+European Conference on Computer Vision (ECCV) , 2024. [3] Z. Qi, R. Dong, S. Zhang, H. Geng, C. Han, Z. Ge et al. , “ShapeLLM: Universal 3D Object Understanding for Embodied Interaction,” in 
+
+European Conference on Computer Vision (ECCV) , 2024. [4] OpenAI, “GPT-4V(ision) System Card,” 2023, accessed: 2025-08-14. [Online]. Available: https://openai.com/index/gpt-4v-system-card [5] D. Azuma, T. Miyanishi, S. Kurita, and M. Kawanabe, “ScanQA: 3D Question Answering for Spatial Scene Understanding,” in IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) ,2022. [6] X. Ma, S. Yong, Z. Zheng, Q. Li, Y. Liang, S.-C. Zhu, and S. Huang, “SQA3D: Situated Question Answering in 3D Scenes,” in Interna-tional Conference on Learning Representations (ICLR) , 2023. [7] Y. Chen, S. Yang, H. Huang, T. Wang, R. Xu, R. Lyu et al. , “Grounded 3D-LLM with Referent Tokens,” arXiv preprint arXiv:2405.10370 ,2024. [8] R. Fu, J. Liu, X. Chen, Y. Nie, and W. Xiong, “Scene-LLM: Extending Language Model for 3D Visual Reasoning,” in IEEE/CVF Winter Conference on Applications of Computer Vision (WACV) , 2025. [9] Z. Qi, Z. Zhang, Y. Fang, J. Wang, and H. Zhao, “GPT4Scene: Understand 3D Scenes from Videos with Vision-Language Models,” 
+
+arXiv preprint arXiv:2501.01428 , 2024. [10] H. Huang, Y. Chen, Z. Wang, R. Huang, R. Xu, T. Wang, L. Liu, X. Cheng, Y. Zhao, J. Pang et al. , “Chat-scene: Bridging 3d scene and large language models with object identifiers,” Advances in Neural Information Processing Systems (NeurIPS) , 2024. [11] H. Huang, Y. Chen, Z. Wang, J. Pang, and Z. Zhao, “Chat-Scene++: Exploiting Context-Rich Object Identification for 3D LLM,” arXiv preprint arXiv:2603.27507 , 2026. [12] J. Yang, X. Chen, S. Qian, N. Madaan, M. Iyengar, D. F. Fouhey, and J. Chai, “LLM-Grounder: Open-Vocabulary 3D Visual Grounding With Large Language Model as an Agent,” in IEEE International Conference on Robotics and Automation (ICRA) , 2024. [13] OpenAI, “GPT-4,” 2023, accessed: 2025-08-14. [Online]. Available: https://openai.com/index/gpt-4-research/ [14] A. Radford, J. W. Kim, C. Hallacy, A. Ramesh, G. Goh, S. Agarwal 
+
+et al. , “Learning Transferable Visual Models From Natural Lan-guage Supervision,” in International Conference on Machine Learning (ICML) , 2021. [15] J. Li, D. Li, C. Xiong, and S. C. H. Hoi, “BLIP: Bootstrapping Language-Image Pre-training for Unified Vision-Language Under-standing and Generation,” in International Conference on Machine Learning (ICML) , 2022. [16] J. Li, D. Li, S. Savarese, and S. C. H. Hoi, “BLIP-2: Bootstrapping Language-Image Pre-training with Frozen Image Encoders and Large Language Models,” in International Conference on Machine Learning (ICML) , 2023. [17] H. Liu, C. Li, Q. Wu, and Y. J. Lee, “Visual Instruction Tuning,” in Advances in Neural Information Processing Systems (NeurIPS) ,vol. 36, 2023. [18] S. Chen, X. Chen, C. Zhang, M. Li, G. Yu, H. Fei et al. , “LL3DA: Visual Interactive Instruction Tuning for Omni-3D Understanding Reasoning and Planning,” in IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) , 2024. [19] J. Luo, Y. Liu, W. Chen, Z. Li, Y. Wang, G. Li, and L. Lin, “DSPNet: Dual-vision Scene Perception for Robust 3D Question Answering,” in 
+
+IEEE/CVF Conf. on Computer Vision and Pattern Recognition , 2025. [20] W. Mo, Q. Chen, Y. Peng, S. Huang, and Y. Liu, “Advancing 3D Scene Understanding with MV-ScanQA Multi-View Reasoning Evaluation and TripAlign Pre-training Dataset,” ACM International Conference on Multimedia , 2025. [21] A. Dai, A. X. Chang, M. Savva, M. Halber, T. Funkhouser, and M. Nießner, “ScanNet: Richly-Annotated 3D Reconstructions of In-door Scenes,” in IEEE Conference on Computer Vision and Pattern Recognition (CVPR) , 2017. [22] B. Xiao, H. Wu, W. Xu, X. Dai, H. Hu, Y. Lu et al. , “Florence-2: Advancing a Unified Representation for a Variety of Vision Tasks,” in 
+
+IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) , 2024. [23] D. Z. Chen, A. X. Chang, and M. Nießner, “ScanRefer: 3D Object Localization in RGB-D Scans Using Natural Language,” in European Conference on Computer Vision (ECCV) , 2020. [24] J.-B. Alayrac, J. Donahue, P. Luc, A. Miech, I. Barr, Y. Hasson et al. ,“Flamingo: A Visual Language Model for Few-Shot Learning,” in 
+
+Advances in Neural Information Processing Systems (NeurIPS) , 2022. [25] K. Papineni, S. Roukos, T. Ward, and W.-J. Zhu, “BLEU: A Method for Automatic Evaluation of Machine Translation,” in Annual Meeting of the Association for Computational Linguistics (ACL) , 2002. [26] S. Banerjee and A. Lavie, “METEOR: An Automatic Metric for MT Evaluation with Improved Correlation with Human Judgments,” in 
+
+ACL Workshop on Intrinsic and Extrinsic Evaluation Measures for Machine Translation and/or Summarization , 2005. [27] C.-Y. Lin, “ROUGE: A Package for Automatic Evaluation of Sum-maries,” in ACL Workshop on Text Summarization Branches Out , 2004. [28] R. Vedantam, C. L. Zitnick, and D. Parikh, “CIDEr: Consensus-Based Image Description Evaluation,” in IEEE Conference on Computer Vision and Pattern Recognition (CVPR) , 2015. [29] T. Zhang, V. Kishore, F. Wu, K. Q. Weinberger, and Y. Artzi, “BERTScore: Evaluating Text Generation with BERT,” arXiv preprint arXiv:1904.09675 , 2019.

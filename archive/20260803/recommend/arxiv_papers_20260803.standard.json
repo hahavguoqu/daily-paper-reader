@@ -1,0 +1,232 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-08-03T21:00:33.495335+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 2,
+    "deep_cap": 6,
+    "deep_selected": 2,
+    "quick_candidates": 3,
+    "quick_skim_target": 11,
+    "quick_selected": 3
+  },
+  "deep_dive": [
+    {
+      "id": "2607.28895v1",
+      "source": "arxiv",
+      "title": "LLM-Based Generative Retrieval for Snapchat Content Recommendation",
+      "abstract": "Pretrained large language models (LLMs) are promising retrieval engines because they combine rich semantic priors, strong sequence modeling capabilities, and favorable scaling behavior. However, turning a pretrained LLM into a generative retriever in production deployment raises several challenges: the model must learn an internal item vocabulary that was absent from pretraining, and generate valid item identifiers under strict latency and cost constraints. We address these challenges through the design and launch of SnapLGR, an LLM-based generative retrieval system for short-video recommendation at Snapchat. The system is built around three main designs. First, we construct semantic identifiers (SIDs) from multimodal item embeddings and enhance them with Personalized PageRank (PPR)-based co-engagement contrastive learning, resulting in improved codebook utilization, reduced collisions, and infused collaborative signal. Second, we use continued pretraining (CPT) to ground the introduced SID tokens before supervised fine-tuning (SFT) on user interaction sequences. Third, we make SnapLGR serving practical through TensorRT-LLM CUDA-backed beam search and a decentralized worker-loop architecture. In a live A/B test, the launched system increased View Time by 0.37%, Time Spent by 0.09%, Deep Sessions by 0.18%, and Deep Sessions Unique User by 0.11% relative to the existing TIGER-style generative retrieval baseline. We then decompose this offline gap under a fixed tokenizer and quantify the gains due to model architecture, scaling, and pretraining. Overall, our deployment shows that successful production SnapLGR requires joint design across representation learning, vocabulary grounding, and efficient training and serving.",
+      "authors": [
+        "Liam Collins",
+        "Jiwen Ren",
+        "Donald Loveland",
+        "Bhuvesh Kumar",
+        "Clark Mingxuan Ju",
+        "Xuan Guo",
+        "Mo Li",
+        "Alvin Hou",
+        "Yi Cui",
+        "Peng Yang",
+        "Jian Wang",
+        "Saud Afzal Shafi",
+        "Nga Than",
+        "Ruiming Lu",
+        "Wenfeng Zhuo",
+        "Dongheng Li",
+        "Lili Zhang",
+        "Mingtao Zhang",
+        "Jinchao Ye",
+        "Vincent Xue",
+        "Chunhui Zhu",
+        "Neil Shah"
+      ],
+      "primary_category": "cs.IR",
+      "categories": [
+        "cs.IR"
+      ],
+      "published": "2026-07-30T23:27:14+00:00",
+      "link": "https://arxiv.org/pdf/2607.28895v1",
+      "tags": [
+        "keyword:vlm-cot",
+        "query:vlm-cot"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "LLM-based generative retrieval system designed and launched for Snapchat content recommendation, a production large-model system by Snap.",
+      "llm_evidence_cn": "为Snapchat内容推荐设计并上线LLM生成式检索系统SnapLGR，是Snap的大模型生产系统。",
+      "llm_evidence": "为Snapchat内容推荐设计并上线LLM生成式检索系统SnapLGR，是Snap的大模型生产系统。",
+      "canonical_evidence": "为Snapchat内容推荐设计并上线LLM生成式检索系统SnapLGR，是Snap的大模型生产系统。",
+      "llm_tldr_en": "SnapLGR converts multimodal item embeddings into semantic identifiers and enables LLM-based generative retrieval under strict latency, launched for Snapchat recommendation.",
+      "llm_tldr_cn": "将预训练大模型用作生产级生成式检索器面临内部词表缺失和延迟约束等挑战。SnapLGR使用多模态嵌入构造语义标识符，并设计延迟与成本约束下的生成机制，成功在Snapchat短视频推荐中上线。该系统兼顾了LLM的语义先验与生产环境的工程要求，显著提升检索效果。展示了大型科技公司将LLM落地于推荐系统的可行路径，具有扎实的工程基础。",
+      "llm_tldr": "将预训练大模型用作生产级生成式检索器面临内部词表缺失和延迟约束等挑战。SnapLGR使用多模态嵌入构造语义标识符，并设计延迟与成本约束下的生成机制，成功在Snapchat短视频推荐中上线。该系统兼顾了LLM的语义先验与生产环境的工程要求，显著提升检索效果。展示了大型科技公司将LLM落地于推荐系统的可行路径，具有扎实的工程基础。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "large model by big tech companies",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2607.28966v1",
+      "source": "arxiv",
+      "title": "BLADE: Boundary-Expanded and Layer-Adaptive Dynamic Exit for Efficient LLM Reasoning",
+      "abstract": "Large language models often improve task performance by generating long reasoning traces, but the resulting computation is frequently wasted on redundant verification and revision. Existing probe-based early-exit approaches mainly inspect explicit self-doubt expressions, leaving many earlier termination opportunities undetected. Expanding inspection to ordinary reasoning boundaries improves coverage, but also exposes highly diverse intermediate states whose predictive information may reside in different hidden layers. We present Boundary-Expanded and Layer-Adaptive Dynamic Exit for Efficient LLM Reasoning (BLADE), a lightweight framework that dynamically terminates reasoning by estimating whether the generated prefix is sufficient for correct answering. BLADE constructs multi-granular checkpoints from sentence, self-doubt, and paragraph boundaries, and derives robust training labels through repeated answer completions. It further learns a compact subset of informative probe layers instead of relying on fixed choices or expensive representations from all layers. At inference time, calibrated predictions are combined with checkpoint-specific confirmation rules to balance responsiveness and premature-exit risk. Experiments on five benchmarks and two Qwen3 reasoning models show that BLADE preserves near-baseline accuracy while reducing generated tokens by 24.8% on Qwen3-8B and 15.8% on Qwen3-4B. Ablation studies further confirm the benefits of diverse checkpoints and automatic layer selection, demonstrating an effective approach to more efficient LLM reasoning.",
+      "authors": [
+        "Keshu Fu",
+        "Keqin Peng",
+        "Jun Bai",
+        "Shuhan Qin",
+        "Chen Li",
+        "Junzhu Liang",
+        "Yefei Chen",
+        "Jiaqi Li",
+        "Yuanxin Ouyang"
+      ],
+      "primary_category": "cs.CL",
+      "categories": [
+        "cs.CL"
+      ],
+      "published": "2026-07-31T02:36:55+00:00",
+      "link": "https://arxiv.org/pdf/2607.28966v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "directly addresses efficient reasoning in LLMs by dynamically terminating reasoning traces, closely related to chain-of-thought",
+      "llm_evidence_cn": "直接针对LLM推理效率，动态终止推理轨迹，与思维链推理高度相关",
+      "llm_evidence": "直接针对LLM推理效率，动态终止推理轨迹，与思维链推理高度相关",
+      "canonical_evidence": "直接针对LLM推理效率，动态终止推理轨迹，与思维链推理高度相关",
+      "llm_tldr_en": "BLADE is a lightweight framework that improves LLM reasoning efficiency by expanding early-exit inspection to ordinary reasoning boundaries and adapting to hidden layers, reducing wasted computation without compromising correctness.",
+      "llm_tldr_cn": "大语言模型常通过生成长推理轨迹提升任务性能，但大量计算浪费在冗余的验证和修正上。现有基于探针的早退方法主要检查显式自我怀疑表达，漏掉许多更早的终止机会。BLADE框架将检查扩展到普通推理边界，并利用层自适应机制估计当前生成前缀是否已足够，从而动态终止推理。实验表明该方法能在不损失正确性的前提下显著减少推理开销，为高效思维链推理提供了通用方案。",
+      "llm_tldr": "大语言模型常通过生成长推理轨迹提升任务性能，但大量计算浪费在冗余的验证和修正上。现有基于探针的早退方法主要检查显式自我怀疑表达，漏掉许多更早的终止机会。BLADE框架将检查扩展到普通推理边界，并利用层自适应机制估计当前生成前缀是否已足够，从而动态终止推理。实验表明该方法能在不损失正确性的前提下显著减少推理开销，为高效思维链推理提供了通用方案。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2607.24582v1",
+      "source": "arxiv",
+      "title": "CADER: Confidence-Aware Dynamic Evidence Reasoning for Long-Video Understanding",
+      "abstract": "Long-video understanding increasingly relies on large vision-language models and tool-augmented reasoning, but most systems apply the same inference procedure to every example regardless of difficulty. This uniform strategy invokes unnecessary tool-assisted processing for easy questions and provides limited control when difficult questions require fine-grained temporal evidence. We propose CADER (Confidence-Aware Dynamic Evidence Reasoning), a training-free framework for adaptive and reliable long-video reasoning. CADER first performs global reasoning over uniformly sampled frames and estimates answer confidence with a logit-margin signal, allowing high-confidence examples to exit early. For uncertain examples, CADER activates a second-stage tool-augmented loop that combines temporal cropping, lightweight semantic verification, and Relevance-Guided Resampling to progressively localize question-relevant evidence. This design treats tool use as a sample-level decision: a single global pass handles easy cases, while additional reasoning is reserved for examples where uncertainty suggests that more evidence is needed. Experiments on multiple VideoQA benchmarks show that CADER improves long-video reasoning while bypassing Stage~2 for high-confidence samples. Moreover, when applied to a backbone trained only with tool-free chain-of-thought supervision, CADER achieves competitive performance against specialized tool-augmented frameworks, suggesting a practical inference-time route for adaptive long-video reasoning.",
+      "authors": [
+        "Jinlong Yang",
+        "Wenhao Zhang",
+        "Kuanwei Lin",
+        "Sijie Cheng"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV",
+        "cs.AI"
+      ],
+      "published": "2026-07-27T15:49:42+00:00",
+      "link": "https://arxiv.org/pdf/2607.24582v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "Visual-language model reasoning for long-video; confidence-aware dynamic evidence reasoning",
+      "llm_evidence_cn": "面向长视频的视觉语言模型推理，置信度感知动态证据推理",
+      "llm_evidence": "面向长视频的视觉语言模型推理，置信度感知动态证据推理",
+      "canonical_evidence": "面向长视频的视觉语言模型推理，置信度感知动态证据推理",
+      "llm_tldr_en": "CADER is a training-free framework for long-video understanding that adapts reasoning depth based on confidence: easy questions exit early after global reasoning, while uncertain ones trigger tool-assisted fine-grained temporal evidence. It improves accuracy and efficiency over uniform inference.",
+      "llm_tldr_cn": "长视频理解任务通常对所有样本采用统一推理流程，既浪费计算资源又难以处理需要细粒度时间证据的难题。本文提出CADER，一种无需训练的置信度感知动态证据推理框架：先对均匀采样帧做全局推理，用logit间隔估计置信度，高置信样本提前退出；低置信样本则进入第二阶段的工具辅助细粒度推理。实验表明该方法能够在保证精度的同时降低计算开销，为视频问答的可靠推理提供了轻量级解决方案。",
+      "llm_tldr": "长视频理解任务通常对所有样本采用统一推理流程，既浪费计算资源又难以处理需要细粒度时间证据的难题。本文提出CADER，一种无需训练的置信度感知动态证据推理框架：先对均匀采样帧做全局推理，用logit间隔估计置信度，高置信样本提前退出；低置信样本则进入第二阶段的工具辅助细粒度推理。实验表明该方法能够在保证精度的同时降低计算开销，为视频问答的可靠推理提供了轻量级解决方案。",
+      "llm_tags": [
+        "query:vlm-cot:composite"
+      ],
+      "matched_query_tag": "query:vlm-cot:composite",
+      "matched_query_text": "Papers central to 视觉大模型CoT及大厂出品，大模型相关且有扎实的工程基础, especially work that connects or combines: chain of thought reasoning large model; large model by big tech companies.",
+      "matched_requirement_id": "req-composite-vlm-cot",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2607.23815v1",
+      "source": "arxiv",
+      "title": "Kalypso: Relational LLM Serving",
+      "abstract": "Large language models are increasingly used as semantic operators for filtering, extracting, ranking, joining, and transforming unstructured data. Existing semantic query processing systems invoke request-centric LLM serving systems that are unaware of the query plan, leaving substantial performance opportunities unused. This paper introduces relational LLM serving, an abstraction that makes LLM serving aware of semantic query structure while preserving query semantics and output accuracy. The key opportunity is pipelined execution across semantic operators: when intermediate tuples flow directly from one operator to the next, their KV-cache state can be reused instead of recomputed.   We present Kalypso, a relational LLM serving system that exposes an API for semantic query plans and executes them using an adaptive, memory-aware scheduling algorithm. Kalypso addresses a new online scheduling problem in which pipelined operator execution is coupled with GPU memory pressure management to reuse KV-cache state in the serving engine before eviction. Its scheduler continuously adjusts memory allocations to balance upstream parallelism, downstream progress, and GPU utilization. Our evaluation shows that Kalypso improves query completion time over baselines using request-centric LLM serving, with speedups up to 4.57x across diverse workloads, demonstrating that query-aware LLM serving can substantially improve the efficiency of semantic query execution.",
+      "authors": [
+        "Hojae Son",
+        "Md Ashraful Islam",
+        "Huy Gia Cao",
+        "Hui Guan",
+        "Marco Serafini"
+      ],
+      "primary_category": "cs.DB",
+      "categories": [
+        "cs.DB",
+        "cs.AI",
+        "cs.CL"
+      ],
+      "published": "2026-07-26T19:29:31+00:00",
+      "link": "https://arxiv.org/pdf/2607.23815v1",
+      "tags": [
+        "keyword:vlm-cot",
+        "query:vlm-cot"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "Relational LLM serving system with KV-cache reuse, solid engineering for large models",
+      "llm_evidence_cn": "关系型LLM服务系统，通过KV缓存复用提供扎实的大模型工程基础",
+      "llm_evidence": "关系型LLM服务系统，通过KV缓存复用提供扎实的大模型工程基础",
+      "canonical_evidence": "关系型LLM服务系统，通过KV缓存复用提供扎实的大模型工程基础",
+      "llm_tldr_en": "Kalypso introduces relational LLM serving, an abstraction that makes LLM serving aware of semantic query plans. By pipelining semantic operators and reusing KV-cache states, it improves performance while preserving query semantics and output accuracy.",
+      "llm_tldr_cn": "现有语义查询处理系统按请求调用大语言模型，忽略了查询计划结构，导致大量性能机会被浪费。Kalypso提出关系型LLM服务抽象，让LLM服务感知语义查询计划，并在算子间流水线执行时复用KV缓存状态。该设计既保持查询语义与输出精度不变，又显著减少重复计算开销。该系统为大规模语义查询与LLM算子协同优化提供了工程化基础设施。",
+      "llm_tldr": "现有语义查询处理系统按请求调用大语言模型，忽略了查询计划结构，导致大量性能机会被浪费。Kalypso提出关系型LLM服务抽象，让LLM服务感知语义查询计划，并在算子间流水线执行时复用KV缓存状态。该设计既保持查询语义与输出精度不变，又显著减少重复计算开销。该系统为大规模语义查询与LLM算子协同优化提供了工程化基础设施。",
+      "llm_tags": [
+        "query:vlm-cot:composite"
+      ],
+      "matched_query_tag": "query:vlm-cot:composite",
+      "matched_query_text": "Papers central to 视觉大模型CoT及大厂出品，大模型相关且有扎实的工程基础, especially work that connects or combines: chain of thought reasoning large model; large model by big tech companies.",
+      "matched_requirement_id": "req-composite-vlm-cot",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2607.28442v1",
+      "source": "arxiv",
+      "title": "ViewMind3D: Modular View-Aware Inference for Training-Free 3D-QA",
+      "abstract": "Recent advances in large language models (LLMs) and vision-language models (VLMs) have enabled new possibilities for 3D question answering (3D-QA), a key capability for embodied AI and robotic perception. However, most existing methods rely on 3D-specific training or fine-tuning with costly annotations, limiting their scalability and real-world applicability. We present \\textbf{ViewMind3D}, a fully training-free and modular framework for 3D spatial reasoning over multi-view observations of a scene without requiring complete 3D reconstruction. The framework decomposes the 3D-QA task into four interpretable components: (1) question-driven multi-view selection, (2) guided visual grounding with language-conditioned object cues, (3) spatial context encoding via a bird's-eye-view (BEV) viewpoint indicator, and (4) structured answer generation through role-based reasoning. This design enables structured, robust, and interpretable reasoning without requiring model tuning. Experimental results on ScanQA and SQA3D show that ViewMind3D achieves competitive performance compared to prior training-free and fine-tuned 3D-LLMs. In particular, our method improves performance on spatially grounded question types, such as ``What'' questions in SQA3D, while maintaining strong overall accuracy (50.8\\%) and achieving 73.4 CIDEr on ScanQA. These results demonstrate that effective 3D reasoning can be achieved through modular orchestration of general-purpose LLMs and VLMs for robotic perception in real-world environments.",
+      "authors": [
+        "Ping-Kun Chiang",
+        "Kun-Ru Wu",
+        "Po-han Li",
+        "Sandeep Chinchali",
+        "Ufuk Topcu",
+        "Yu-Chee Tseng"
+      ],
+      "primary_category": "cs.CV",
+      "categories": [
+        "cs.CV"
+      ],
+      "published": "2026-07-30T16:14:30+00:00",
+      "link": "https://arxiv.org/pdf/2607.28442v1",
+      "tags": [
+        "keyword:vlm-cot"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "modular view-aware inference decomposes 3D QA into interpretable stages, akin to chain-of-thought for VLMs",
+      "llm_evidence_cn": "面向3D问答的模块化视角推理，按可解释步骤分解，类似于VLM的思维链",
+      "llm_evidence": "面向3D问答的模块化视角推理，按可解释步骤分解，类似于VLM的思维链",
+      "canonical_evidence": "面向3D问答的模块化视角推理，按可解释步骤分解，类似于VLM的思维链",
+      "llm_tldr_en": "Presents ViewMind3D, a training-free modular framework for 3D question answering with VLMs, breaking reasoning into interpretable components without 3D reconstruction.",
+      "llm_tldr_cn": "针对现有3D问答方法依赖3D专用训练和昂贵标注的问题，本文提出ViewMind3D，一个无需训练的模块化框架。它将3D问答分解为多视角选择、视觉定位和空间上下文编码等可解释步骤，直接利用预训练VLM完成推理，无需完整3D重建。实验表明该框架在3D空间推理任务上具有强可扩展性和实际应用潜力，为视觉语言模型的链式推理提供了新思路，同时大幅降低标注成本。",
+      "llm_tldr": "针对现有3D问答方法依赖3D专用训练和昂贵标注的问题，本文提出ViewMind3D，一个无需训练的模块化框架。它将3D问答分解为多视角选择、视觉定位和空间上下文编码等可解释步骤，直接利用预训练VLM完成推理，无需完整3D重建。实验表明该框架在3D空间推理任务上具有强可扩展性和实际应用潜力，为视觉语言模型的链式推理提供了新思路，同时大幅降低标注成本。",
+      "llm_tags": [
+        "query:vlm-cot"
+      ],
+      "matched_query_tag": "query:vlm-cot",
+      "matched_query_text": "chain of thought reasoning large model",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    }
+  ]
+}
